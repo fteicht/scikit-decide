@@ -271,6 +271,8 @@ setup(
             'RIW = skdecide.hub.solver.riw:RIW',
             'LRTDP = skdecide.hub.solver.lrtdp:LRTDP',
             'ILAOstar = skdecide.hub.solver.ilaostar:ILAOstar',
+            'MARTDP = skdecide.hub.solver.martdp:MARTDP',
+            'MAHD = skdecide.hub.solver.mahd:MAHD',
             'LazyAstar = skdecide.hub.solver.lazy_astar:LazyAstar',
             'MaxentIRL = skdecide.hub.solver.maxent_irl:MaxentIRL [solvers]',
             'POMCP = skdecide.hub.solver.pomcp:POMCP',

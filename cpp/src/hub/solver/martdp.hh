@@ -147,7 +147,8 @@ public :
                 update_epsilon_moving_average(root_node, root_node_record_value);
 
                 std::size_t etime = elapsed_time(start_time);
-                if ((etime< _time_budget) && (_nb_rollouts < _rollout_budget) &&
+                if ((etime > _time_budget) || (_nb_rollouts > _rollout_budget) ||
+                    (_epsilon_moving_average < _epsilon) ||
                     _watchdog(etime, _nb_rollouts,
                               (_epsilons.size() >= _epsilon_moving_average_window)?_epsilon_moving_average:std::numeric_limits<double>::infinity()))
                     break;

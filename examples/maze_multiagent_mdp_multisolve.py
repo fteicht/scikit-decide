@@ -18,8 +18,9 @@ from skdecide.domains import Domain
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
 
-from skdecide.hub.solver.lrtdp import LRTDP
+from skdecide.hub.solver.mahd import MAHD
 from skdecide.hub.solver.martdp import MARTDP
+from skdecide.hub.solver.lrtdp import LRTDP
 
 from typing import Any, Callable, NamedTuple, Optional, Tuple
 import matplotlib.pyplot as plt
@@ -93,6 +94,9 @@ class MultiAgentMaze(D):
         self._ax = None
         self._nb_agents = nb_agents
         self._generate_agents()
+
+    def get_agents(self):
+        return {'Agent #{}'.format(i) for i in range(self._nb_agents)}
     
     def _generate_agents(self):
         # Randomly place self._nb_agents / 2 in each half of the maze
@@ -327,51 +331,10 @@ class SingleAgentMaze(D):
     def _get_observation_space_(self) -> D.T_agent[Space[D.T_observation]]:
         return MultiDiscreteSpace([self._num_cols, self._num_rows])
 
-
-class MARTDP_LRTDP_HEURISTIC(MARTDP):
-    def __init__(self,
-                 multiagent_domain_factory: Callable[[], Domain] = None,
-                 singleagent_domain_factory: Callable[[], Domain] = None,
-                 singleagent_heuristic: Optional[Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]]] = None,
-                 **kwargs) -> None:
-        super().__init__(domain_factory=multiagent_domain_factory,
-                         heuristic=lambda d, s: self._compute_heuristic(s),
-                         time_budget=60000,
-                         max_depth=100,
-                         watchdog=lambda etime, nbr, ema: self._watchdog(etime, nbr, ema)
-                         **kwargs)
-        self._singleagent_domain_factory = singleagent_domain_factory
-        self._singleagent_heuristic = singleagent_heuristic
-        self._lrtdps = None
     
-    def _solve_from(self, memory: D.T_memory[D.T_state]) -> None:
-        if self._lrtdps is None:
-            self._lrtdps = {}
-            for a in memory:
-                self._lrtdps[a] = LRTDP(domain_factory=lambda : self._singleagent_domain_factory(self.get_domain(), a),
-                                        heuristic=self._singleagent_heuristic,
-                                        use_labels=True,
-                                        time_budget=1000,
-                                        max_depth=100,
-                                        continuous_planning=False,
-                                        online_node_garbage=False,
-                                        parallel=False,
-                                        debug_logs=False)
-                SingleAgentMaze.solve_with(solver=self._lrtdps[a],
-                                           domain_factory=lambda: self._singleagent_domain_factory(self.get_domain(), a))
-        super()._solve_from(memory)
-    
-    def _compute_heuristic(self, memory: D.T_memory[D.T_state]) -> Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
-        h = {}
-        for a, s in self._lrtdps.items():
-            s.solve_from(memory[a])
-        h = ({a: Value(cost=s.get_utility(memory[a])) for a, s in self._lrtdps.items()},
-             {a: s.get_next_action(memory[a]) for a, s in self._lrtdps.items()})
-        return h
-    
-    def _watchdog(self, elapsed_time, nb_rollouts, epsilon_moving_average):
-        print('Epsilon moving average: {}'.format(epsilon_moving_average))
-        return False
+def martdp_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
+    print('Epsilon moving average: {}'.format(epsilon_moving_average))
+    return False
 
 
 if __name__ == '__main__':
@@ -379,17 +342,38 @@ if __name__ == '__main__':
     try_solvers = [
 
         # Multi-agent RTDP
-        {'name': 'Multi-agent RTDP',
-         'entry': MARTDP_LRTDP_HEURISTIC,
-         'config': {'multiagent_domain_factory': lambda: MultiAgentMaze(),
+        {'name': 'Multi-agent RTDP with single-agent LRTDP heuristics',
+         'entry': 'MAHD',
+         'config': {'multiagent_solver_class': MARTDP,
+                    'singleagent_solver_class': LRTDP,
+                    'multiagent_domain_class': MultiAgentMaze,
+                    'singleagent_domain_class': SingleAgentMaze,
+                    'multiagent_domain_factory': lambda: MultiAgentMaze(),
                     'singleagent_domain_factory': lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
-                    'singleagent_heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
-                    'continuous_planning': False,
-                    'debug_logs': False}}
+                    'multiagent_solver_kwargs': {
+                        'domain_factory': lambda: MultiAgentMaze(),
+                        'time_budget': 600000,
+                        'max_depth': 100,
+                        'epsilon_moving_average_window': 10,
+                        'watchdog': lambda etime, nbr, ema: martdp_watchdog(etime, nbr, ema),
+                        'continuous_planning': False,
+                        'debug_logs': False
+                    },
+                    'singleagent_solver_kwargs': {
+                        'domain_factory':lambda : lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
+                        'heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
+                        'use_labels': True,
+                        'time_budget': 1000,
+                        'max_depth': 100,
+                        'continuous_planning': False,
+                        'online_node_garbage': False,
+                        'parallel': False,
+                        'debug_logs': False
+                    }}}
     ]
 
     # Load solvers (filtering out badly installed ones)
-    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry']) if type(s['entry']) == str else s['entry']), try_solvers)
+    solvers = map(lambda s: dict(s, entry=load_registered_solver(s['entry'])), try_solvers)
     solvers = list(filter(lambda s: s['entry'] is not None, solvers))
     solvers.insert(0, {'name': 'Random Walk', 'entry': None})  # Add Random Walk as option
 
@@ -415,7 +399,7 @@ if __name__ == '__main__':
                 assert solver_type.check_domain(domain)
                 # Solve with selected solver
                 with solver_type(**selected_solver['config']) as solver:
-                    MultiAgentMaze.solve_with(solver)  # ,lambda:MyDomain(5,5))
+                    MultiAgentMaze.solve_with(solver)
                     rollout(domain, solver, max_steps=1000,
                             outcome_formatter=lambda o: f'{o.observation} - cost: {sum(o.value[a].cost for a in o.observation):.2f}',
                             action_formatter=lambda a: f'{a}')
