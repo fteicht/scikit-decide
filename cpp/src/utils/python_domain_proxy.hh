@@ -199,7 +199,7 @@ public :
         : PyObj<PyIter<T, Titerator>, Titerator>(other) {}
 
         PyIter<T, Titerator>& operator=(const PyIter<T, Titerator>& other) {
-            dynamic_cast<PyObj<PyIter<T, Titerator>, Titerator>&>(*this) = other;
+            static_cast<PyObj<PyIter<T, Titerator>, Titerator>&>(*this) = other;
             return *this;
         }
 
@@ -270,7 +270,7 @@ public :
         AgentData(std::unique_ptr<py::object>&& ad) : Inherited(std::move(ad)) {}
         AgentData(const py::object& ad) : Inherited(ad) {}
         AgentData(const AgentData& other) : Inherited(other) {}
-        AgentData& operator=(const AgentData& other) { dynamic_cast<Inherited&>(*this) = other; return *this; }
+        AgentData& operator=(const AgentData& other) { static_cast<Inherited&>(*this) = other; return *this; }
         virtual ~AgentData() {}
     };
 
@@ -292,7 +292,7 @@ public :
         : PyObj<Inherited, py::dict>(other) {}
 
         AgentData& operator=(const AgentData& other) {
-            dynamic_cast<PyObj<Inherited, py::dict>&>(*this) = other;
+            static_cast<PyObj<Inherited, py::dict>&>(*this) = other;
             return *this;
         }
 
@@ -310,7 +310,7 @@ public :
             Agent(std::unique_ptr<py::object>&& a) : PyObj<Agent>(std::move(a)) {}
             Agent(const py::object& a) : PyObj<Agent>(a) {}
             Agent(const Agent& other) : PyObj<Agent>(other) {}
-            Agent& operator=(const Agent& other) { dynamic_cast<PyObj<PyObj<Agent>>&>(*this) = other; return *this; }
+            Agent& operator=(const Agent& other) { static_cast<PyObj<Agent>&>(*this) = other; return *this; }
             virtual ~Agent() {}
 
             template <typename Tother,
@@ -325,7 +325,7 @@ public :
             Element(std::unique_ptr<py::object>&& e) : Inherited(std::move(e)) {}
             Element(const py::object& e) : Inherited(e) {}
             Element(const Element& other) : Inherited(other) {}
-            Element& operator=(const Element& other) { dynamic_cast<Inherited&>(*this) = other; return *this; }
+            Element& operator=(const Element& other) { static_cast<Inherited&>(*this) = other; return *this; }
             virtual ~Element() {}
         };
 
@@ -334,22 +334,28 @@ public :
         // Objective #2: modify internal Python object with operator =
         struct ElementAccessor : public PyObj<ElementAccessor, py::detail::item_accessor>,
                                  public Element {
-            ElementAccessor(const py::detail::item_accessor& e)
-            : PyObj<ElementAccessor, py::detail::item_accessor>(e),
-              Element(e) {}
+            ElementAccessor(const py::detail::item_accessor& a, const py::object& e)
+            : PyObj<ElementAccessor, py::detail::item_accessor>(a), Element(e) {}
             
             ElementAccessor(const ElementAccessor& other)
-            : PyObj<ElementAccessor, py::detail::item_accessor>(other),
-              Element(other) {}
+            : PyObj<ElementAccessor, py::detail::item_accessor>(other), Element(other) {}
             
             ElementAccessor& operator=(const ElementAccessor& other) {
-                dynamic_cast<PyObj<ElementAccessor, py::detail::item_accessor>&>(*this) = other;
-                dynamic_cast<Element&>(*this) = Element(other);
+                *this = static_cast<const Element&>(other);
                 return *this;
             }
 
             void operator=(const Element& other) {
-                *PyObj<ElementAccessor, py::detail::item_accessor>::_pyobj = *other._pyobj; // calls py::detail::item_accessor's operator=
+                typename GilControl<Texecution>::Acquire acquire;
+                if (static_cast<const Element*>(this)->pyobj().is_none()) {
+                    std::forward<py::detail::item_accessor&&>(
+                        *static_cast<PyObj<ElementAccessor, py::detail::item_accessor>*>(this)->_pyobj) =
+                            other.pyobj();
+                } else {
+                    *static_cast<PyObj<ElementAccessor, py::detail::item_accessor>*>(this)->_pyobj =
+                            other.pyobj();
+                }
+                *static_cast<Element*>(this)->_pyobj = other.pyobj();
             }
             
             virtual ~ElementAccessor() {}
@@ -363,7 +369,7 @@ public :
             Item(std::unique_ptr<py::object>&& a) : PyObj<Item, py::tuple>(std::move(a)) {}
             Item(const py::object& a) : PyObj<Item, py::tuple>(a) {}
             Item(const Item& other) : PyObj<Item, py::tuple>(other) {}
-            Item& operator=(const Item& other) { dynamic_cast<PyObj<PyObj<Item>>&>(*this) = other; return *this; }
+            Item& operator=(const Item& other) { static_cast<PyObj<Item, py::tuple>&>(*this) = other; return *this; }
             virtual ~Item() {}
 
             Agent agent() {
@@ -380,7 +386,9 @@ public :
         ElementAccessor operator[](const Agent& a) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return ElementAccessor((*(this->_pyobj))[a.pyobj()]);
+                bool key_exists = this->_pyobj->contains(a.pyobj());
+                py::detail::item_accessor ia = (*(this->_pyobj))[a.pyobj()];
+                return ElementAccessor(ia, key_exists ? ia : py::none());
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
                               Inherited::class_name + " of agent " + a.print() +
@@ -408,7 +416,7 @@ public :
         StateBase(std::unique_ptr<py::object>&& s) : PyObj<StateBase>(std::move(s)) {}
         StateBase(const py::object& s) : PyObj<StateBase>(s) {}
         StateBase(const StateBase& other) : PyObj<StateBase>(other) {}
-        StateBase& operator=(const StateBase& other) { dynamic_cast<PyObj<StateBase>&>(*this) = other; return *this; }
+        StateBase& operator=(const StateBase& other) { static_cast<PyObj<StateBase>&>(*this) = other; return *this; }
         virtual ~StateBase() {}
     };
     typedef AgentData<StateBase, Tagent> State;
@@ -419,7 +427,7 @@ public :
         ObservationBase(std::unique_ptr<py::object>&& o) : PyObj<ObservationBase>(std::move(o)) {}
         ObservationBase(const py::object& o) : PyObj<ObservationBase>(o) {}
         ObservationBase(const ObservationBase& other) : PyObj<ObservationBase>(other) {}
-        ObservationBase& operator=(const ObservationBase& other) { dynamic_cast<PyObj<ObservationBase>&>(*this) = other; return *this; }
+        ObservationBase& operator=(const ObservationBase& other) { static_cast<PyObj<ObservationBase>&>(*this) = other; return *this; }
         virtual ~ObservationBase() {}
     };
     
@@ -441,10 +449,10 @@ public :
 
         MemoryState(const py::object& m) : PyObj<MemoryState, py::list>(m) {}
 
-        MemoryState(const MemoryState& other) : PyObj<MemoryState>(other) {}
+        MemoryState(const MemoryState& other) : PyObj<MemoryState, py::list>(other) {}
 
         MemoryState& operator=(const MemoryState& other) {
-            dynamic_cast<PyObj<MemoryState>&>(*this) = other;
+            static_cast<PyObj<MemoryState, py::list>&>(*this) = other;
             return *this;
         }
 
@@ -452,16 +460,15 @@ public :
 
         void push_state(const State& s) {
             typename GilControl<Texecution>::Acquire acquire;
-            static_cast<py::list&>(*(this->_pyobj)).append(s.pyobj());
+            this->_pyobj->append(s.pyobj());
         }
 
         State last_state() {
             typename GilControl<Texecution>::Acquire acquire;
-            py::list& l = static_cast<py::list&>(*(this->_pyobj));
-            if (l.empty()) {
+            if (this->_pyobj->empty()) {
                 throw std::runtime_error("Cannot get last state of empty memory state " + this->print());
             } else {
-                return State(l[l.size() - 1]);
+                return State((*(this->_pyobj))[this->_pyobj->size() - 1]);
             }
         }
     };
@@ -480,7 +487,7 @@ public :
         EventBase(std::unique_ptr<py::object>&& e) : PyObj<EventBase>(std::move(e)) {}
         EventBase(const py::object& e) : PyObj<EventBase>(e) {}
         EventBase(const EventBase& other) : PyObj<EventBase>(other) {}
-        EventBase& operator=(const EventBase& other) { dynamic_cast<PyObj<EventBase>&>(*this) = other; return *this; }
+        EventBase& operator=(const EventBase& other) { static_cast<PyObj<EventBase>&>(*this) = other; return *this; }
         virtual ~EventBase() {}
     };
 
@@ -490,7 +497,7 @@ public :
         ActionBase(std::unique_ptr<py::object>&& a) : PyObj<ActionBase>(std::move(a)) {}
         ActionBase(const py::object& a) : PyObj<ActionBase>(a) {}
         ActionBase(const ActionBase& other) : PyObj<ActionBase>(other) {}
-        ActionBase& operator=(const ActionBase& other) { dynamic_cast<PyObj<ActionBase>&>(*this) = other; return *this; }
+        ActionBase& operator=(const ActionBase& other) { static_cast<PyObj<ActionBase>&>(*this) = other; return *this; }
         virtual ~ActionBase() {}
     };
 
@@ -538,7 +545,7 @@ public :
         : PyObj<ApplicableActionSpaceBase>(other) {}
 
         ApplicableActionSpaceBase& operator=(const ApplicableActionSpaceBase& other) {
-            dynamic_cast<PyObj<ApplicableActionSpaceBase>&>(*this) = other;
+            static_cast<PyObj<ApplicableActionSpaceBase>&>(*this) = other;
             return *this;
         }
 
@@ -559,7 +566,7 @@ public :
             : PyObj<ApplicableActionSpaceElements>(other) {}
 
             ApplicableActionSpaceElements& operator=(const ApplicableActionSpaceElements& other) {
-                dynamic_cast<PyObj<ApplicableActionSpaceElements>&>(*this) = other;
+                static_cast<PyObj<ApplicableActionSpaceElements>&>(*this) = other;
                 return *this;
             }
 
@@ -666,7 +673,7 @@ public :
         ValueBase(std::unique_ptr<py::object>&& v) : PyObj<ValueBase>(std::move(v)) { construct(); }
         ValueBase(const py::object& v) : PyObj<ValueBase>(v) { construct(); }
         ValueBase(const ValueBase& other) : PyObj<ValueBase>(other) {}
-        ValueBase& operator=(const ValueBase& other) { dynamic_cast<PyObj<ValueBase>&>(*this) = other; return *this; }
+        ValueBase& operator=(const ValueBase& other) { static_cast<PyObj<ValueBase>&>(*this) = other; return *this; }
         virtual ~ValueBase() {}
 
         void construct() {
@@ -743,7 +750,7 @@ public :
             InfoBase(std::unique_ptr<py::object>&& s) : PyObj<InfoBase>(std::move(s)) {}
             InfoBase(const py::object& s) : PyObj<InfoBase>(s) {}
             InfoBase(const InfoBase& other) : PyObj<InfoBase>(other) {}
-            InfoBase& operator=(const InfoBase& other) { dynamic_cast<PyObj<InfoBase>&>(*this) = other; return *this; }
+            InfoBase& operator=(const InfoBase& other) { static_cast<PyObj<InfoBase>&>(*this) = other; return *this; }
             virtual ~InfoBase() {}
 
             std::size_t get_depth() {
@@ -794,7 +801,7 @@ public :
         : PyObj<Derived>(other) {}
 
         Outcome& operator=(const Outcome& other) {
-            dynamic_cast<PyObj<Derived>&>(*this) = other;
+            static_cast<PyObj<Derived>&>(*this) = other;
             return *this;
         }
 
@@ -916,7 +923,7 @@ public :
         : Outcome<TransitionOutcome, State>(other) {}
 
         TransitionOutcome& operator=(const TransitionOutcome& other) {
-            dynamic_cast<Outcome<TransitionOutcome, State>&>(*this) = other;
+            static_cast<Outcome<TransitionOutcome, State>&>(*this) = other;
             return *this;
         }
 
@@ -943,7 +950,7 @@ public :
         : Outcome<EnvironmentOutcome, Observation>(other) {}
 
         EnvironmentOutcome& operator=(const EnvironmentOutcome& other) {
-            dynamic_cast<Outcome<EnvironmentOutcome, Observation>&>(*this) = other;
+            static_cast<Outcome<EnvironmentOutcome, Observation>&>(*this) = other;
             return *this;
         }
 
@@ -981,7 +988,7 @@ public :
         : PyObj<NextStateDistribution>(other) {}
 
         NextStateDistribution& operator=(const NextStateDistribution& other) {
-            dynamic_cast<PyObj<NextStateDistribution>&>(*this) = other;
+            static_cast<PyObj<NextStateDistribution>&>(*this) = other;
             return *this;
         }
 
@@ -1034,7 +1041,7 @@ public :
             : PyObj<NextStateDistributionValues>(other) {}
 
             NextStateDistributionValues& operator=(const NextStateDistributionValues& other) {
-                dynamic_cast<PyObj<NextStateDistributionValues>&>(*this) = other;
+                static_cast<PyObj<NextStateDistributionValues>&>(*this) = other;
                 return *this;
             }
 

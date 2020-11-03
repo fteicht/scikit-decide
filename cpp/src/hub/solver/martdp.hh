@@ -59,16 +59,16 @@ public :
           _discount(discount), _dead_end_cost(dead_end_cost),
           _debug_logs(debug_logs), _current_state(nullptr), _nb_rollouts(0),
           _nb_agents(0) {
-              if (debug_logs) {
+            if (debug_logs) {
                 spdlog::set_level(spdlog::level::debug);
-              } else {
-                  spdlog::set_level(spdlog::level::info);
-              }
+            } else {
+                spdlog::set_level(spdlog::level::info);
+            }
 
-              std::random_device rd;
-              _gen = std::make_unique<std::mt19937>(rd());
-              _action_choice_noise_dist = std::bernoulli_distribution(action_choice_noise);
-          }
+            std::random_device rd;
+            _gen = std::make_unique<std::mt19937>(rd());
+            _action_choice_noise_dist = std::bernoulli_distribution(action_choice_noise);
+        }
 
     // clears the solver (clears the search graph, thus preventing from reusing
     // previous search results)
@@ -119,11 +119,11 @@ public :
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             if (si.second) {
-                initialize_node(root_node);
+                initialize_node(root_node, false);
             }
 
-            if (_goal_checker(_domain, s)) { // problem already solved from this state (was present in _graph and already solved)
-                if (_debug_logs) spdlog::debug("Found goal state " + s.print());
+            if (root_node.goal) { // problem already solved from this state (was present in _graph and already solved)
+                spdlog::info("MARTDP finished to solve from state " + s.print() + " [goal state]");
                 return;
             }
 
@@ -131,7 +131,7 @@ public :
                 
             while ((elapsed_time(start_time) < _time_budget) &&
                    (_nb_rollouts < _rollout_budget)) {
-                if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + ExecutionPolicy::print_thread());
+                if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
                 _nb_rollouts++;
                 trial(&root_node, start_time);
             }
@@ -336,7 +336,7 @@ private :
             auto i = _graph.emplace(outcome.observation());
             Node& next_node = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
             if (i.second) { // new node
-                initialize_node(next_node);
+                initialize_node(next_node, outcome.termination());
             }
             double sample_value = 0.0;
             for (auto a : _agents) {
@@ -358,26 +358,35 @@ private :
         auto i = _graph.emplace(outcome.observation());
         Node& next_node = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
         if (i.second) { // new node
-            initialize_node(next_node);
+            initialize_node(next_node, outcome.termination());
         }
         if (_debug_logs) spdlog::debug("Picked next state " + next_node.state.print() +
                                        " from state " + s->state.print() +
                                         " and action " + a.print());
-        return &next_node;
+        if (outcome.termination()) {
+            if (_debug_logs) spdlog::debug("Next state is a dead-end.");
+            return nullptr;
+        } else {
+            return &next_node;
+        }
     }
 
-    void initialize_node(Node& n) {
+    void initialize_node(Node& n, bool termination) {
         if (_debug_logs) {
             spdlog::debug("Initiliazing new state node " + n.state.print());
         }
         n.best_value = 0.0;
         n.goal = _goal_checker(_domain, n.state);
         if (!n.goal) {
-            auto h = _heuristic(_domain, n.state);
-            n.best_action = std::make_unique<Action>();
-            for (auto a : _agents) {
-                n.best_value += h.first[a].cost();
-                (*n.best_action)[a] = h.second[a];
+            if (termination) { // dead-end state
+                n.best_value = _dead_end_cost;
+            } else {
+                auto h = _heuristic(_domain, n.state);
+                n.best_action = std::make_unique<Action>();
+                for (auto a : _agents) {
+                    n.best_value += h.first[a].cost();
+                    (*n.best_action)[a] = h.second[a];
+                }
             }
         }
     }
@@ -388,7 +397,7 @@ private :
         std::size_t depth = 0;
         bool found_goal = false;
 
-        while (!found_goal &&
+        while (!found_goal && cs &&
                (elapsed_time(start_time) < _time_budget) &&
                (depth < _max_depth)) {
             depth++;
