@@ -337,6 +337,8 @@ class MARTDP_LRTDP_HEURISTIC(MARTDP):
         super().__init__(domain_factory=multiagent_domain_factory,
                          heuristic=lambda d, s: self._compute_heuristic(s),
                          time_budget=60000,
+                         max_depth=100,
+                         watchdog=lambda etime, nbr, ema: self._watchdog(etime, nbr, ema)
                          **kwargs)
         self._singleagent_domain_factory = singleagent_domain_factory
         self._singleagent_heuristic = singleagent_heuristic
@@ -366,6 +368,10 @@ class MARTDP_LRTDP_HEURISTIC(MARTDP):
         h = ({a: Value(cost=s.get_utility(memory[a])) for a, s in self._lrtdps.items()},
              {a: s.get_next_action(memory[a]) for a, s in self._lrtdps.items()})
         return h
+    
+    def _watchdog(self, elapsed_time, nb_rollouts, epsilon_moving_average):
+        print('Epsilon moving average: {}'.format(epsilon_moving_average))
+        return False
 
 
 if __name__ == '__main__':

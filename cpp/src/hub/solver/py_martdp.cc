@@ -44,25 +44,30 @@ public :
                   std::size_t max_depth = 1000,
                   std::size_t max_feasibility_trials = 0,
                   std::size_t nb_transition_samples = 0,
+                  std::size_t epsilon_moving_average_window = 100,
+                  double epsilon = 0.0, // not a stopping criterion by default
                   double discount = 1.0,
                   double action_choice_noise = 0.1,
                   double dead_end_cost = 10e4,
                   bool parallel = false,
-                  bool debug_logs = false) {
+                  bool debug_logs = false,
+                  const std::function<bool (const std::size_t&, const std::size_t&, const double&)>& watchdog = nullptr) {
 
         if (parallel) {
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                max_feasibility_trials, nb_transition_samples, discount,
-                action_choice_noise, dead_end_cost, debug_logs
+                max_feasibility_trials, nb_transition_samples,
+                epsilon_moving_average_window, epsilon, discount,
+                action_choice_noise, dead_end_cost, debug_logs, watchdog
             );
         } else {
             _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                max_feasibility_trials, nb_transition_samples, discount,
-                action_choice_noise, dead_end_cost, debug_logs
+                max_feasibility_trials, nb_transition_samples,
+                epsilon_moving_average_window, epsilon, discount,
+                action_choice_noise, dead_end_cost, debug_logs, watchdog
             );
         }
     }
@@ -126,11 +131,14 @@ private :
                        std::size_t max_depth = 1000,
                        std::size_t max_feasibility_trials = 0,
                        std::size_t nb_transition_samples = 0,
+                       std::size_t epsilon_moving_average_window = 100,
+                       double epsilon = 0.0, // not a stopping criterion by default
                        double discount = 1.0,
                        double action_choice_noise = 0.1,
                        double dead_end_cost = 10e4,
-                       bool debug_logs = false)
-        : _goal_checker(goal_checker), _heuristic(heuristic) {
+                       bool debug_logs = false,
+                       const std::function<bool (const std::size_t&, const std::size_t&, const double&)>& watchdog = nullptr)
+        : _goal_checker(goal_checker), _heuristic(heuristic), _watchdog(watchdog) {
             
             _domain = std::make_unique<PyMARTDPDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>>(
@@ -175,10 +183,20 @@ private :
                         max_depth,
                         max_feasibility_trials,
                         nb_transition_samples,
+                        epsilon_moving_average_window,
+                        epsilon,
                         discount,
                         action_choice_noise,
                         dead_end_cost,
-                        debug_logs);
+                        debug_logs,
+                        [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& epsilon_moving_average)->bool{
+                            if (_watchdog) {
+                                typename skdecide::GilControl<Texecution>::Acquire acquire;
+                                return _watchdog(elapsed_time, nb_rollouts, epsilon_moving_average);
+                            } else {
+                                return false;
+                            }
+                        });
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -239,6 +257,7 @@ private :
         
         std::function<py::object (const py::object&, const py::object&)> _goal_checker;
         std::function<py::object (const py::object&, const py::object&)> _heuristic;
+        std::function<bool (const std::size_t&, const std::size_t&, const double&)> _watchdog;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -259,11 +278,14 @@ void init_pymartdp(py::module& m) {
                           std::size_t,
                           std::size_t,
                           std::size_t,
+                          std::size_t,
+                          double,
                           double,
                           double,
                           double,
                           bool,
-                          bool>(),
+                          bool,
+                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&)>&>(),
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
@@ -272,11 +294,14 @@ void init_pymartdp(py::module& m) {
                  py::arg("max_depth")=1000,
                  py::arg("max_feasibility_trials")=0,
                  py::arg("nb_transition_samples")=0,
+                 py::arg("epsilon_moving_average_window")=100,
+                 py::arg("epsilon")=0.0, // not a stopping criterion by default
                  py::arg("discount")=1.0,
                  py::arg("action_choice_noise")=0.1,
                  py::arg("dead_end_cost")=10e4,
                  py::arg("parallel")=false,
-                 py::arg("debug_logs")=false)
+                 py::arg("debug_logs")=false,
+                 py::arg("watchdog")=nullptr)
             .def("clear", &PyMARTDPSolver::clear)
             .def("solve", &PyMARTDPSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &PyMARTDPSolver::is_solution_defined_for, py::arg("state"))

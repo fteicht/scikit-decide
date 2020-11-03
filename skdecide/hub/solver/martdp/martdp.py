@@ -41,13 +41,16 @@ try:
                      max_depth: int = 1000,
                      max_feasibility_trials: int = 0,  # will then choose nb_agents if 0
                      nb_transition_samples: int = 0,  # will then choose 10*nb_agents if 0
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.0,  # not a stopping criterion by default
                      discount: float = 1.0,
                      action_choice_noise: float = 0.1,
                      dead_end_cost: float = 10000,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float], bool] = None) -> None:
             ParallelSolver.__init__(self,
                                     domain_factory=domain_factory,
                                     parallel=parallel,
@@ -63,11 +66,17 @@ try:
             self._max_depth = max_depth
             self._max_feasibility_trials = max_feasibility_trials
             self._nb_transition_samples = nb_transition_samples
+            self._epsilon_moving_average_window = epsilon_moving_average_window
+            self._epsilon = epsilon
             self._discount = discount
             self._action_choice_noise = action_choice_noise
             self._dead_end_cost = dead_end_cost
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
+            if watchdog is None:
+                self._watchdog = lambda elapsed_time, number_rollouts, epsilon_moving_average: False
+            else:
+                self._watchdog = watchdog
             self._ipc_notify = True
 
         def _init_solve(self, domain_factory: Callable[[], Domain]) -> None:
@@ -80,11 +89,14 @@ try:
                                          max_depth=self._max_depth,
                                          max_feasibility_trials=self._max_feasibility_trials,
                                          nb_transition_samples=self._nb_transition_samples,
+                                         epsilon_moving_average_window=self._epsilon_moving_average_window,
+                                         epsilon=self._epsilon,
                                          discount=self._discount,
                                          action_choice_noise=self._action_choice_noise,
                                          dead_end_cost=self._dead_end_cost,
                                          parallel=self._parallel,
-                                         debug_logs=self._debug_logs)
+                                         debug_logs=self._debug_logs,
+                                         watchdog=self._watchdog)
             self._solver.clear()
         
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:

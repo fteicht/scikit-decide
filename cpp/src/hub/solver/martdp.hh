@@ -41,24 +41,31 @@ public :
     typedef typename Domain::EnvironmentOutcome EnvironmentOutcome;
     typedef Texecution_policy ExecutionPolicy;
 
+    typedef std::function<bool (Domain&, const State&)> GoalCheckerFunctor;
+    typedef std::function<std::pair<Value, Action> (Domain&, const State&)> HeuristicFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
+
     MARTDPSolver(Domain& domain,
-                 const std::function<bool (Domain&, const State&)>& goal_checker,
-                 const std::function<std::pair<Value, Action> (Domain&, const State&)>& heuristic,
+                 const GoalCheckerFunctor& goal_checker,
+                 const HeuristicFunctor& heuristic,
                  std::size_t time_budget = 3600000,
                  std::size_t rollout_budget = 100000,
                  std::size_t max_depth = 1000,
                  std::size_t max_feasibility_trials = 0, // will then choose nb_agents
-                 std::size_t nb_transition_smaples = 0, // will then choose 10*nb_agents
+                 std::size_t nb_transition_samples = 0, // will then choose 10*nb_agents
+                 std::size_t epsilon_moving_average_window = 100,
+                 double epsilon = 0.0, // not a stopping criterion by default
                  double discount = 1.0,
                  double action_choice_noise = 0.1,
                  double dead_end_cost = 10e4,
-                 bool debug_logs = false)
+                 bool debug_logs = false,
+                 const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return false; })
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _time_budget(time_budget), _rollout_budget(rollout_budget), _max_depth(max_depth),
-          _max_feasibility_trials(max_feasibility_trials), _nb_transition_samples(nb_transition_smaples),
-          _discount(discount), _dead_end_cost(dead_end_cost),
-          _debug_logs(debug_logs), _current_state(nullptr), _nb_rollouts(0),
-          _nb_agents(0) {
+          _max_feasibility_trials(max_feasibility_trials), _nb_transition_samples(nb_transition_samples),
+          _epsilon_moving_average_window(epsilon_moving_average_window), _epsilon(epsilon),
+          _discount(discount), _dead_end_cost(dead_end_cost), _debug_logs(debug_logs), _watchdog(watchdog),
+          _epsilon_moving_average(0), _current_state(nullptr), _nb_rollouts(0), _nb_agents(0) {
             if (debug_logs) {
                 spdlog::set_level(spdlog::level::debug);
             } else {
@@ -128,12 +135,22 @@ public :
             }
 
             _nb_rollouts = 0;
+            _epsilon_moving_average = 0.0;
+            _epsilons.clear();
                 
-            while ((elapsed_time(start_time) < _time_budget) &&
-                   (_nb_rollouts < _rollout_budget)) {
+            while (true) {
                 if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
+
                 _nb_rollouts++;
+                double root_node_record_value = root_node.best_value;
                 trial(&root_node, start_time);
+                update_epsilon_moving_average(root_node, root_node_record_value);
+
+                std::size_t etime = elapsed_time(start_time);
+                if ((etime< _time_budget) && (_nb_rollouts < _rollout_budget) &&
+                    _watchdog(etime, _nb_rollouts,
+                              (_epsilons.size() >= _epsilon_moving_average_window)?_epsilon_moving_average:std::numeric_limits<double>::infinity()))
+                    break;
             }
 
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -196,20 +213,26 @@ public :
 
 private :
     Domain& _domain;
-    std::function<bool (Domain&, const State&)> _goal_checker;
-    std::function<std::pair<Value, Action> (Domain&, const State&)> _heuristic;
+    GoalCheckerFunctor _goal_checker;
+    HeuristicFunctor _heuristic;
     std::size_t _time_budget;
     std::size_t _rollout_budget;
     std::size_t _max_depth;
     std::size_t _max_feasibility_trials;
     std::size_t _nb_transition_samples;
+    std::size_t _epsilon_moving_average_window;
+    double _epsilon;
     double _discount;
     double _dead_end_cost;
     bool _debug_logs;
+    WatchdogFunctor _watchdog;
     ExecutionPolicy _execution_policy;
     std::unique_ptr<std::mt19937> _gen;
     typename ExecutionPolicy::Mutex _gen_mutex;
     typename ExecutionPolicy::Mutex _time_mutex;
+
+    double _epsilon_moving_average;
+    std::list<double> _epsilons;
 
     struct Node {
         State state;
@@ -414,6 +437,19 @@ private :
             } else {
                 cs = pick_next_state(cs, *action);
             }
+        }
+    }
+
+    void update_epsilon_moving_average(const Node& node, bool node_record_value) {
+        if (_epsilon_moving_average_window > 0) {
+            double current_epsilon = std::fabs(node_record_value - node.best_value);
+            if (_epsilons.size() < _epsilon_moving_average_window) {
+                _epsilon_moving_average += current_epsilon / ((double) _epsilon_moving_average_window);
+            } else {
+                _epsilon_moving_average += (current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window);
+                _epsilons.pop_front();
+            }
+            _epsilons.push_back(current_epsilon);
         }
     }
 };
