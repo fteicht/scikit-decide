@@ -195,7 +195,7 @@ try:
                              ucb_constant=ucb_constant,
                              online_node_garbage=online_node_garbage,
                              heuristic=lambda d, o: self._value_heuristic(d, o),
-                             custom_policy=lambda d, o: self._custom_policy(d, o),
+                             custom_policy=lambda d, o: self._policy_heuristic(d, o),
                              state_expansion_rate=state_expansion_rate,
                              action_expansion_rate=action_expansion_rate,
                              transition_mode=transition_mode,
@@ -209,7 +209,7 @@ try:
                              parallel=parallel,
                              shared_memory_proxy=shared_memory_proxy,
                              debug_logs=debug_logs)
-            self._heuristic = heuristic
+            self._compound_heuristic = heuristic
             self._heuristic_confidence = heuristic_confidence
             self._action_choice_noise = action_choice_noise
             self._heuristic_records = {}
@@ -222,15 +222,15 @@ try:
                              domain: Domain,
                              observation: D.T_agent[D.T_observation]) -> Tuple[D.T_agent[Value[D.T_value]], int]:
             if (observation not in self._heuristic_records):
-                self._heuristic_records[observation] = self._heuristic(domain, observation)
+                self._heuristic_records[observation] = self._compound_heuristic(domain, observation)
             return (self._heuristic_records[observation][0], self._heuristic_confidence)
 
-        def _custom_policy(self,
-                           domain: Domain,
-                           observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+        def _policy_heuristic(self,
+                             domain: Domain,
+                             observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
             if (observation not in self._heuristic_records):
-                self._heuristic_records[observation] = self._heuristic(domain, observation)
-            if rd.sample() > self._action_choice_noise:
+                self._heuristic_records[observation] = self._compound_heuristic(domain, observation)
+            if rd.random() > self._action_choice_noise:
                 return self._heuristic_records[observation][1]
             else:
                 return domain.get_applicable_actions(observation).sample()

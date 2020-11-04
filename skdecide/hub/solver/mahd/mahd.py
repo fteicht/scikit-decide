@@ -3,13 +3,12 @@
 # LICENSE file in the root directory of this source tree.
 
 from __future__ import annotations
-from collections import defaultdict
 
 from typing import Any, Callable, Set, Tuple
 
 from skdecide import Domain, Solver
 from skdecide.core import Value
-from skdecide.builders.domain import MultiAgent, Sequential
+from skdecide.builders.domain import MultiAgent, SingleAgent, Sequential
 from skdecide.builders.solver import DeterministicPolicies, Utilities
 
 
@@ -64,10 +63,10 @@ class MAHD(Solver, DeterministicPolicies, Utilities):
                                                  domain_factory=domain_factory)
     
     def _get_next_action(self, observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
-        return self._multiagent_solver.get_next_action(observation)
+        return self._multiagent_solver._get_next_action(observation)
 
     def _get_utility(self, observation: D.T_agent[D.T_observation]) -> D.T_value:
-        return self._multiagent_solver.get_utility(observation)
+        return self._multiagent_solver._get_utility(observation)
     
     def _multiagent_heuristic(self, observation: D.T_agent[D.T_observation]) -> Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]:
         h = {}
@@ -106,11 +105,11 @@ class MAHD(Solver, DeterministicPolicies, Utilities):
                                            'for agent {} in {}state {} ' \
                                            '(original exception is: {})'.format(
                                            a, terminal_str, observation[a], err))
-        if issubclass(self._multiagent_solver.T_domain, MultiAgent):
-            h = ({a: Value(cost=p[observation[a]][0]) for a, p in self._singleagent_solutions.items()},
+        if issubclass(self._multiagent_solver.T_domain, SingleAgent):
+            h = (Value(cost=sum(p[observation[a]][0] for a, p in self._singleagent_solutions.items())),
                  {a: p[observation[a]][1] for a, p in self._singleagent_solutions.items()})
         else:
-            h = (Value(cost=sum(p[observation[a]][0] for a, p in self._singleagent_solutions.items())),
+            h = ({a: Value(cost=p[observation[a]][0]) for a, p in self._singleagent_solutions.items()},
                  {a: p[observation[a]][1] for a, p in self._singleagent_solutions.items()})
         return h
     

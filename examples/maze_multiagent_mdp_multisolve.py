@@ -8,7 +8,7 @@ from skdecide.hub.solver.mcts.mcts import HMCTS
 from skdecide.builders.domain.observability import FullyObservable
 from skdecide.builders.domain.renderability import Renderable
 from skdecide.builders.domain.goals import Goals
-from skdecide.core import DiscreteDistribution, Distribution, SingleValueDistribution, Space, StrDict, TransitionOutcome, Value
+from skdecide.core import DiscreteDistribution, Distribution, SamplableSpace, SingleValueDistribution, Space, StrDict, TransitionOutcome, Value
 from skdecide.builders.domain.value import PositiveCosts
 from skdecide.builders.domain.memory import Markovian
 from skdecide.builders.domain.initialization import DeterministicInitialized, Initializable
@@ -69,6 +69,11 @@ class AgentAction(Enum):
     stay = 4  # only possible in agent's goal state
 
 
+class HashableDict(dict):
+    def __hash__(self):
+        return hash(frozenset(self.items()))
+
+
 class D(Domain, MultiAgent, Sequential, Simulation, Actions, DeterministicInitialized,
         Markovian, PositiveCosts, Goals, FullyObservable, Renderable):
     T_state = StrDict[AgentState]  # Type of states
@@ -80,7 +85,7 @@ class D(Domain, MultiAgent, Sequential, Simulation, Actions, DeterministicInitia
 
 class MultiAgentMaze(D):
 
-    def __init__(self, maze_str = DEFAULT_MAZE, nb_agents = 4):
+    def __init__(self, maze_str = DEFAULT_MAZE, nb_agents = 4, flatten_transition_values = False):
         maze = []
         for y, line in enumerate(maze_str.strip().split('\n')):
             line = line.rstrip()
@@ -96,6 +101,7 @@ class MultiAgentMaze(D):
         self._num_rows = len(maze)
         self._ax = None
         self._nb_agents = nb_agents
+        self._flatten_transition_values = flatten_transition_values
         self._generate_agents()
 
     def get_agents(self):
@@ -134,7 +140,7 @@ class MultiAgentMaze(D):
         return self._agents_starts
     
     def _get_initial_state_(self) -> D.T_state:
-        return self._agents_starts
+        return HashableDict(self._agents_starts)
     
     def _state_sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
             TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
@@ -186,7 +192,11 @@ class MultiAgentMaze(D):
             if tuple(next_state[agent]) in occupied_cells:
                 dead_end = True
             occupied_cells.add(tuple(next_state[agent]))
-        return TransitionOutcome(state=next_state, value=transition_value, termination=dead_end, info=None)
+        return TransitionOutcome(state=HashableDict(next_state),
+                                 value=transition_value if not self._flatten_transition_values else \
+                                       Value(cost=sum(v.cost for a, v in transition_value.items())),
+                                 termination=dead_end,
+                                 info=None)
 
     def get_agent_applicable_actions(self, memory: D.T_memory[D.T_state],
                                            other_agents_actions: D.T_agent[D.T_concurrency[D.T_event]],
@@ -227,12 +237,21 @@ class MultiAgentMaze(D):
                 applicable_actions.append(AgentAction.right)
             return ListSpace(applicable_actions)
     
+    class SamplableActionSpace(SamplableSpace):
+        def __init__(self, domain: D, memory: D.T_memory[D.T_state]) -> None:
+            self._domain = domain
+            self._memory = memory
+        
+        def sample(self) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            # Shuffle the agents (not in place, thus don't use rd.shuffle())
+            agents_order = rd.sample(self._memory.keys(), k=len(self._memory.keys()))
+            agents_actions = {}
+            for agent in agents_order:
+                agents_actions[agent] = self._domain.get_agent_applicable_actions(self._memory, agents_actions, agent).sample()
+            return HashableDict(agents_actions)
+    
     def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
-        # Here we order the agents
-        agents_actions = {}
-        for agent, state in memory.items():
-            agents_actions[agent] = self.get_agent_applicable_actions(memory, agents_actions, agent)
-        return agents_actions
+        return MultiAgentMaze.SamplableActionSpace(domain=self, memory=memory)
 
     def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         return {agent: ListSpace([goal]) for agent, goal in self._agents_goals.items()}
@@ -399,7 +418,7 @@ if __name__ == '__main__':
                     'multiagent_domain_factory': lambda: MultiAgentMaze(),
                     'singleagent_domain_factory': lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
                     'multiagent_solver_kwargs': {
-                        'domain_factory': lambda: MultiAgentMaze(),
+                        'domain_factory': lambda: MultiAgentMaze(flatten_transition_values=True),
                         'time_budget': 600000,
                         'max_depth': 500,
                         'heuristic_confidence': 1000,

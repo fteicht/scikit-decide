@@ -535,9 +535,6 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             if (this->_pyobj->is_none()) {
                 this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("EmptySpace")());
-            } else if (!py::isinstance(*(this->_pyobj), skdecide::Globals::skdecide().attr("EmptySpace")) &&
-                       !py::hasattr(*(this->_pyobj), "get_elements")) {
-                throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
             }
         }
 
@@ -610,6 +607,9 @@ public :
         ApplicableActionSpaceElements get_elements() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
+                if (!py::hasattr(*(this->_pyobj), "get_elements")) {
+                    throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement get_elements()");
+                }
                 return ApplicableActionSpaceElements(this->_pyobj->attr("get_elements")());
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + e->what());
@@ -979,8 +979,6 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             if (this->_pyobj->is_none()) {
                 this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("DiscreteDistribution")(py::list()));
-            } else if (!py::hasattr(*(this->_pyobj), "get_values")) {
-                throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
             }
         }
 
@@ -1061,6 +1059,9 @@ public :
         NextStateDistributionValues get_values() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
+                if (!py::hasattr(*(this->_pyobj), "get_values")) {
+                    throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
+                }
                 return NextStateDistributionValues(this->_pyobj->attr("get_values")());
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + e->what());
