@@ -20,8 +20,8 @@
 
 #include <boost/range/irange.hpp>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -54,10 +54,14 @@ public :
           _time_budget(time_budget), _rollout_budget(rollout_budget), _max_depth(max_depth),
           _discount(discount), _epsilon(epsilon), _online_node_garbage(online_node_garbage),
           _debug_logs(debug_logs), _current_state(nullptr), _nb_rollouts(0) {
-              if (debug_logs) {
-                spdlog::set_level(spdlog::level::debug);
-              } else {
-                  spdlog::set_level(spdlog::level::info);
+              if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
+                  std::string msg = "Debug logs requested for algorithm LRTDP but global log level is higher than debug";
+                  if (spdlog::get_level() <= spdlog::level::warn) {
+                      spdlog::warn(msg);
+                  } else {
+                      msg = "\033[1;33mbold " + msg + "\033[0m";
+                      std::cerr << msg << std::endl;
+                  }
               }
 
               std::random_device rd;

@@ -12,8 +12,8 @@
 #include <list>
 #include <chrono>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -41,10 +41,14 @@ public :
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _discount(discount), _max_tip_expansions(max_tip_expansions),
           _detect_cycles(detect_cycles), _debug_logs(debug_logs) {
-              if (debug_logs) {
-                spdlog::set_level(spdlog::level::debug);
-              } else {
-                  spdlog::set_level(spdlog::level::info);
+              if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
+                  std::string msg = "Debug logs requested for algorithm AO* but global log level is higher than debug";
+                  if (spdlog::get_level() <= spdlog::level::warn) {
+                      spdlog::warn(msg);
+                  } else {
+                      msg = "\033[1;33mbold " + msg + "\033[0m";
+                      std::cerr << msg << std::endl;
+                  }
               }
           }
 
@@ -105,7 +109,7 @@ public :
                             });
                             if (i.second) { // new node
                                 if (_goal_checker(_domain, next_node.state)) {
-                                    spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
+                                    if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                                     next_node.solved = true;
                                     next_node.best_value = 0.0;
                                 } else {

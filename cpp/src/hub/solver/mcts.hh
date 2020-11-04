@@ -27,8 +27,8 @@
 
 #include <boost/range/irange.hpp>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -1014,10 +1014,14 @@ public :
       _rollout_policy(std::move(rollout_policy)),
       _back_propagator(std::move(back_propagator)),
       _current_state(nullptr) {
-        if (debug_logs) {
-            spdlog::set_level(spdlog::level::debug);
-        } else {
-            spdlog::set_level(spdlog::level::info);
+        if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
+            std::string msg = "Debug logs requested for algorithm MCTS but global log level is higher than debug";
+            if (spdlog::get_level() <= spdlog::level::warn) {
+                spdlog::warn(msg);
+            } else {
+                msg = "\033[1;33mbold " + msg + "\033[0m";
+                std::cerr << msg << std::endl;
+            }
         }
 
         std::random_device rd;

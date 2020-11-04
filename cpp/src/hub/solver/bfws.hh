@@ -18,8 +18,8 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -108,10 +108,14 @@ public :
                bool debug_logs = false)
         : _domain(domain), _state_features(state_features), _heuristic(heuristic), _termination_checker(termination_checker),
           _debug_logs(debug_logs) {
-              if (debug_logs) {
-                spdlog::set_level(spdlog::level::debug);
-              } else {
-                  spdlog::set_level(spdlog::level::info);
+              if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
+                  std::string msg = "Debug logs requested for algorithm BFWS but global log level is higher than debug";
+                  if (spdlog::get_level() <= spdlog::level::warn) {
+                      spdlog::warn(msg);
+                  } else {
+                      msg = "\033[1;33mbold " + msg + "\033[0m";
+                      std::cerr << msg << std::endl;
+                  }
               }
           }
     

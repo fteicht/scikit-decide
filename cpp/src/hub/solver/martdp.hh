@@ -17,8 +17,8 @@
 
 #include <boost/range/irange.hpp>
 
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
@@ -66,11 +66,15 @@ public :
           _epsilon_moving_average_window(epsilon_moving_average_window), _epsilon(epsilon),
           _discount(discount), _dead_end_cost(dead_end_cost), _debug_logs(debug_logs), _watchdog(watchdog),
           _epsilon_moving_average(0), _current_state(nullptr), _nb_rollouts(0), _nb_agents(0) {
-            if (debug_logs) {
-                spdlog::set_level(spdlog::level::debug);
-            } else {
-                spdlog::set_level(spdlog::level::info);
-            }
+              if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
+                  std::string msg = "Debug logs requested for algorithm MARTDP but global log level is higher than debug";
+                  if (spdlog::get_level() <= spdlog::level::warn) {
+                      spdlog::warn(msg);
+                  } else {
+                      msg = "\033[1;33mbold " + msg + "\033[0m";
+                      std::cerr << msg << std::endl;
+                  }
+              }
 
             std::random_device rd;
             _gen = std::make_unique<std::mt19937>(rd());
