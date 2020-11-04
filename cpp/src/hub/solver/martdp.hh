@@ -397,7 +397,7 @@ private :
 
     void initialize_node(Node& n, bool termination) {
         if (_debug_logs) {
-            spdlog::debug("Initiliazing new state node " + n.state.print());
+            spdlog::debug("Initializing new state node " + n.state.print());
         }
         n.best_value = 0.0;
         n.goal = _goal_checker(_domain, n.state);
