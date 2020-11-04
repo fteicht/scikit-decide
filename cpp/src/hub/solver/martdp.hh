@@ -276,20 +276,22 @@ private :
         return milliseconds_duration;
     }
 
-    std::unique_ptr<Action> greedy_action(Node* s) {
-        if (_debug_logs) spdlog::debug("Updating state " + s->state.print() +
-                                       ExecutionPolicy::print_thread());
+    std::unique_ptr<Action>& greedy_action(Node* s) {
+        if (_debug_logs) spdlog::debug("Updating state " + s->state.print());
         
         double best_value = std::numeric_limits<double>::infinity();
         std::unique_ptr<Action> best_action;
         
         for (std::size_t agent = 0 ; agent < _nb_agents ; agent++) {
+            if (_debug_logs) spdlog::debug("Trying agent " + _agents[agent].print() + " actions");
             auto agent_applicable_actions = _domain.get_agent_applicable_actions(s->state, Action(), _agents[agent]).get_elements();
 
             if (agent_applicable_actions.empty()) {
+                if (_debug_logs) spdlog::debug("No agent applicable actions");
                 continue;
             } else {
                 for (auto action : agent_applicable_actions) {
+                    if (_debug_logs) spdlog::debug("Trying agent action " + action.print());
                     std::unique_ptr<Action> agent_actions = std::make_unique<Action>();
                     (*agent_actions)[_agents[agent]] = action;
 
@@ -312,15 +314,10 @@ private :
                             }
                             
                             // Is the agent's optimal action applicable ?
-                            if (s->best_action) {
-                                if (other_agent_aa.contains((*(s->best_action))[_agents[other_agent]])) {
-                                    // choose it with high probability
-                                    if (!(_action_choice_noise_dist(*_gen))) {
-                                        (*agent_actions)[_agents[other_agent]] = (*s->best_action)[_agents[other_agent]];
-                                    } else {
-                                        (*agent_actions)[_agents[other_agent]] = other_agent_aa.sample();
-                                    }
-                                }
+                            if ((s->best_action) &&
+                                other_agent_aa.contains((*(s->best_action))[_agents[other_agent]]) &&
+                                !(_action_choice_noise_dist(*_gen))) { // choose it with high probability
+                                    (*agent_actions)[_agents[other_agent]] = (*s->best_action)[_agents[other_agent]];
                             } else {
                                 (*agent_actions)[_agents[other_agent]] = other_agent_aa.sample();
                             }
@@ -330,12 +327,14 @@ private :
                     if (feasible) {
                         // make the transition and compute Q-value
                         double qval = q_value(s->state, *agent_actions);
+                        if (_debug_logs) spdlog::debug("Found joint applicable action " + agent_actions->print() +
+                                                       " with Q-value=" + StringConverter::from(qval));
 
                         if (qval < best_value) {
                             best_value = qval;
                             best_action = std::move(agent_actions);
                         }
-                    }
+                    } else if (_debug_logs) spdlog::debug("Failed finding a joint applicable action");
                 }
             }
         }
@@ -353,11 +352,13 @@ private :
 
         s->best_action = std::move(best_action);
         s->best_value = best_value;
-        return best_action; // best_action is nullptr if state is a dead-end
+        return s->best_action; // best_action is nullptr if state is a dead-end
     }
 
     double q_value(const State& state, const Action& action) {
+        if (_debug_logs) spdlog::debug("Computing Q-value of (" + state.print() + ", " + action.print() + ")");
         double q_value = 0;
+
         for (std::size_t transition_sample = 0 ; transition_sample < _nb_transition_samples ; transition_sample++) {
             EnvironmentOutcome outcome = _domain.sample(state, action);
             Value tval = outcome.transition_value();
@@ -373,6 +374,7 @@ private :
             sample_value += _discount * next_node.best_value;
             q_value += sample_value;
         }
+
         q_value /= _nb_transition_samples;
 
         if (_debug_logs) spdlog::debug("Updated Q-value of action " + action.print() +
@@ -429,13 +431,14 @@ private :
                (elapsed_time(start_time) < _time_budget) &&
                (depth < _max_depth)) {
             depth++;
+
             if (cs->goal) {
                 if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print() +
                                                 ExecutionPolicy::print_thread());
                 found_goal = true;
             }
-
-            auto action = greedy_action(cs);
+            
+            std::unique_ptr<Action>& action = greedy_action(cs);
 
             if (!action) { // dead-end state
                 cs->best_value = _dead_end_cost;
