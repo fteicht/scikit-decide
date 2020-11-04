@@ -448,7 +448,7 @@ private :
         }
     }
 
-    void update_epsilon_moving_average(const Node& node, bool node_record_value) {
+    void update_epsilon_moving_average(const Node& node, const double& node_record_value) {
         if (_epsilon_moving_average_window > 0) {
             double current_epsilon = std::fabs(node_record_value - node.best_value);
             if (_epsilons.size() < _epsilon_moving_average_window) {

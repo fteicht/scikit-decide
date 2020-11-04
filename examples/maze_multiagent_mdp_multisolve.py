@@ -145,6 +145,10 @@ class MultiAgentMaze(D):
                 next_state[agent] = state
                 transition_value[agent] = Value(cost=0)
                 continue
+            if action[agent] == AgentAction.stay:  # must test after goal check for proper cost setting
+                next_state[agent] = state
+                transition_value[agent] = Value(cost=1)
+                continue
             next_state_1 = next_state_2 = next_state_3 = state
             if action[agent] == AgentAction.left:
                 if state.x > 0 and self._maze[state.y][state.x - 1] == 1:
@@ -153,21 +157,21 @@ class MultiAgentMaze(D):
                         next_state_2 = AgentState(x=state.x - 1, y=state.y - 1)
                     if state.y < self._num_rows - 1 and self._maze[state.y + 1][state.x - 1] == 1:
                         next_state_2 = AgentState(x=state.x - 1, y=state.y + 1)
-            if action[agent] == AgentAction.right:
+            elif action[agent] == AgentAction.right:
                 if state.x < self._num_cols - 1 and self._maze[state.y][state.x + 1] == 1:
                     next_state_1 = AgentState(x=state.x + 1, y=state.y)
                     if state.y > 0 and self._maze[state.y - 1][state.x + 1] == 1:
                         next_state_2 = AgentState(x=state.x + 1, y=state.y - 1)
                     if state.y < self._num_rows - 1 and self._maze[state.y + 1][state.x + 1] == 1:
                         next_state_2 = AgentState(x=state.x + 1, y=state.y + 1)
-            if action[agent] == AgentAction.up:
+            elif action[agent] == AgentAction.up:
                 if state.y > 0 and self._maze[state.y - 1][state.x] == 1:
                     next_state_1 = AgentState(x=state.x, y=state.y - 1)
                     if state.x > 0 and self._maze[state.y - 1][state.x - 1] == 1:
                         next_state_2 = AgentState(x=state.x - 1, y=state.y - 1)
                     if state.x < self._num_cols - 1 and self._maze[state.y - 1][state.x + 1] == 1:
                         next_state_2 = AgentState(x=state.x + 1, y=state.y - 1)
-            if action[agent] == AgentAction.down:
+            elif action[agent] == AgentAction.down:
                 if state.y < self._num_rows - 1 and self._maze[state.y + 1][state.x] == 1:
                     next_state_1 = AgentState(x=state.x, y=state.y + 1)
                     if state.x > 0 and self._maze[state.y + 1][state.x - 1] == 1:
@@ -201,7 +205,7 @@ class MultiAgentMaze(D):
                 elif other_agent_action == AgentAction.stay:
                     occupied_next_cells.add((memory[other_agent].x, memory[other_agent].y))
             # now, compute application actions
-            applicable_actions = []
+            applicable_actions = [AgentAction.stay]
             if memory[agent].y > 0 and \
                 self._maze[memory[agent].y - 1][memory[agent].x] == 1 and \
                 (memory[agent].x, memory[agent].y - 1) not in occupied_next_cells:
@@ -334,7 +338,7 @@ class SingleAgentMaze(D):
     
 def martdp_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
     print('Epsilon moving average: {}'.format(epsilon_moving_average))
-    return False
+    return epsilon_moving_average < 0.1
 
 
 if __name__ == '__main__':
@@ -353,8 +357,12 @@ if __name__ == '__main__':
                     'multiagent_solver_kwargs': {
                         'domain_factory': lambda: MultiAgentMaze(),
                         'time_budget': 600000,
-                        'max_depth': 100,
+                        'max_depth': 500,
                         'epsilon_moving_average_window': 10,
+                        'max_feasibility_trials': 10,
+                        'nb_transition_samples': 10,
+                        'action_choice_noise': 0.1,
+                        'dead_end_cost': 1000,
                         'watchdog': lambda etime, nbr, ema: martdp_watchdog(etime, nbr, ema),
                         'continuous_planning': False,
                         'debug_logs': False
@@ -400,6 +408,6 @@ if __name__ == '__main__':
                 # Solve with selected solver
                 with solver_type(**selected_solver['config']) as solver:
                     MultiAgentMaze.solve_with(solver)
-                    rollout(domain, solver, max_steps=1000,
+                    rollout(domain, solver, max_steps=1000, max_framerate=5,
                             outcome_formatter=lambda o: f'{o.observation} - cost: {sum(o.value[a].cost for a in o.observation):.2f}',
                             action_formatter=lambda a: f'{a}')

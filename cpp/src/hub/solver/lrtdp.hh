@@ -89,7 +89,7 @@ public :
 
             if (root_node.solved || _goal_checker(_domain, s, nullptr)) { // problem already solved from this state (was present in _graph and already solved)
                 spdlog::info("LRTDP finished to solve from state " + s.print() +
-                             " [" + ((root_node.solved)?("solved"):("goal")) + " state]");
+                             " [" + ((root_node.solved && !root_node.goal)?("solved"):("goal")) + " state]");
                 return;
             }
 
