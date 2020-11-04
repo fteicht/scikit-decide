@@ -106,8 +106,12 @@ class MAHD(Solver, DeterministicPolicies, Utilities):
                                            'for agent {} in {}state {} ' \
                                            '(original exception is: {})'.format(
                                            a, terminal_str, observation[a], err))
-        h = ({a: Value(cost=p[observation[a]][0]) for a, p in self._singleagent_solutions.items()},
-             {a: p[observation[a]][1] for a, p in self._singleagent_solutions.items()})
+        if issubclass(self._multiagent_solver.T_domain, MultiAgent):
+            h = ({a: Value(cost=p[observation[a]][0]) for a, p in self._singleagent_solutions.items()},
+                 {a: p[observation[a]][1] for a, p in self._singleagent_solutions.items()})
+        else:
+            h = (Value(cost=sum(p[observation[a]][0] for a, p in self._singleagent_solutions.items())),
+                 {a: p[observation[a]][1] for a, p in self._singleagent_solutions.items()})
         return h
     
     def _get_singleagent_domain(self, agent):

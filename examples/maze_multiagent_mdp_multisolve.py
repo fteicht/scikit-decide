@@ -3,6 +3,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from enum import Enum
+
+from skdecide.hub.solver.mcts.mcts import HMCTS
 from skdecide.builders.domain.observability import FullyObservable
 from skdecide.builders.domain.renderability import Renderable
 from skdecide.builders.domain.goals import Goals
@@ -20,6 +22,7 @@ from skdecide.utils import load_registered_solver, rollout
 
 from skdecide.hub.solver.mahd import MAHD
 from skdecide.hub.solver.martdp import MARTDP
+from skdecide.hub.solver.mcts import HMCTS
 from skdecide.hub.solver.lrtdp import LRTDP
 
 from typing import Any, Callable, NamedTuple, Optional, Tuple
@@ -223,6 +226,13 @@ class MultiAgentMaze(D):
                 (memory[agent].x + 1, memory[agent].y) not in occupied_next_cells:
                 applicable_actions.append(AgentAction.right)
             return ListSpace(applicable_actions)
+    
+    def _get_applicable_actions_from(self, memory: D.T_memory[D.T_state]) -> D.T_agent[Space[D.T_event]]:
+        # Here we order the agents
+        agents_actions = {}
+        for agent, state in memory.items():
+            agents_actions[agent] = self.get_agent_applicable_actions(memory, agents_actions, agent)
+        return agents_actions
 
     def _get_goals_(self) -> D.T_agent[Space[D.T_observation]]:
         return {agent: ListSpace([goal]) for agent, goal in self._agents_goals.items()}
@@ -364,6 +374,41 @@ if __name__ == '__main__':
                         'action_choice_noise': 0.1,
                         'dead_end_cost': 1000,
                         'watchdog': lambda etime, nbr, ema: martdp_watchdog(etime, nbr, ema),
+                        'continuous_planning': False,
+                        'debug_logs': False
+                    },
+                    'singleagent_solver_kwargs': {
+                        'domain_factory':lambda : lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
+                        'heuristic': lambda d, s: Value(cost=sqrt((d._goal.x - s.x)**2 + (d._goal.y - s.y)**2)),
+                        'use_labels': True,
+                        'time_budget': 1000,
+                        'max_depth': 100,
+                        'continuous_planning': False,
+                        'online_node_garbage': False,
+                        'parallel': False,
+                        'debug_logs': False
+                    }}},
+                    
+        # Multi-agent UCT
+        {'name': 'Multi-agent UCT with single-agent LRTDP heuristics',
+         'entry': 'MAHD',
+         'config': {'multiagent_solver_class': HMCTS,
+                    'singleagent_solver_class': LRTDP,
+                    'multiagent_domain_class': MultiAgentMaze,
+                    'singleagent_domain_class': SingleAgentMaze,
+                    'multiagent_domain_factory': lambda: MultiAgentMaze(),
+                    'singleagent_domain_factory': lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
+                    'multiagent_solver_kwargs': {
+                        'domain_factory': lambda: MultiAgentMaze(),
+                        'time_budget': 600000,
+                        'max_depth': 500,
+                        'heuristic_confidence': 1000,
+                        'action_choice_noise': 0.1,
+                        'expander': HMCTS.Options.Expander.Partial,
+                        'state_expansion_rate': 0.1,
+                        'action_expansion_rate': 0.1,
+                        'transition_mode': HMCTS.Options.TransitionMode.Sample,
+                        'online_node_garbage': True,
                         'continuous_planning': False,
                         'debug_logs': False
                     },

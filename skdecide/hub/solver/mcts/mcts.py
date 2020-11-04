@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
+import random as rd
 from math import sqrt
 from typing import Callable, Dict, Tuple, List
 
@@ -159,7 +160,85 @@ try:
             return self._solver.get_action_prefix()
     
 
+    class HMCTS(MCTS):
+        Options = MCTS.Options
+
+        def __init__(self,
+                     domain_factory: Callable[[], Domain],
+                     time_budget: int = 3600000,
+                     rollout_budget: int = 100000,
+                     max_depth: int = 1000,
+                     discount: float = 1.0,
+                     ucb_constant: float = 1.0 / sqrt(2.0),
+                     online_node_garbage: bool = False,
+                     heuristic: Callable[[Domain, D.T_state], Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]] = None,
+                     heuristic_confidence: int = 1000,
+                     action_choice_noise: float = 0.1,
+                     state_expansion_rate: float = 0.1,
+                     action_expansion_rate: float = 0.1,
+                     transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
+                     tree_policy: Options.TreePolicy = Options.TreePolicy.Default,
+                     expander: Options.Expander = Options.Expander.Full,
+                     action_selector_optimization: Options.ActionSelector = Options.ActionSelector.UCB1,
+                     action_selector_execution: Options.ActionSelector = Options.ActionSelector.BestQValue,
+                     back_propagator: Options.BackPropagator = Options.BackPropagator.Graph,
+                     continuous_planning: bool = True,
+                     parallel: bool = False,
+                     shared_memory_proxy = None,
+                     debug_logs: bool = False):
+            super().__init__(domain_factory=domain_factory,
+                             time_budget=time_budget,
+                             rollout_budget=rollout_budget,
+                             max_depth=max_depth,
+                             discount=discount,
+                             uct_mode=False,  # otherwise would select random policy rollouts!
+                             ucb_constant=ucb_constant,
+                             online_node_garbage=online_node_garbage,
+                             heuristic=lambda d, o: self._value_heuristic(d, o),
+                             custom_policy=lambda d, o: self._custom_policy(d, o),
+                             state_expansion_rate=state_expansion_rate,
+                             action_expansion_rate=action_expansion_rate,
+                             transition_mode=transition_mode,
+                             tree_policy=tree_policy,
+                             expander=expander,
+                             action_selector_optimization=action_selector_optimization,
+                             action_selector_execution=action_selector_execution,
+                             rollout_policy=MCTS.Options.RolloutPolicy.Custom,
+                             back_propagator=back_propagator,
+                             continuous_planning=continuous_planning,
+                             parallel=parallel,
+                             shared_memory_proxy=shared_memory_proxy,
+                             debug_logs=debug_logs)
+            self._heuristic = heuristic
+            self._heuristic_confidence = heuristic_confidence
+            self._action_choice_noise = action_choice_noise
+            self._heuristic_records = {}
+        
+        def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
+            super()._solve_domain(domain_factory=domain_factory)
+            self._heuristic_records = {}
+        
+        def _value_heuristic(self,
+                             domain: Domain,
+                             observation: D.T_agent[D.T_observation]) -> Tuple[D.T_agent[Value[D.T_value]], int]:
+            if (observation not in self._heuristic_records):
+                self._heuristic_records[observation] = self._heuristic(domain, observation)
+            return (self._heuristic_records[observation][0], self._heuristic_confidence)
+
+        def _custom_policy(self,
+                           domain: Domain,
+                           observation: D.T_agent[D.T_observation]) -> D.T_agent[D.T_concurrency[D.T_event]]:
+            if (observation not in self._heuristic_records):
+                self._heuristic_records[observation] = self._heuristic(domain, observation)
+            if rd.sample() > self._action_choice_noise:
+                return self._heuristic_records[observation][1]
+            else:
+                return domain.get_applicable_actions(observation).sample()
+    
+
     class UCT(MCTS):
+        Options = MCTS.Options
+
         def __init__(self,
                      domain_factory: Callable[[], Domain],
                      time_budget: int = 3600000,
@@ -170,10 +249,8 @@ try:
                      online_node_garbage: float = False,
                      custom_policy: Callable[[Domain, D.T_agent[D.T_observation]], D.T_agent[D.T_concurrency[D.T_event]]] = None,
                      heuristic: Callable[[Domain, D.T_agent[D.T_observation]], Tuple[D.T_agent[Value[D.T_value]], int]] = None,
-                     state_expansion_rate: float = 0.1,
-                     action_expansion_rate: float = 0.1,
-                     transition_mode: mcts_options.TransitionMode = mcts_options.TransitionMode.Distribution,
-                     rollout_policy: mcts_options.RolloutPolicy = mcts_options.RolloutPolicy.Random,
+                     transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
+                     rollout_policy: Options.RolloutPolicy = Options.RolloutPolicy.Random,
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
@@ -188,8 +265,45 @@ try:
                              online_node_garbage=online_node_garbage,
                              custom_policy=custom_policy,
                              heuristic=heuristic,
-                             state_expansion_rate=state_expansion_rate,
-                             action_expansion_rate=action_expansion_rate,
+                             transition_mode=transition_mode,
+                             rollout_policy=rollout_policy,
+                             continuous_planning=continuous_planning,
+                             parallel=parallel,
+                             shared_memory_proxy=shared_memory_proxy,
+                             debug_logs=debug_logs)
+    
+
+    class HUCT(HMCTS):
+        Options = HMCTS.Options
+
+        def __init__(self,
+                     domain_factory: Callable[[], Domain],
+                     time_budget: int = 3600000,
+                     rollout_budget: int = 100000,
+                     max_depth: int = 1000,
+                     discount: float = 1.0,
+                     ucb_constant: float = 1.0 / sqrt(2.0),
+                     online_node_garbage: float = False,
+                     heuristic: Callable[[Domain, D.T_state], Tuple[D.T_agent[Value[D.T_value]], D.T_agent[D.T_concurrency[D.T_event]]]] = None,
+                     heuristic_confidence: int = 1000,
+                     action_choice_noise: float = 0.1,
+                     transition_mode: Options.TransitionMode = Options.TransitionMode.Distribution,
+                     rollout_policy: Options.RolloutPolicy = Options.RolloutPolicy.Random,
+                     continuous_planning: bool = True,
+                     parallel: bool = False,
+                     shared_memory_proxy = None,
+                     debug_logs: bool = False) -> None:
+            super().__init__(domain_factory=domain_factory,
+                             time_budget=time_budget,
+                             rollout_budget=rollout_budget,
+                             max_depth=max_depth,
+                             discount=discount,
+                             uct_mode=False,  # otherwise would select random policy rollouts!
+                             ucb_constant=ucb_constant,
+                             online_node_garbage=online_node_garbage,
+                             heuristic=heuristic,
+                             heuristic_confidence=heuristic_confidence,
+                             action_choice_noise=action_choice_noise,
                              transition_mode=transition_mode,
                              rollout_policy=rollout_policy,
                              continuous_planning=continuous_planning,
