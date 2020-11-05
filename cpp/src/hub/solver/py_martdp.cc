@@ -143,16 +143,12 @@ private :
             _domain = std::make_unique<PyMARTDPDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::MARTDPSolver<PyMARTDPDomain<Texecution>, Texecution>>(
                         *_domain,
-                        [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s)->bool {
+                        [this](PyMARTDPDomain<Texecution>& d, const typename PyMARTDPDomain<Texecution>::State& s) -> typename PyMARTDPDomain<Texecution>::Predicate {
                             try {
                                 auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                                     return _goal_checker(dd, ss);
                                 };
-                                std::unique_ptr<py::object> r = d.call(nullptr, fgc, s.pyobj());
-                                typename skdecide::GilControl<Texecution>::Acquire acquire;
-                                bool rr = r->template cast<bool>();
-                                r.reset();
-                                return  rr;
+                                return typename PyMARTDPDomain<Texecution>::Predicate(d.call(nullptr, fgc, s.pyobj()));
                             } catch (const std::exception& e) {
                                 spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
                                 throw;

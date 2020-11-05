@@ -169,7 +169,7 @@ public :
                     return skdecide::PythonHash<Texecution>()(*o._pyobj);
                 } catch(const std::exception& e) {
                     spdlog::error(std::string("SKDECIDE exception when hashing ") +
-                                  Derived::class_name + "s: " + e.what());
+                                  Derived::class_name + "s: " + std::string(e.what()));
                     throw;
                 }
             }
@@ -181,7 +181,7 @@ public :
                     return skdecide::PythonEqual<Texecution>()(*o1._pyobj, *o2._pyobj);
                 } catch(const std::exception& e) {
                     spdlog::error(std::string("SKDECIDE exception when testing ") +
-                                  Derived::class_name + "s equality: " + e.what());
+                                  Derived::class_name + "s equality: " + std::string(e.what()));
                     throw;
                 }
             }
@@ -258,41 +258,44 @@ public :
         }
     };
 
-    template <typename Inherited, typename TTagent, typename Enable = void>
+    template <typename DData, typename TTagent, typename Enable = void>
     struct AgentData {};
 
-    template <typename Inherited, typename TTagent>
-    struct AgentData<Inherited, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public Inherited {
+    template <typename DData, typename TTagent>
+    struct AgentData<DData, TTagent,
+                     typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public DData {
         typedef void Agent;
-        typedef AgentData<Inherited, TTagent> Element;
-        AgentData() : Inherited() {}
-        AgentData(std::unique_ptr<py::object>&& ad) : Inherited(std::move(ad)) {}
-        AgentData(const py::object& ad) : Inherited(ad) {}
-        AgentData(const AgentData& other) : Inherited(other) {}
-        AgentData& operator=(const AgentData& other) { static_cast<Inherited&>(*this) = other; return *this; }
+        typedef AgentData<DData, TTagent> Data;
+        AgentData() : DData() {}
+        AgentData(std::unique_ptr<py::object>&& ad) : DData(std::move(ad)) {}
+        AgentData(const py::object& ad) : DData(ad) {}
+        AgentData(const AgentData& other) : DData(other) {}
+        AgentData& operator=(const AgentData& other) { static_cast<DData&>(*this) = other; return *this; }
         virtual ~AgentData() {}
     };
 
-    template <typename Inherited, typename TTagent>
-    struct AgentData<Inherited, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<Inherited, py::dict> {
-        // AgentData inherits from pyObj<> to manage its python object but Inherited is passed to
-        // PyObj as template parameter to print Inherited::class_name when managing AgentData objects
+    template <typename DData, typename TTagent>
+    struct AgentData<DData, TTagent,
+                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<DData, py::dict> {
+        // AgentData inherits from pyObj<> to manage its python object but Data is passed to
+        // PyObj as template parameter to print Data::class_name when managing AgentData objects
 
-        AgentData() : PyObj<Inherited, py::dict>() {}
+        // Data are dict values
+        typedef DData Data;
+
+        AgentData() : PyObj<Data, py::dict>() {}
 
         AgentData(std::unique_ptr<py::object>&& ad)
-        : PyObj<Inherited, py::dict>(std::move(ad)) {}
+        : PyObj<Data, py::dict>(std::move(ad)) {}
 
         AgentData(const py::object& ad)
-        : PyObj<Inherited, py::dict>(ad) {}
+        : PyObj<Data, py::dict>(ad) {}
         
         AgentData(const AgentData& other)
-        : PyObj<Inherited, py::dict>(other) {}
+        : PyObj<Data, py::dict>(other) {}
 
         AgentData& operator=(const AgentData& other) {
-            static_cast<PyObj<Inherited, py::dict>&>(*this) = other;
+            static_cast<PyObj<Data, py::dict>&>(*this) = other;
             return *this;
         }
 
@@ -319,48 +322,6 @@ public :
             Agent(const Tother& other) : Agent(other.pyobj()) {}
         };
 
-        // Elements are dict values
-        struct Element : public Inherited {
-            Element() : Inherited() {}
-            Element(std::unique_ptr<py::object>&& e) : Inherited(std::move(e)) {}
-            Element(const py::object& e) : Inherited(e) {}
-            Element(const Element& other) : Inherited(other) {}
-            Element& operator=(const Element& other) { static_cast<Inherited&>(*this) = other; return *this; }
-            virtual ~Element() {}
-        };
-
-        // To access elements with dict operator []
-        // Objective #1: access Element's methods
-        // Objective #2: modify internal Python object with operator =
-        struct ElementAccessor : public PyObj<ElementAccessor, py::detail::item_accessor>,
-                                 public Element {
-            ElementAccessor(const py::detail::item_accessor& a, const py::object& e)
-            : PyObj<ElementAccessor, py::detail::item_accessor>(a), Element(e) {}
-            
-            ElementAccessor(const ElementAccessor& other)
-            : PyObj<ElementAccessor, py::detail::item_accessor>(other), Element(other) {}
-            
-            ElementAccessor& operator=(const ElementAccessor& other) {
-                *this = static_cast<const Element&>(other);
-                return *this;
-            }
-
-            void operator=(const Element& other) {
-                typename GilControl<Texecution>::Acquire acquire;
-                if (static_cast<const Element*>(this)->pyobj().is_none()) {
-                    std::forward<py::detail::item_accessor&&>(
-                        *static_cast<PyObj<ElementAccessor, py::detail::item_accessor>*>(this)->_pyobj) =
-                            other.pyobj();
-                } else {
-                    *static_cast<PyObj<ElementAccessor, py::detail::item_accessor>*>(this)->_pyobj =
-                            other.pyobj();
-                }
-                *static_cast<Element*>(this)->_pyobj = other.pyobj();
-            }
-            
-            virtual ~ElementAccessor() {}
-        };
-
         // Dict items
         struct Item : public PyObj<Item, py::tuple> {
             static constexpr char class_name[] = "dictionary item";
@@ -377,22 +338,74 @@ public :
                 return Agent(py::cast<py::object>((*(this->_pyobj))[0]));
             }
 
-            Element element() {
+            Data data() {
                 typename GilControl<Texecution>::Acquire acquire;
-                return Element(py::cast<py::object>((*(this->_pyobj))[1]));
+                return Data(py::cast<py::object>((*(this->_pyobj))[1]));
             }
         };
 
-        ElementAccessor operator[](const Agent& a) {
+        // To access elements with dict operator []
+        // Objective #1: access Data's methods
+        // Objective #2: modify internal Python object with operator =
+        struct DataAccessor : public PyObj<DataAccessor, py::detail::item_accessor>,
+                              public Data {
+            explicit DataAccessor(const py::detail::item_accessor& a)
+            : PyObj<DataAccessor, py::detail::item_accessor>(a), Data(a) {}
+            
+            // We shall not assign data accessor lvalues because statements like
+            // 'auto d = my_data[my_key]; d = other_data;' would assign 'other_data'
+            // to 'my_data[my_key]', which is generally not the expected behaviour
+            // (since one thinks to reason about the actual data but not the
+            // dictionary accessor...).
+            DataAccessor& operator=(DataAccessor&& other) & = delete;
+            void operator=(const Data& other) & = delete;
+
+            DataAccessor& operator=(DataAccessor&& other) && {
+                std::forward<DataAccessor&&>(*this) = static_cast<const Data&>(other);
+                return *this;
+            }
+
+            void operator=(const Data& other) && {
+                typename GilControl<Texecution>::Acquire acquire;
+                    std::forward<py::detail::item_accessor&&>(
+                        *static_cast<PyObj<DataAccessor, py::detail::item_accessor>*>(this)->_pyobj) =
+                            other.pyobj();
+                *static_cast<Data*>(this)->_pyobj = other.pyobj();
+            }
+            
+            virtual ~DataAccessor() {}
+        };
+
+        DataAccessor operator[](const Agent& a) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                bool key_exists = this->_pyobj->contains(a.pyobj());
-                py::detail::item_accessor ia = (*(this->_pyobj))[a.pyobj()];
-                return ElementAccessor(ia, key_exists ? ia : py::none());
+                if (!(this->_pyobj->contains(a.pyobj()))) {
+                    (*(this->_pyobj))[a.pyobj()] = Data().pyobj();
+                }
+                return DataAccessor((*(this->_pyobj))[a.pyobj()]);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
-                              Inherited::class_name + " of agent " + a.print() +
-                              ": " + e->what());
+                              Data::class_name + " of agent " + a.print() +
+                              ": " + std::string(e->what()));
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
+            }
+        }
+
+        const Data operator[](const Agent& a) const {
+            typename GilControl<Texecution>::Acquire acquire;
+            try {
+                if (!(this->_pyobj->contains(a.pyobj()))) {
+                    throw std::runtime_error(std::string("SKDECIDE exception when getting ") +
+                                             Data::class_name + " of agent " + a.print() +
+                                             ": agent not in dictionary");
+                }
+                return Data((*(this->_pyobj))[a.pyobj()]);
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Data::class_name + " of agent " + a.print() +
+                              ": " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -569,14 +582,14 @@ public :
 
             virtual ~ApplicableActionSpaceElements() {}
 
-            PyIter<typename Action::Element> begin() const {
+            PyIter<typename Action::Data> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<typename Action::Element>(this->_pyobj->begin());
+                return PyIter<typename Action::Data>(this->_pyobj->begin());
             }
 
-            PyIter<typename Action::Element> end() const {
+            PyIter<typename Action::Data> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<typename Action::Element> (this->_pyobj->end());
+                return PyIter<typename Action::Data> (this->_pyobj->end());
             }
 
             bool empty() const {
@@ -596,7 +609,7 @@ public :
                         throw std::runtime_error("SKDECIDE exception: applicable action space elements must be iterable.");
                     }
                 } catch(const py::error_already_set* e) {
-                    spdlog::error(std::string("SKDECIDE exception when checking emptiness of applicable action space's elements: ") + e->what());
+                    spdlog::error(std::string("SKDECIDE exception when checking emptiness of applicable action space's elements: ") + std::string(e->what()));
                     std::runtime_error err(e->what());
                     delete e;
                     throw err;
@@ -612,10 +625,13 @@ public :
                 }
                 return ApplicableActionSpaceElements(this->_pyobj->attr("get_elements")());
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e.what()));
+                throw;
             }
         }
 
@@ -625,30 +641,33 @@ public :
                 return py::isinstance(*(this->_pyobj), skdecide::Globals::skdecide().attr("EmptySpace")) ||
                     this->get_elements().empty();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when checking emptyness of applicable action space's elements: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when checking emptyness of applicable action space's elements: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
 
-        typename Action::Element sample() const {
+        typename Action::Data sample() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!py::hasattr(*(this->_pyobj), "sample")) {
                     throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
                 } else {
-                    return typename Action::Element(this->_pyobj->attr("sample")());
+                    return typename Action::Data(this->_pyobj->attr("sample")());
                 }
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when sampling action element: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e.what()));
+                throw;
             }
         }
 
-        bool contains(const typename Action::Element& action) {
+        bool contains(const typename Action::Data& action) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!py::hasattr(*(this->_pyobj), "contains")) {
@@ -657,7 +676,7 @@ public :
                     return this->_pyobj->attr("contains")(action.pyobj()).template cast<bool>();
                 }
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when checking inclusion of action element: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when checking inclusion of action data: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -672,30 +691,43 @@ public :
         ValueBase() : PyObj<ValueBase>() { construct(); }
         ValueBase(std::unique_ptr<py::object>&& v) : PyObj<ValueBase>(std::move(v)) { construct(); }
         ValueBase(const py::object& v) : PyObj<ValueBase>(v) { construct(); }
+        ValueBase(const double& value, const bool& reward_or_cost) : PyObj<ValueBase>() { construct(value, reward_or_cost); }
         ValueBase(const ValueBase& other) : PyObj<ValueBase>(other) {}
         ValueBase& operator=(const ValueBase& other) { static_cast<PyObj<ValueBase>&>(*this) = other; return *this; }
         virtual ~ValueBase() {}
 
-        void construct() {
+        void construct(const double& value = 0.0, const bool& reward_or_cost = true) {
             typename GilControl<Texecution>::Acquire acquire;
-            if (this->_pyobj->is_none()) {
-                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("Value")());
-            } else {
-                if (!py::hasattr(*(this->_pyobj), "cost")) {
-                    throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'cost' attribute");
+            try {
+                if (this->_pyobj->is_none()) {
+                    this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("Value")());
+                    if (reward_or_cost) {
+                        this->reward(value);
+                    } else {
+                        this->cost(value);
+                    }
+                } else {
+                    if (!py::hasattr(*(this->_pyobj), "cost")) {
+                        throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'cost' attribute");
+                    }
+                    if (!py::hasattr(*(this->_pyobj), "reward")) {
+                        throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'reward' attribute");
+                    }
                 }
-                if (!py::hasattr(*(this->_pyobj), "reward")) {
-                    throw std::invalid_argument("SKDECIDE exception: python value object must provide the 'reward' attribute");
-                }
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when importing value data: ") + std::string(e->what()));
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
             }
         }
 
-        double cost() {
+        double cost() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return py::cast<double>(this->_pyobj->attr("cost"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting value's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting value's cost: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -708,19 +740,19 @@ public :
                 this->_pyobj->attr("cost") = py::float_(c);
                 this->_pyobj->attr("reward") = py::float_(-c);
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting value's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting value's cost: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
 
-        double reward() {
+        double reward() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return this->_pyobj->attr("reward").template cast<double>();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting value's reward: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting value's reward: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -733,7 +765,7 @@ public :
                 this->_pyobj->attr("reward") = py::float_(r);
                 this->_pyobj->attr("cost") = py::float_(-r);
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting value's reward: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting value's reward: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -741,6 +773,44 @@ public :
         }
     };
     typedef AgentData<ValueBase, Tagent> Value;
+
+    struct PredicateBase : public PyObj<PredicateBase, py::bool_> {
+        static constexpr char class_name[] = "predicate";
+
+        PredicateBase() : PyObj<PredicateBase, py::bool_>() { construct(); }
+        PredicateBase(std::unique_ptr<py::object>&& v) : PyObj<PredicateBase, py::bool_>(std::move(v)) { construct(); }
+        PredicateBase(const py::object& v) : PyObj<PredicateBase, py::bool_>(v) { construct(); }
+        PredicateBase(const bool& predicate) : PyObj<PredicateBase, py::bool_>() { construct(predicate); }
+        PredicateBase(const PredicateBase& other) : PyObj<PredicateBase, py::bool_>(other) {}
+        PredicateBase& operator=(const PredicateBase& other) { static_cast<PyObj<PredicateBase, py::bool_>&>(*this) = other; return *this; }
+        virtual ~PredicateBase() {}
+
+        void construct(const bool& predicate = false) {
+            typename GilControl<Texecution>::Acquire acquire;
+            if (this->_pyobj->is_none()) {
+                this->_pyobj = std::make_unique<py::bool_>(predicate);
+            }
+        }
+
+        bool predicate() const {
+            typename GilControl<Texecution>::Acquire acquire;
+            return this->_pyobj->template cast<bool>();
+        }
+
+        operator bool() const {
+            return predicate();
+        }
+
+        void predicate(const bool& p)  {
+            typename GilControl<Texecution>::Acquire acquire;
+            *(this->_pyobj) = py::bool_(p);
+        }
+
+        void operator=(const bool& p) {
+            predicate(p);
+        }
+    };
+    typedef AgentData<PredicateBase, Tagent> Predicate;
 
     template <typename Derived, typename Situation>
     struct Outcome : public PyObj<Derived> {
@@ -753,12 +823,19 @@ public :
             InfoBase& operator=(const InfoBase& other) { static_cast<PyObj<InfoBase>&>(*this) = other; return *this; }
             virtual ~InfoBase() {}
 
-            std::size_t get_depth() {
+            std::size_t get_depth() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                if (py::hasattr(*(this->_pyobj), "depth")) {
-                    return py::cast<std::size_t>(this->_pyobj->attr("depth")());
-                } else {
-                    return 0;
+                try {
+                    if (py::hasattr(*(this->_pyobj), "depth")) {
+                        return py::cast<std::size_t>(this->_pyobj->attr("depth")());
+                    } else {
+                        return 0;
+                    }
+                } catch(const py::error_already_set* e) {
+                    spdlog::error(std::string("SKDECIDE exception when getting outcome's depth info: ") + std::string(e->what()));
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
                 }
             }
         };
@@ -776,24 +853,46 @@ public :
             construct();
         }
 
-        void construct() {
+        Outcome(const Situation& situation, const Value& transition_value,
+                const Predicate& termination, const Info& info)
+        : PyObj<Derived>() {
+            construct(situation, transition_value, termination, info);
+        }
+
+        void construct(const Situation& situation = Situation(),
+                       const Value& transition_value = Value(),
+                       const Predicate& termination = Predicate(),
+                       const Info& info = Info()) {
             typename GilControl<Texecution>::Acquire acquire;
-            if (this->_pyobj->is_none()) {
-                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr(Derived::pyclass)(py::none()));
-            } else {
-                if (!py::hasattr(*(this->_pyobj), Derived::situation_name)) {
-                    throw std::invalid_argument(std::string("SKDECIDE exception: python transition outcome object must provide '") +
-                                                Derived::situation_name + "'");
+            try {
+                if (this->_pyobj->is_none()) {
+                    this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr(Derived::pyclass)(situation.pyobj()));
+                    this->transition_value(transition_value);
+                    this->termination(termination);
+                    this->info(info);
+                } else {
+                    if (!py::hasattr(*(this->_pyobj), Derived::situation_name)) {
+                        throw std::invalid_argument(std::string("SKDECIDE exception: python ") + Derived::class_name +
+                                                    " object must provide '" + Derived::situation_name + "'");
+                    }
+                    if (!py::hasattr(*(this->_pyobj), "value")) {
+                        throw std::invalid_argument(std::string("SKDECIDE exception: python ") + Derived::class_name +
+                                                    " object must provide 'value'");
+                    }
+                    if (!py::hasattr(*(this->_pyobj), "termination")) {
+                        throw std::invalid_argument(std::string("SKDECIDE exception: python ") + Derived::class_name +
+                                                    " object must provide 'termination'");
+                    }
+                    if (!py::hasattr(*(this->_pyobj), "info")) {
+                        throw std::invalid_argument(std::string("SKDECIDE exception: python ") + Derived::class_name +
+                                                    " object must provide 'info'");
+                    }
                 }
-                if (!py::hasattr(*(this->_pyobj), "value")) {
-                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'value'");
-                }
-                if (!py::hasattr(*(this->_pyobj), "termination")) {
-                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'termination'");
-                }
-                if (!py::hasattr(*(this->_pyobj), "info")) {
-                    throw std::invalid_argument("SKDECIDE exception: python transition outcome object must provide 'info'");
-                }
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when importing ") + Derived::class_name + " data: " + std::string(e->what()));
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
             }
         }
 
@@ -807,16 +906,20 @@ public :
 
         virtual ~Outcome() {}
 
-        Situation situation() {
+        Situation situation() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return Situation(this->_pyobj->attr(Derived::situation_name));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting outcome's ") +
-                              Derived::situation_name + ": " + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
+                              Derived::situation_name + ": " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
+                              Derived::situation_name + ": " + std::string(e.what()));
+                throw;
             }
         }
 
@@ -825,23 +928,28 @@ public :
             try {
                 this->_pyobj->attr(Derived::situation_name) = s.pyobj();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting outcome's ") +
-                              Derived::situation_name + ": " + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting ") + Derived::class_name + "'s " +
+                              Derived::situation_name + ": " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
 
-        Value transition_value() {
+        Value transition_value() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return Value(this->_pyobj->attr("value"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting outcome's transition value: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s transition value: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s transition value: " + std::string(e.what()));
+                throw;
             }
         }
 
@@ -850,46 +958,57 @@ public :
             try {
                 this->_pyobj->attr("value") = tv.pyobj();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting outcome's cost: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting outcome's value: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
 
-        bool termination() {
+        Predicate termination() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                return py::cast<bool>(this->_pyobj->attr("termination"));
+                return Predicate(this->_pyobj->attr("termination"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting outcome's state: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s termination: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s termination: " + std::string(e.what()));
+                throw;
             }
         }
 
-        void termination(bool t) {
+        void termination(const Predicate& t) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
-                this->_pyobj->attr("termination") = py::bool_(t);
+                this->_pyobj->attr("termination") = t.pyobj();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting outcome's observation: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting ") +
+                              Derived::class_name + "'s termination: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
             }
         }
 
-        Info info() {
+        Info info() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 return Info(this->_pyobj.attr("info"));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting outcome's info: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s info: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting ") +
+                              Derived::class_name + "'s info: " + std::string(e.what()));
+                throw;
             }
         }
 
@@ -898,7 +1017,8 @@ public :
             try {
                 this->_pyobj->attr("info") = i.pyobj();
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when setting outcome's info: ") + e->what());
+                spdlog::error(std::string("SKDECIDE exception when setting ") +
+                              Derived::class_name + "'s info: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -918,6 +1038,12 @@ public :
 
         TransitionOutcome(const py::object& outcome)
         : Outcome<TransitionOutcome, State>(outcome) {}
+
+        TransitionOutcome(const State& state,
+                          const Value& transition_value,
+                          const Predicate& termination,
+                          const typename Outcome<TransitionOutcome, State>::Info& info)
+        : Outcome<TransitionOutcome, State>(state, transition_value, termination, info) {}
 
         TransitionOutcome(const Outcome<TransitionOutcome, State>& other)
         : Outcome<TransitionOutcome, State>(other) {}
@@ -945,6 +1071,12 @@ public :
 
         EnvironmentOutcome(const py::object& outcome)
         : Outcome<EnvironmentOutcome, Observation>(outcome) {}
+
+        EnvironmentOutcome(const Observation& observation,
+                           const Value& transition_value,
+                           const Predicate& termination,
+                           const typename Outcome<EnvironmentOutcome, Observation>::Info& info)
+        : Outcome<EnvironmentOutcome, Observation>(observation, transition_value, termination, info) {}
 
         EnvironmentOutcome(const Outcome<EnvironmentOutcome, Observation>& other)
         : Outcome<EnvironmentOutcome, Observation>(other) {}
@@ -977,8 +1109,15 @@ public :
 
         void construct() {
             typename GilControl<Texecution>::Acquire acquire;
-            if (this->_pyobj->is_none()) {
-                this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("DiscreteDistribution")(py::list()));
+            try {
+                if (this->_pyobj->is_none()) {
+                    this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("DiscreteDistribution")(py::list()));
+                }
+            } catch(const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when importing next state distribution data: ") + std::string(e->what()));
+                std::runtime_error err(e->what());
+                delete e;
+                throw err;
             }
         }
 
@@ -1001,12 +1140,19 @@ public :
 
             DistributionValue(const py::object& o) {
                 typename GilControl<Texecution>::Acquire acquire;
-                if (!py::isinstance<py::tuple>(o)) {
-                    throw std::invalid_argument("SKDECIDE exception: python next state distribution returned value should be an iterable over tuple objects");
+                try {
+                    if (!py::isinstance<py::tuple>(o)) {
+                        throw std::invalid_argument("SKDECIDE exception: python next state distribution returned value should be an iterable over tuple objects");
+                    }
+                    py::tuple t = o.cast<py::tuple>();
+                    _state = State(t[0]);
+                    _probability = t[1].cast<double>();
+                } catch(const py::error_already_set* e) {
+                    spdlog::error(std::string("SKDECIDE exception when importing distribution value data: ") + std::string(e->what()));
+                    std::runtime_error err(e->what());
+                    delete e;
+                    throw err;
                 }
-                py::tuple t = o.cast<py::tuple>();
-                _state = State(t[0]);
-                _probability = t[1].cast<double>();
             }
 
             DistributionValue(const DistributionValue& other) {
@@ -1063,11 +1209,14 @@ public :
                     throw std::invalid_argument("SKDECIDE exception: python next state distribution object must implement get_values()");
                 }
                 return NextStateDistributionValues(this->_pyobj->attr("get_values")());
-            } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + e->what());
+            } catch (const py::error_already_set* e) {
+                spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
+            } catch (const std::exception& e) {
+                spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e.what()));
+                throw;
             }
         }
     };
@@ -1081,55 +1230,134 @@ public :
     }
 
     ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_applicable_actions(m, thread_id);
+        try {
+            return _implementation->get_applicable_actions(m, thread_id);
+        } catch(const std::exception& e) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
+                          Memory::Data::class_name + " " +
+                          m.print() + ": " + std::string(e.what()));
+            throw;
+        }
     }
 
     template <typename TTagent = Tagent,
               typename TactionAgent = typename Action::Agent,
-              typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+              typename TagentApplicableActions = typename ApplicableActionSpace::Data>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
                                  const Action& other_agents_actions,
                                  const TactionAgent& agent,
                                  const std::size_t* thread_id = nullptr) {
-        return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);
+        try {
+            return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);
+        } catch(const std::exception& e) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
+                          Memory::Data::class_name + " " +
+                          m.print() + ": " + std::string(e.what()));
+            throw;
+        }
     }
 
     Observation reset(const std::size_t* thread_id = nullptr) {
-        return _implementation->reset(thread_id);
+        try {
+            return _implementation->reset(thread_id);
+        } catch(const std::exception& e) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + std::string(e.what()));
+            throw;
+        }
     }
 
     EnvironmentOutcome step(const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->step(e, thread_id);
+        try {
+            return _implementation->step(e, thread_id);
+        } catch(const std::exception& ex) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
+                          e.print() + ": " + ex.what());
+            throw;
+        }
     }
 
     EnvironmentOutcome sample(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->sample(m, e, thread_id);
+        try {
+            return _implementation->sample(m, e, thread_id);
+        } catch(const std::exception& ex) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when sampling from ") +
+                          Memory::Data::class_name +
+                          m.print() + " " + " with action " + e.print() + ": " + ex.what());
+            throw;
+        }
     }
 
     State get_next_state(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_next_state(m, e, thread_id);
+        try {
+            return _implementation->get_next_state(m, e, thread_id);
+        } catch(const std::exception& ex) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
+                          Memory::Data::class_name + " " +
+                          m.print() + " and applying action " + e.print() + ": " + ex.what());
+            throw;
+        }
     }
 
     NextStateDistribution get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_next_state_distribution(m, e, thread_id);
+        try {
+            return _implementation->get_next_state_distribution(m, e, thread_id);
+        } catch(const std::exception& ex) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
+                          Memory::Data::class_name + " " +
+                          m.print() + " and applying action " + e.print() + ": " + ex.what());
+            throw;
+        }
     }
 
     Value get_transition_value(const Memory& m, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
-        return _implementation->get_transition_value(m, e, sp, thread_id);
+        try {
+            return _implementation->get_transition_value(m, e, sp, thread_id);
+        } catch(const std::exception& ex) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
+                          m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
+            throw;
+        }
     }
 
     bool is_goal(const State& s, const std::size_t* thread_id = nullptr) {
-        return _implementation->is_goal(s, thread_id);
+        try {
+            return _implementation->is_goal(s, thread_id);
+        } catch(const std::exception& e) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
+                          s.print() + ": " + std::string(e.what()));
+            throw;
+        }
     }
 
     bool is_terminal(const State& s, const std::size_t* thread_id = nullptr) {
-        return _implementation->is_terminal(s, thread_id);
+        try {
+            return _implementation->is_terminal(s, thread_id);
+        } catch(const std::exception& e) {
+            typename GilControl<Texecution>::Acquire acquire;
+            spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
+                          s.print() + ": " + std::string(e.what()));
+            throw;
+        }
     }
 
     template <typename Tfunction, typename ... Types>
     std::unique_ptr<py::object> call(const std::size_t* thread_id, const Tfunction& func, const Types& ... args) {
-        return _implementation->call(thread_id, func, args...);
+        try {
+            return _implementation->call(thread_id, func, args...);
+        } catch(const std::exception& e) {
+            spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + std::string(e.what()));
+            throw;
+        }
     }
 
 protected :
@@ -1150,7 +1378,6 @@ protected :
             try {
                 return ApplicableActionSpace(_domain.attr("get_applicable_actions")(s.pyobj()));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in state ") + s.print() + ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -1159,7 +1386,7 @@ protected :
 
         template <typename TTagent = Tagent,
                   typename TactionAgent = typename Action::Agent,
-                  typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+                  typename TagentApplicableActions = typename ApplicableActionSpace::Data>
         std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
         get_agent_applicable_actions(const State& s,
                                      const Action& other_agents_actions,
@@ -1171,7 +1398,6 @@ protected :
                                                     other_agents_actions.pyobj(),
                                                     agent.pyobj()));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in state ") + s.print() + ": " + e->what());
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -1182,7 +1408,6 @@ protected :
             try {
                 return Observation(_domain.attr("reset")());
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1193,8 +1418,6 @@ protected :
             try {
                 return EnvironmentOutcome(_domain.attr("step")(e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
-                            e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1205,9 +1428,6 @@ protected :
             try {
                 return EnvironmentOutcome(_domain.attr("sample")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when sampling from ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + " with action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1218,9 +1438,6 @@ protected :
             try {
                 return State(_domain.attr("get_next_state")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1231,9 +1448,6 @@ protected :
             try {
                 return NextStateDistribution(_domain.attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + " and applying action " + e.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1244,8 +1458,6 @@ protected :
             try {
                 return Value(_domain.attr("get_transition_value")(m.pyobj(), e.pyobj(), sp.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
-                            m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1256,8 +1468,6 @@ protected :
             try {
                 return py::cast<bool>(_domain.attr("is_goal")(s.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
-                            s.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1268,8 +1478,6 @@ protected :
             try {
                 return py::cast<bool>(_domain.attr("is_terminal")(s.pyobj()));
             } catch(const py::error_already_set* ex) {
-                spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
-                            s.print() + ": " + ex->what());
                 std::runtime_error err(ex->what());
                 delete ex;
                 throw err;
@@ -1281,7 +1489,6 @@ protected :
             try {
                 return std::make_unique<py::object>(func(_domain, args..., py::none()));
             } catch(const py::error_already_set* e) {
-                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: " + std::string(e->what())));
                 std::runtime_error err(e->what());
                 delete e;
                 throw err;
@@ -1313,7 +1520,7 @@ protected :
                     }
                 } catch (const nng::exception& e) {
                     std::string err_msg("SKDECIDE exception when trying to make pipeline connections with the python parallel domain: ");
-                    err_msg += e.who() + std::string(": ") + e.what();
+                    err_msg += e.who() + std::string(": ") + std::string(e.what());
                     spdlog::error(err_msg);
                     throw std::runtime_error(err_msg);
                 }
@@ -1360,7 +1567,7 @@ protected :
                     }
                 } catch (const nng::exception& e) {
                     std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
-                    err_msg += e.who() + std::string(": ") + e.what();
+                    err_msg += e.who() + std::string(": ") + std::string(e.what());
                     spdlog::error(err_msg);
                     typename GilControl<Texecution>::Acquire acquire;
                     id.reset();
@@ -1395,145 +1602,80 @@ protected :
         }
 
         ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr) {
-            try {
-                return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", m.pyobj()));
-            } catch(const std::exception& e) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + ": " + e.what());
-                throw;
-            }
+            return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", m.pyobj()));
         }
 
         template <typename TTagent = Tagent,
                   typename TactionAgent = typename Action::Agent,
-                  typename TagentApplicableActions = typename ApplicableActionSpace::Element>
+                  typename TagentApplicableActions = typename ApplicableActionSpace::Data>
         std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
         get_agent_applicable_actions(const Memory& m,
                                      const Action& other_agents_actions,
                                      const TactionAgent& agent,
                                      const std::size_t* thread_id = nullptr) {
-            try {
-                return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
-                                                                        m.pyobj(),
-                                                                        other_agents_actions.pyobj(),
-                                                                        agent.pyobj()));
-            } catch(const std::exception& e) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + ": " + e.what());
-                throw;
-            }
+            return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
+                                                                    m.pyobj(),
+                                                                    other_agents_actions.pyobj(),
+                                                                    agent.pyobj()));
         }
 
         Observation reset(const std::size_t* thread_id = nullptr) {
-            try {
-                return Observation(launch(thread_id, "reset"));
-            } catch(const std::exception& e) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + e.what());
-                throw;
-            }
+            return Observation(launch(thread_id, "reset"));
         }
 
         EnvironmentOutcome step(const Event& e, const std::size_t* thread_id = nullptr) {
-            try {
-                return EnvironmentOutcome(launch(thread_id, "step", e.pyobj()));
-            } catch(const std::exception& ex) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
-                              e.print() + ": " + ex.what());
-                throw;
-            }
+            return EnvironmentOutcome(launch(thread_id, "step", e.pyobj()));
         }
 
         EnvironmentOutcome sample(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-            try {
-                return EnvironmentOutcome(launch(thread_id, "sample", m.pyobj(), e.pyobj()));
-            } catch(const std::exception& ex) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when sampling from ") +
-                              Memory::Element::class_name +
-                              m.print() + " " + " with action " + e.print() + ": " + ex.what());
-                throw;
-            }
+            return EnvironmentOutcome(launch(thread_id, "sample", m.pyobj(), e.pyobj()));
         }
 
         State get_next_state(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-            try {
-                return State(launch(thread_id, "get_next_state", m.pyobj(), e.pyobj()));
-            } catch(const std::exception& ex) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + " and applying action " + e.print() + ": " + ex.what());
-                throw;
-            }
+            return State(launch(thread_id, "get_next_state", m.pyobj(), e.pyobj()));
         }
 
         NextStateDistribution get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
-            try {
-                return NextStateDistribution(launch(thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
-            } catch(const std::exception& ex) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
-                              Memory::Element::class_name + " " +
-                              m.print() + " and applying action " + e.print() + ": " + ex.what());
-                throw;
-            }
+            return NextStateDistribution(launch(thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
         }
 
         Value get_transition_value(const Memory& m, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
-            try {
-                return Value(launch(thread_id, "get_transition_value", m.pyobj(), e.pyobj(), sp.pyobj()));
-            } catch(const std::exception& ex) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
-                              m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
-                throw;
-            }
+            return Value(launch(thread_id, "get_transition_value", m.pyobj(), e.pyobj(), sp.pyobj()));
         }
 
         bool is_goal(const State& s, const std::size_t* thread_id = nullptr) {
+            std::unique_ptr<py::object> r = launch(thread_id, "is_goal", s.pyobj());
+            typename GilControl<Texecution>::Acquire acquire;
             try {
-                std::unique_ptr<py::object> r = launch(thread_id, "is_goal", s.pyobj());
-                typename GilControl<Texecution>::Acquire acquire;
                 bool rr = py::cast<bool>(*r);
                 r.reset();
                 return rr;
-            } catch(const std::exception& e) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
-                              s.print() + ": " + e.what());
-                throw;
+            } catch(const py::error_already_set* e) {
+                std::runtime_error err(e->what());
+                r.reset();
+                delete e;
+                throw err;
             }
         }
 
         bool is_terminal(const State& s, const std::size_t* thread_id = nullptr) {
+            std::unique_ptr<py::object> r = launch(thread_id, "is_terminal", s.pyobj());
+            typename GilControl<Texecution>::Acquire acquire;
             try {
-                std::unique_ptr<py::object> r = launch(thread_id, "is_terminal", s.pyobj());
-                typename GilControl<Texecution>::Acquire acquire;
                 bool rr = py::cast<bool>(*r);
                 r.reset();
                 return rr;
-            } catch(const std::exception& e) {
-                typename GilControl<Texecution>::Acquire acquire;
-                spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
-                              s.print() + ": " + e.what());
-                throw;
+            } catch(const py::error_already_set* e) {
+                std::runtime_error err(e->what());
+                r.reset();
+                delete e;
+                throw err;
             }
         }
 
         template <typename Tfunction, typename ... Types>
         std::unique_ptr<py::object> call(const std::size_t* thread_id, const Tfunction& func, const Types& ... args) {
-            try {
-                return do_launch(thread_id, func, args...);
-            } catch(const std::exception& e) {
-                spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + e.what());
-                throw;
-            }
+            return do_launch(thread_id, func, args...);
         }
 
         py::object _domain;

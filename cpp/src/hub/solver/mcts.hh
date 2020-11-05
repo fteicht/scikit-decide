@@ -1071,13 +1071,13 @@ public :
                     (*_back_propagator)(*this, &thread_id, *sn);
                     update_epsilon_moving_average(root_node, root_node_record_value);
                     _nb_rollouts++;
-                } while (((etime = elapsed_time(start_time)) < _time_budget) &&
-                         (_nb_rollouts < _rollout_budget) &&
-                         (_epsilon_moving_average > _epsilon) &&
-                         _watchdog(etime, _nb_rollouts,
+                } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
                                    (_epsilons.size() >= _epsilon_moving_average_window) ?
                                         (double) _epsilon_moving_average :
-                                        std::numeric_limits<double>::infinity()));
+                                        std::numeric_limits<double>::infinity()) &&
+                         (etime < _time_budget) &&
+                         (_nb_rollouts < _rollout_budget) &&
+                         (_epsilon_moving_average > _epsilon));
             });
 
             auto end_time = std::chrono::high_resolution_clock::now();

@@ -32,16 +32,16 @@ class MARTDPSolver {
 public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
-    typedef typename Domain::State::Agent SAgent;
-    typedef typename Domain::State::Element AgentState;
+    typedef typename Domain::State::Agent Agent;
+    typedef typename Domain::State::Data AgentState;
     typedef typename Domain::Event Action;
-    typedef typename Domain::Action::Agent AAgent;
-    typedef typename Domain::Action::Element AgentAction;
+    typedef typename Domain::Action::Data AgentAction;
     typedef typename Domain::Value Value;
+    typedef typename Domain::Predicate Predicate;
     typedef typename Domain::EnvironmentOutcome EnvironmentOutcome;
     typedef Texecution_policy ExecutionPolicy;
 
-    typedef std::function<bool (Domain&, const State&)> GoalCheckerFunctor;
+    typedef std::function<Predicate (Domain&, const State&)> GoalCheckerFunctor;
     typedef std::function<std::pair<Value, Action> (Domain&, const State&)> HeuristicFunctor;
     typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
 
@@ -57,7 +57,7 @@ public :
                  double epsilon = 0.0, // not a stopping criterion by default
                  double discount = 1.0,
                  double action_choice_noise = 0.1,
-                 double dead_end_cost = 10e4,
+                 const double& dead_end_cost = 10e4,
                  bool debug_logs = false,
                  const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return true; })
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
@@ -130,10 +130,14 @@ public :
             Node& root_node = const_cast<Node&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
             if (si.second) {
-                initialize_node(root_node, false);
+                Predicate termination;
+                for (auto a: _agents) {
+                    termination[a] = false;
+                }
+                initialize_node(root_node, termination);
             }
 
-            if (root_node.goal) { // problem already solved from this state (was present in _graph and already solved)
+            if (root_node.all_goal) { // problem already solved from this state (was present in _graph and already solved)
                 spdlog::info("MARTDP finished to solve from state " + s.print() + " [goal state]");
                 return;
             }
@@ -147,16 +151,16 @@ public :
                 if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
 
                 _nb_rollouts++;
-                double root_node_record_value = root_node.best_value;
+                double root_node_record_value = root_node.all_value;
                 trial(&root_node, start_time);
                 update_epsilon_moving_average(root_node, root_node_record_value);
-            } while(((etime = elapsed_time(start_time)) < _time_budget) &&
-                    (_nb_rollouts < _rollout_budget) &&
-                    (_epsilon_moving_average > _epsilon) &&
-                    _watchdog(etime, _nb_rollouts,
+            } while(_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
                               (_epsilons.size() >= _epsilon_moving_average_window) ?
                                     _epsilon_moving_average :
-                                    std::numeric_limits<double>::infinity()));
+                                    std::numeric_limits<double>::infinity()) &&
+                    (etime < _time_budget) &&
+                    (_nb_rollouts < _rollout_budget) &&
+                    (_epsilon_moving_average > _epsilon));
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
@@ -172,7 +176,7 @@ public :
 
     bool is_solution_defined_for(const State& s) const {
         auto si = _graph.find(s);
-        if ((si == _graph.end()) || !(si->best_action)) {
+        if ((si == _graph.end()) || !(si->action)) {
             return false;
         } else {
             return true;
@@ -181,10 +185,10 @@ public :
 
     const Action& get_best_action(const State& s) {
         auto si = _graph.find(s);
-        if ((si == _graph.end()) || !(si->best_action)) {
+        if ((si == _graph.end()) || !(si->action)) {
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         } else {
-            return *(si->best_action);
+            return *(si->action);
         }
     }
 
@@ -193,7 +197,7 @@ public :
         if (si == _graph.end()) {
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
-        return si->best_value;
+        return si->all_value;
     }
 
     std::size_t get_nb_of_explored_states() const {
@@ -207,10 +211,10 @@ public :
     typename MapTypeDeducer<State, std::pair<Action, double>>::Map policy() const {
         typename MapTypeDeducer<State, std::pair<Action, double>>::Map p;
         for (auto& n : _graph) {
-            if (n.best_action) {
+            if (n.action) {
                 p.insert(std::make_pair(n.state,
-                                        std::make_pair(*n.best_action,
-                                        (double) n.best_value)));
+                                        std::make_pair(*n.action,
+                                        (double) n.all_value)));
             }
         }
         return p;
@@ -241,14 +245,19 @@ private :
 
     struct Node {
         State state;
-        std::unique_ptr<Action> best_action;
-        double best_value;
-        double goal;
+        std::unique_ptr<Action> action;
+        std::vector<double> value;
+        double all_value;
+        std::vector<bool> goal;
+        bool all_goal;
+        std::vector<bool> termination;
+        bool all_termination;
 
         Node(const State& s)
         : state(s),
-          best_value(std::numeric_limits<double>::infinity()),
-          goal(false) {}
+          all_value(std::numeric_limits<double>::infinity()),
+          all_goal(false),
+          all_termination(false) {}
         
         struct Key {
             const State& operator()(const Node& sn) const { return sn.state; }
@@ -260,7 +269,7 @@ private :
     Node* _current_state;
     std::size_t _nb_rollouts;
     std::size_t _nb_agents;
-    std::vector<SAgent> _agents;
+    std::vector<Agent> _agents;
     std::vector<std::vector<std::size_t>> _agents_orders;
     std::bernoulli_distribution _action_choice_noise_dist;
 
@@ -314,10 +323,10 @@ private :
                             }
                             
                             // Is the agent's optimal action applicable ?
-                            if ((s->best_action) &&
-                                other_agent_aa.contains((*(s->best_action))[_agents[other_agent]]) &&
+                            if ((s->action) &&
+                                other_agent_aa.contains((*(s->action))[_agents[other_agent]]) &&
                                 !(_action_choice_noise_dist(*_gen))) { // choose it with high probability
-                                    (*agent_actions)[_agents[other_agent]] = (*s->best_action)[_agents[other_agent]];
+                                    (*agent_actions)[_agents[other_agent]] = (*s->action)[_agents[other_agent]];
                             } else {
                                 (*agent_actions)[_agents[other_agent]] = other_agent_aa.sample();
                             }
@@ -326,7 +335,7 @@ private :
 
                     if (feasible) {
                         // make the transition and compute Q-value
-                        double qval = q_value(s->state, *agent_actions);
+                        double qval = q_value(s->state, *agent_actions).first;
                         if (_debug_logs) spdlog::debug("Found joint applicable action " + agent_actions->print() +
                                                        " with Q-value=" + StringConverter::from(qval));
 
@@ -350,37 +359,43 @@ private :
             }
         }
 
-        s->best_action = std::move(best_action);
-        s->best_value = best_value;
-        return s->best_action; // best_action is nullptr if state is a dead-end
+        s->action = std::move(best_action);
+        s->all_value = best_value;
+        return s->action; // action is nullptr if state is a dead-end
     }
 
-    double q_value(const State& state, const Action& action) {
+    // void depth_first_search_applicable_action(const State& state, const Agent& agent) {
+
+    // }
+
+    std::pair<double, std::vector<double>> q_value(const State& state, const Action& action) {
         if (_debug_logs) spdlog::debug("Computing Q-value of (" + state.print() + ", " + action.print() + ")");
-        double q_value = 0;
+
+        std::pair<double, std::vector<double>> qval;
+        qval.first= 0.0;
+        qval.second.resize(_nb_agents, 0.0);
 
         for (std::size_t transition_sample = 0 ; transition_sample < _nb_transition_samples ; transition_sample++) {
             EnvironmentOutcome outcome = _domain.sample(state, action);
             Value tval = outcome.transition_value();
             auto i = _graph.emplace(outcome.observation());
             Node& next_node = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+
             if (i.second) { // new node
                 initialize_node(next_node, outcome.termination());
             }
-            double sample_value = 0.0;
-            for (auto a : _agents) {
-                sample_value += tval[a].cost();
+            
+            for (std::size_t a = 0 ; a < _nb_agents ; a++) {
+                double aval = (tval[_agents[a]].cost() + (_discount * next_node.value[a])) / ((double) _nb_transition_samples);
+                qval.second[a] += aval;
+                qval.first += aval;
             }
-            sample_value += _discount * next_node.best_value;
-            q_value += sample_value;
         }
 
-        q_value /= _nb_transition_samples;
-
         if (_debug_logs) spdlog::debug("Updated Q-value of action " + action.print() +
-                                        " with value " + StringConverter::from(q_value));
+                                        " with value " + StringConverter::from(qval.first));
 
-        return q_value;
+        return qval;
     }
 
     Node* pick_next_state(const Node* s, const Action& a) {
@@ -393,31 +408,48 @@ private :
         if (_debug_logs) spdlog::debug("Picked next state " + next_node.state.print() +
                                        " from state " + s->state.print() +
                                         " and action " + a.print());
-        if (outcome.termination()) {
-            if (_debug_logs) spdlog::debug("Next state is a dead-end.");
+        if (next_node.all_termination) {
+            if (_debug_logs) spdlog::debug(std::string("Next state is a ") +
+                                           ((next_node.all_goal)?("goal"):("dead-end")) + ".");
             return nullptr;
         } else {
             return &next_node;
         }
     }
 
-    void initialize_node(Node& n, bool termination) {
+    void initialize_node(Node& n, const Predicate& termination) {
         if (_debug_logs) {
             spdlog::debug("Initializing new state node " + n.state.print());
         }
-        n.best_value = 0.0;
-        n.goal = _goal_checker(_domain, n.state);
-        if (!n.goal) {
-            if (termination) { // dead-end state
-                n.best_value = _dead_end_cost;
+
+        n.value.resize(_nb_agents, 0.0);
+        n.all_value = 0.0;
+        n.goal.resize(_nb_agents, false);
+        n.all_goal = true;
+        n.termination.resize(_nb_agents, false);
+        n.all_termination = true;
+
+        Predicate g = _goal_checker(_domain, n.state);
+        auto h = _heuristic(_domain, n.state);
+        
+        n.action = std::make_unique<Action>();
+
+        for (std::size_t a = 0 ; a < _nb_agents ; a++) {
+            n.goal[a] = g[_agents[a]];
+            n.all_goal = n.all_goal && n.goal[a];
+            n.termination[a] = termination[_agents[a]];
+            n.all_termination = n.all_termination && n.termination[a];
+
+            if (n.goal[a]) {
+                n.value[a] = 0.0;
+            } else if (n.termination[a]) { // dead-end state
+                    n.value[a] = _dead_end_cost / ((double) _nb_agents);
             } else {
-                auto h = _heuristic(_domain, n.state);
-                n.best_action = std::make_unique<Action>();
-                for (auto a : _agents) {
-                    n.best_value += h.first[a].cost();
-                    (*n.best_action)[a] = h.second[a];
-                }
+                n.value[a] = h.first[_agents[a]].cost();
+                (*n.action)[_agents[a]] = h.second[_agents[a]];
             }
+
+            n.all_value += n.value[a];
         }
     }
 
@@ -432,7 +464,7 @@ private :
                (depth < _max_depth)) {
             depth++;
 
-            if (cs->goal) {
+            if (cs->all_goal) {
                 if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print() +
                                                 ExecutionPolicy::print_thread());
                 found_goal = true;
@@ -440,9 +472,7 @@ private :
             
             std::unique_ptr<Action>& action = greedy_action(cs);
 
-            if (!action) { // dead-end state
-                cs->best_value = _dead_end_cost;
-            } else {
+            if (action) { // next state is neither a goal nor a dead-end
                 cs = pick_next_state(cs, *action);
             }
         }
@@ -450,7 +480,7 @@ private :
 
     void update_epsilon_moving_average(const Node& node, const double& node_record_value) {
         if (_epsilon_moving_average_window > 0) {
-            double current_epsilon = std::fabs(node_record_value - node.best_value);
+            double current_epsilon = std::fabs(node_record_value - node.all_value);
             if (_epsilons.size() < _epsilon_moving_average_window) {
                 _epsilon_moving_average += current_epsilon / ((double) _epsilon_moving_average_window);
             } else {

@@ -19,12 +19,11 @@ from skdecide.domains import Domain
 from skdecide.hub.space.gym import ListSpace, EnumSpace, MultiDiscreteSpace
 from skdecide.utils import load_registered_solver, rollout
 
-from skdecide.hub.solver.mahd import MAHD
 from skdecide.hub.solver.martdp import MARTDP
-# from skdecide.hub.solver.mcts import HMCTS
+from skdecide.hub.solver.mcts import HMCTS
 from skdecide.hub.solver.lrtdp import LRTDP
 
-from typing import Any, Callable, NamedTuple, Optional, Tuple
+from typing import Any, NamedTuple, Optional
 import matplotlib.pyplot as plt
 import random as rd
 import operator as op
@@ -85,7 +84,7 @@ class D(Domain, MultiAgent, Sequential, Simulation, Actions, DeterministicInitia
 
 class MultiAgentMaze(D):
 
-    def __init__(self, maze_str = DEFAULT_MAZE, nb_agents = 4, flatten_transition_values = False):
+    def __init__(self, maze_str = DEFAULT_MAZE, nb_agents = 4, flatten_data = False):
         maze = []
         for y, line in enumerate(maze_str.strip().split('\n')):
             line = line.rstrip()
@@ -101,7 +100,7 @@ class MultiAgentMaze(D):
         self._num_rows = len(maze)
         self._ax = None
         self._nb_agents = nb_agents
-        self._flatten_transition_values = flatten_transition_values
+        self._flatten_data = flatten_data
         self._generate_agents()
 
     def get_agents(self):
@@ -195,9 +194,10 @@ class MultiAgentMaze(D):
             else:
                 occupied_cells[tuple(next_state[agent])] = agent
         return TransitionOutcome(state=HashableDict(next_state),
-                                 value=transition_value if not self._flatten_transition_values else \
+                                 value=transition_value if not self._flatten_data else \
                                        Value(cost=sum(v.cost for a, v in transition_value.items())),
-                                 termination=dead_end,
+                                 termination=dead_end if not self._flatten_data else \
+                                             all(t for a, t in dead_end.items()),
                                  info=None)
 
     def get_agent_applicable_actions(self, memory: D.T_memory[D.T_state],
@@ -425,7 +425,7 @@ if __name__ == '__main__':
                     'multiagent_domain_factory': lambda: MultiAgentMaze(),
                     'singleagent_domain_factory': lambda multiagent_domain, agent: SingleAgentMaze(multiagent_domain._maze, multiagent_domain._agents_goals[agent]),
                     'multiagent_solver_kwargs': {
-                        'domain_factory': lambda: MultiAgentMaze(flatten_transition_values=True),
+                        'domain_factory': lambda: MultiAgentMaze(flatten_data=True),
                         'time_budget': 600000,
                         'max_depth': 500,
                         'epsilon_moving_average_window': 10,
