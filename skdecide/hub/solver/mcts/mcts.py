@@ -42,6 +42,8 @@ try:
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.0,  # not a stopping criterion by default
                      discount: float = 1.0,
                      uct_mode: bool = True,
                      ucb_constant: float = 1.0 / sqrt(2.0),
@@ -60,7 +62,8 @@ try:
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float], bool] = None) -> None:
             ParallelSolver.__init__(self,
                                     domain_factory=domain_factory,
                                     parallel=parallel,
@@ -70,6 +73,8 @@ try:
             self._time_budget = time_budget
             self._rollout_budget = rollout_budget
             self._max_depth = max_depth
+            self._epsilon_moving_average_window = epsilon_moving_average_window
+            self._epsilon = epsilon
             self._discount = discount
             self._uct_mode = uct_mode
             self._ucb_constant = ucb_constant
@@ -87,6 +92,7 @@ try:
             self._back_propagator = back_propagator
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
+            self._watchdog = watchdog
             self._lambdas = [self._custom_policy, self._heuristic]
             self._ipc_notify = True
         
@@ -96,6 +102,8 @@ try:
                                        time_budget=self._time_budget,
                                        rollout_budget=self._rollout_budget,
                                        max_depth=self._max_depth,
+                                       epsilon_moving_average_window=self._epsilon_moving_average_window,
+                                       epsilon=self._epsilon,
                                        discount=self._discount,
                                        uct_mode=self._uct_mode,
                                        ucb_constant=self._ucb_constant,
@@ -118,7 +126,9 @@ try:
                                        rollout_policy=self._rollout_policy,
                                        back_propagator=self._back_propagator,
                                        parallel=self._parallel,
-                                       debug_logs=self._debug_logs)
+                                       debug_logs=self._debug_logs,
+                                       watchdog=self._watchdog if self._watchdog is not None else \
+                                                lambda elapsed_time, number_rollouts, epsilon_moving_average: True)
             self._solver.clear()
 
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
@@ -168,6 +178,8 @@ try:
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.0,  # not a stopping criterion by default
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: bool = False,
@@ -185,11 +197,14 @@ try:
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False):
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float], bool] = None):
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,
                              max_depth=max_depth,
+                             epsilon_moving_average_window=epsilon_moving_average_window,
+                             epsilon=epsilon,
                              discount=discount,
                              uct_mode=False,  # otherwise would select random policy rollouts!
                              ucb_constant=ucb_constant,
@@ -208,7 +223,8 @@ try:
                              continuous_planning=continuous_planning,
                              parallel=parallel,
                              shared_memory_proxy=shared_memory_proxy,
-                             debug_logs=debug_logs)
+                             debug_logs=debug_logs,
+                             watchdog=watchdog)
             self._compound_heuristic = heuristic
             self._heuristic_confidence = heuristic_confidence
             self._action_choice_noise = action_choice_noise
@@ -244,6 +260,8 @@ try:
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.0,  # not a stopping criterion by default
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: float = False,
@@ -254,11 +272,14 @@ try:
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float], bool] = None) -> None:
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,
                              max_depth=max_depth,
+                             epsilon_moving_average_window=epsilon_moving_average_window,
+                             epsilon=epsilon,
                              discount=discount,
                              uct_mode=True,
                              ucb_constant=ucb_constant,
@@ -270,7 +291,8 @@ try:
                              continuous_planning=continuous_planning,
                              parallel=parallel,
                              shared_memory_proxy=shared_memory_proxy,
-                             debug_logs=debug_logs)
+                             debug_logs=debug_logs,
+                             watchdog=watchdog)
     
 
     class HUCT(HMCTS):
@@ -281,6 +303,8 @@ try:
                      time_budget: int = 3600000,
                      rollout_budget: int = 100000,
                      max_depth: int = 1000,
+                     epsilon_moving_average_window: int = 100,
+                     epsilon: float = 0.0,  # not a stopping criterion by default
                      discount: float = 1.0,
                      ucb_constant: float = 1.0 / sqrt(2.0),
                      online_node_garbage: float = False,
@@ -292,11 +316,14 @@ try:
                      continuous_planning: bool = True,
                      parallel: bool = False,
                      shared_memory_proxy = None,
-                     debug_logs: bool = False) -> None:
+                     debug_logs: bool = False,
+                     watchdog: Callable[[int, int, float], bool] = None) -> None:
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,
                              max_depth=max_depth,
+                             epsilon_moving_average_window=epsilon_moving_average_window,
+                             epsilon=epsilon,
                              discount=discount,
                              uct_mode=False,  # otherwise would select random policy rollouts!
                              ucb_constant=ucb_constant,
@@ -309,7 +336,8 @@ try:
                              continuous_planning=continuous_planning,
                              parallel=parallel,
                              shared_memory_proxy=shared_memory_proxy,
-                             debug_logs=debug_logs)
+                             debug_logs=debug_logs,
+                             watchdog=watchdog)
     
 except ImportError:
     sys.path = record_sys_path

@@ -59,7 +59,7 @@ public :
                  double action_choice_noise = 0.1,
                  double dead_end_cost = 10e4,
                  bool debug_logs = false,
-                 const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return false; })
+                 const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return true; })
         : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
           _time_budget(time_budget), _rollout_budget(rollout_budget), _max_depth(max_depth),
           _max_feasibility_trials(max_feasibility_trials), _nb_transition_samples(nb_transition_samples),
@@ -141,22 +141,22 @@ public :
             _nb_rollouts = 0;
             _epsilon_moving_average = 0.0;
             _epsilons.clear();
+            std::size_t etime = 0;
                 
-            while (true) {
+            do {
                 if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
 
                 _nb_rollouts++;
                 double root_node_record_value = root_node.best_value;
                 trial(&root_node, start_time);
                 update_epsilon_moving_average(root_node, root_node_record_value);
-
-                std::size_t etime = elapsed_time(start_time);
-                if ((etime > _time_budget) || (_nb_rollouts > _rollout_budget) ||
-                    (_epsilon_moving_average < _epsilon) ||
+            } while(((etime = elapsed_time(start_time)) < _time_budget) &&
+                    (_nb_rollouts < _rollout_budget) &&
+                    (_epsilon_moving_average > _epsilon) &&
                     _watchdog(etime, _nb_rollouts,
-                              (_epsilons.size() >= _epsilon_moving_average_window)?_epsilon_moving_average:std::numeric_limits<double>::infinity()))
-                    break;
-            }
+                              (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                    _epsilon_moving_average :
+                                    std::numeric_limits<double>::infinity()));
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();

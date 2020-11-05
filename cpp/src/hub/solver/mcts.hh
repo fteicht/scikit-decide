@@ -988,14 +988,18 @@ public :
     };
 
     typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
 
     MCTSSolver(Domain& domain,
                std::size_t time_budget = 3600000,
                std::size_t rollout_budget = 100000,
                std::size_t max_depth = 1000,
+               std::size_t epsilon_moving_average_window = 100,
+               double epsilon = 0.0, // not a stopping criterion by default
                double discount = 1.0,
                bool online_node_garbage = false,
                bool debug_logs = false,
+               const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return true; },
                std::unique_ptr<TreePolicy> tree_policy = std::make_unique<TreePolicy>(),
                std::unique_ptr<Expander> expander = std::make_unique<Expander>(),
                std::unique_ptr<ActionSelectorOptimization> action_selector_optimization = std::make_unique<ActionSelectorOptimization>(),
@@ -1003,17 +1007,24 @@ public :
                std::unique_ptr<RolloutPolicy> rollout_policy = std::make_unique<RolloutPolicy>(),
                std::unique_ptr<BackPropagator> back_propagator = std::make_unique<BackPropagator>())
     : _domain(domain),
-      _time_budget(time_budget), _rollout_budget(rollout_budget),
-      _max_depth(max_depth), _discount(discount), _nb_rollouts(0),
+      _time_budget(time_budget),
+      _rollout_budget(rollout_budget),
+      _max_depth(max_depth),
+      _epsilon_moving_average_window(epsilon_moving_average_window),
+      _epsilon(epsilon),
+      _discount(discount),
+      _nb_rollouts(0),
       _online_node_garbage(online_node_garbage),
       _debug_logs(debug_logs),
+      _watchdog(watchdog),
       _tree_policy(std::move(tree_policy)),
       _expander(std::move(expander)),
       _action_selector_optimization(std::move(action_selector_optimization)),
       _action_selector_execution(std::move(action_selector_execution)),
       _rollout_policy(std::move(rollout_policy)),
       _back_propagator(std::move(back_propagator)),
-      _current_state(nullptr) {
+      _current_state(nullptr),
+      _epsilon_moving_average(0) {
         if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
             std::string msg = "Debug logs requested for algorithm MCTS but global log level is higher than debug";
             if (spdlog::get_level() <= spdlog::level::warn) {
@@ -1040,6 +1051,8 @@ public :
             spdlog::info("Running " + ExecutionPolicy::print_type() + " MCTS solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             _nb_rollouts = 0;
+            _epsilon_moving_average = 0.0;
+            _epsilons.clear();
 
             // Get the root node
             auto si = _graph.emplace(s);
@@ -1048,17 +1061,23 @@ public :
             boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
 
             std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const std::size_t& thread_id) {
-                
-                while (elapsed_time(start_time) < _time_budget && _nb_rollouts < _rollout_budget) {
-                
+                std::size_t etime = 0;
+
+                do {
                     std::size_t depth = 0;
+                    double root_node_record_value = root_node.value;
                     StateNode* sn = (*_tree_policy)(*this, &thread_id, *_expander, *_action_selector_optimization, root_node, depth);
                     (*_rollout_policy)(*this, &thread_id, *sn, depth);
                     (*_back_propagator)(*this, &thread_id, *sn);
+                    update_epsilon_moving_average(root_node, root_node_record_value);
                     _nb_rollouts++;
-
-                }
-                
+                } while (((etime = elapsed_time(start_time)) < _time_budget) &&
+                         (_nb_rollouts < _rollout_budget) &&
+                         (_epsilon_moving_average > _epsilon) &&
+                         _watchdog(etime, _nb_rollouts,
+                                   (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                        (double) _epsilon_moving_average :
+                                        std::numeric_limits<double>::infinity()));
             });
 
             auto end_time = std::chrono::high_resolution_clock::now();
@@ -1186,10 +1205,13 @@ private :
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
+    atomic_size_t _epsilon_moving_average_window;
+    atomic_double _epsilon;
     atomic_double _discount;
     atomic_size_t _nb_rollouts;
     bool _online_node_garbage;
     atomic_bool _debug_logs;
+    WatchdogFunctor _watchdog;
 
     ExecutionPolicy _execution_policy;
     TransitionMode _transition_mode;
@@ -1208,6 +1230,10 @@ private :
     std::unique_ptr<std::mt19937> _gen;
     typename ExecutionPolicy::Mutex _gen_mutex;
     typename ExecutionPolicy::Mutex _time_mutex;
+    typename ExecutionPolicy::Mutex _epsilons_protect;
+
+    atomic_double _epsilon_moving_average;
+    std::list<double> _epsilons;
 
     void compute_reachable_subgraph(StateNode* node, std::unordered_set<StateNode*>& subgraph) {
         std::unordered_set<StateNode*> frontier;
@@ -1249,6 +1275,23 @@ private :
         // Second pass: actually remove nodes in root_subgraph but not in child_subgraph
         for (auto& n : removed_subgraph) {
             _graph.erase(StateNode(n->state));
+        }
+    }
+
+    void update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+        if (_epsilon_moving_average_window > 0) {
+            double current_epsilon = std::fabs(node_record_value - node.value);
+            _execution_policy.protect([this, &current_epsilon](){
+                if (_epsilons.size() < _epsilon_moving_average_window) {
+                    _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                              (current_epsilon / ((double) _epsilon_moving_average_window));
+                } else {
+                    _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                              ((current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window));
+                    _epsilons.pop_front();
+                }
+                _epsilons.push_back(current_epsilon);
+            }, _epsilons_protect);
         }
     }
 

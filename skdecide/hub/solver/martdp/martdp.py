@@ -74,7 +74,7 @@ try:
             self._continuous_planning = continuous_planning
             self._debug_logs = debug_logs
             if watchdog is None:
-                self._watchdog = lambda elapsed_time, number_rollouts, epsilon_moving_average: False
+                self._watchdog = lambda elapsed_time, number_rollouts, epsilon_moving_average: True
             else:
                 self._watchdog = watchdog
             self._ipc_notify = True

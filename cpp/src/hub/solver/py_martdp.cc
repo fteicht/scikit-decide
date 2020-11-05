@@ -191,10 +191,9 @@ private :
                         debug_logs,
                         [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& epsilon_moving_average)->bool{
                             if (_watchdog) {
-                                typename skdecide::GilControl<Texecution>::Acquire acquire;
                                 return _watchdog(elapsed_time, nb_rollouts, epsilon_moving_average);
                             } else {
-                                return false;
+                                return true;
                             }
                         });
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,

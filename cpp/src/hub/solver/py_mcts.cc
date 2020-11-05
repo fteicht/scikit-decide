@@ -102,11 +102,14 @@ public :
 
     typedef std::function<py::object (py::object&, const py::object&, const py::object&)> CustomPolicyFunctor;
     typedef std::function<py::object (py::object&, const py::object&, const py::object&)> HeuristicFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
 
     PyMCTSSolver(py::object& domain,
                  std::size_t time_budget = 3600000,
                  std::size_t rollout_budget = 100000,
                  std::size_t max_depth = 1000,
+                 std::size_t epsilon_moving_average_window = 100,
+                 double epsilon = 0.0, // not a stopping criterion by default
                  double discount = 1.0,
                  bool uct_mode = true,
                  double ucb_constant = 1.0 / std::sqrt(2.0),
@@ -123,12 +126,15 @@ public :
                  PyMCTSOptions::RolloutPolicy rollout_policy = PyMCTSOptions::RolloutPolicy::Random,
                  PyMCTSOptions::BackPropagator back_propagator = PyMCTSOptions::BackPropagator::Graph,
                  bool parallel = false,
-                 bool debug_logs = false) {
+                 bool debug_logs = false,
+                 const WatchdogFunctor& watchdog = nullptr) {
         if (uct_mode) {
             initialize_transition_mode(domain,
                                        time_budget,
                                        rollout_budget,
                                        max_depth,
+                                       epsilon_moving_average_window,
+                                       epsilon,
                                        discount,
                                        ucb_constant,
                                        online_node_garbage,
@@ -144,12 +150,15 @@ public :
                                        PyMCTSOptions::RolloutPolicy::Random,
                                        PyMCTSOptions::BackPropagator::Graph,
                                        parallel,
-                                       debug_logs);
+                                       debug_logs,
+                                       watchdog);
         } else {
             initialize_transition_mode(domain,
                                        time_budget,
                                        rollout_budget,
                                        max_depth,
+                                       epsilon_moving_average_window,
+                                       epsilon,
                                        discount,
                                        ucb_constant,
                                        online_node_garbage,
@@ -165,7 +174,8 @@ public :
                                        rollout_policy,
                                        back_propagator,
                                        parallel,
-                                       debug_logs);
+                                       debug_logs,
+                                       watchdog);
         }
     }
 
@@ -241,6 +251,8 @@ private :
                        std::size_t time_budget,
                        std::size_t rollout_budget,
                        std::size_t max_depth,
+                       std::size_t epsilon_moving_average_window,
+                       double epsilon,
                        double discount,
                        double ucb_constant,
                        bool online_node_garbage,
@@ -248,9 +260,11 @@ private :
                        const HeuristicFunctor& heuristic,
                        double state_expansion_rate,
                        double action_expansion_rate,
-                       bool debug_logs)
+                       bool debug_logs,
+                       const WatchdogFunctor& watchdog)
             : _custom_policy(custom_policy),
-              _heuristic(heuristic) {
+              _heuristic(heuristic),
+              _watchdog(watchdog) {
 
             _domain = std::make_unique<PyMCTSDomain<Texecution>>(domain, (PyMCTSSolver*) nullptr, (TtransitionMode<PyMCTSSolver>*) nullptr);
             _solver = std::make_unique<PyMCTSSolver>(
@@ -258,9 +272,12 @@ private :
                         time_budget,
                         rollout_budget,
                         max_depth,
+                        epsilon_moving_average_window,
+                        epsilon,
                         discount,
                         online_node_garbage,
                         debug_logs,
+                        init_watchdog(),
                         init_tree_policy(),
                         init_expander(_heuristic, state_expansion_rate, action_expansion_rate),
                         init_action_selector<TactionSelectorOptimization<PyMCTSSolver>>(ucb_constant),
@@ -274,6 +291,16 @@ private :
         }
 
         virtual ~Implementation() {}
+
+        WatchdogFunctor init_watchdog() {
+            return [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& epsilon_moving_average)->bool{
+                if (_watchdog) {
+                    return _watchdog(elapsed_time, nb_rollouts, epsilon_moving_average);
+                } else {
+                    return true;
+                }
+            };
+        }
 
         std::unique_ptr<TtreePolicy<PyMCTSSolver>> init_tree_policy() {
             return std::make_unique<TtreePolicy<PyMCTSSolver>>();
@@ -418,6 +445,7 @@ private :
 
         CustomPolicyFunctor _custom_policy;
         HeuristicFunctor _heuristic;
+        WatchdogFunctor _watchdog;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -430,6 +458,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -445,7 +475,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (transition_mode) {
             case PyMCTSOptions::TransitionMode::Step:
                 initialize_tree_policy<skdecide::StepTransitionMode>(
@@ -453,6 +484,8 @@ private :
                                             time_budget,
                                             rollout_budget,
                                             max_depth,
+                                            epsilon_moving_average_window,
+                                            epsilon,
                                             discount,
                                             ucb_constant,
                                             online_node_garbage,
@@ -467,7 +500,8 @@ private :
                                             rollout_policy,
                                             back_propagator,
                                             parallel,
-                                            debug_logs);
+                                            debug_logs,
+                                            watchdog);
                 break;
             
             case PyMCTSOptions::TransitionMode::Sample:
@@ -476,6 +510,8 @@ private :
                                             time_budget,
                                             rollout_budget,
                                             max_depth,
+                                            epsilon_moving_average_window,
+                                            epsilon,
                                             discount,
                                             ucb_constant,
                                             online_node_garbage,
@@ -490,7 +526,8 @@ private :
                                             rollout_policy,
                                             back_propagator,
                                             parallel,
-                                            debug_logs);
+                                            debug_logs,
+                                            watchdog);
                 break;
             
             case PyMCTSOptions::TransitionMode::Distribution:
@@ -499,6 +536,8 @@ private :
                                             time_budget,
                                             rollout_budget,
                                             max_depth,
+                                            epsilon_moving_average_window,
+                                            epsilon,
                                             discount,
                                             ucb_constant,
                                             online_node_garbage,
@@ -513,7 +552,8 @@ private :
                                             rollout_policy,
                                             back_propagator,
                                             parallel,
-                                            debug_logs);
+                                            debug_logs,
+                                            watchdog);
                 break;
             
             default:
@@ -528,6 +568,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -542,7 +584,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (tree_policy) {
             case PyMCTSOptions::TreePolicy::Default:
                 initialize_expander<TtransitionMode,
@@ -551,6 +594,8 @@ private :
                                         time_budget,
                                         rollout_budget,
                                         max_depth,
+                                        epsilon_moving_average_window,
+                                        epsilon,
                                         discount,
                                         ucb_constant,
                                         online_node_garbage,
@@ -564,7 +609,8 @@ private :
                                         rollout_policy,
                                         back_propagator,
                                         parallel,
-                                        debug_logs);
+                                        debug_logs,
+                                        watchdog);
                 break;
             
             default:
@@ -580,6 +626,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -593,7 +641,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (expander) {
             case PyMCTSOptions::Expander::Full:
                 initialize_action_selector_optimization<TtransitionMode,
@@ -603,6 +652,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -615,7 +666,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             case PyMCTSOptions::Expander::Partial:
@@ -626,6 +678,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -638,7 +692,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             default:
@@ -655,6 +710,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -667,7 +724,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (action_selector_optimization) {
             case PyMCTSOptions::ActionSelector::UCB1:
                 initialize_action_selector_execution<TtransitionMode,
@@ -678,6 +736,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -689,7 +749,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             case PyMCTSOptions::ActionSelector::BestQValue:
@@ -701,6 +762,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -712,7 +775,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             default:
@@ -730,6 +794,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -741,7 +807,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (action_selector_execution) {
             case PyMCTSOptions::ActionSelector::UCB1:
                 initialize_rollout_policy<TtransitionMode,
@@ -753,6 +820,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -763,7 +832,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             case PyMCTSOptions::ActionSelector::BestQValue:
@@ -776,6 +846,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -786,7 +858,8 @@ private :
                                 rollout_policy,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             default:
@@ -805,6 +878,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -815,7 +890,8 @@ private :
                 PyMCTSOptions::RolloutPolicy rollout_policy,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (rollout_policy) {
             case PyMCTSOptions::RolloutPolicy::Random:
                 initialize_back_propagator<TtransitionMode,
@@ -828,6 +904,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -837,7 +915,8 @@ private :
                                 action_expansion_rate,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             case PyMCTSOptions::RolloutPolicy::Custom:
@@ -851,6 +930,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -860,7 +941,8 @@ private :
                                 action_expansion_rate,
                                 back_propagator,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             default:
@@ -880,6 +962,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -889,7 +973,8 @@ private :
                 double action_expansion_rate,
                 PyMCTSOptions::BackPropagator back_propagator,
                 bool parallel,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         switch (back_propagator) {
             case PyMCTSOptions::BackPropagator::Graph:
                 initialize_execution<TtransitionMode,
@@ -903,6 +988,8 @@ private :
                                 time_budget,
                                 rollout_budget,
                                 max_depth,
+                                epsilon_moving_average_window,
+                                epsilon,
                                 discount,
                                 ucb_constant,
                                 online_node_garbage,
@@ -911,7 +998,8 @@ private :
                                 state_expansion_rate,
                                 action_expansion_rate,
                                 parallel,
-                                debug_logs);
+                                debug_logs,
+                                watchdog);
                 break;
             
             default:
@@ -932,6 +1020,8 @@ private :
                 std::size_t time_budget ,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -940,7 +1030,8 @@ private :
                 double state_expansion_rate,
                 double action_expansion_rate,
                 bool parallel ,
-                bool debug_logs) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         if (parallel) {
             initialize<skdecide::ParallelExecution,
                        TtransitionMode,
@@ -953,6 +1044,8 @@ private :
                                         time_budget,
                                         rollout_budget,
                                         max_depth,
+                                        epsilon_moving_average_window,
+                                        epsilon,
                                         discount,
                                         ucb_constant,
                                         online_node_garbage,
@@ -960,7 +1053,8 @@ private :
                                         heuristic,
                                         state_expansion_rate,
                                         action_expansion_rate,
-                                        debug_logs);
+                                        debug_logs,
+                                        watchdog);
         } else {
             initialize<skdecide::SequentialExecution,
                        TtransitionMode,
@@ -973,6 +1067,8 @@ private :
                                         time_budget,
                                         rollout_budget,
                                         max_depth,
+                                        epsilon_moving_average_window,
+                                        epsilon,
                                         discount,
                                         ucb_constant,
                                         online_node_garbage,
@@ -980,7 +1076,8 @@ private :
                                         heuristic,
                                         state_expansion_rate,
                                         action_expansion_rate,
-                                        debug_logs);
+                                        debug_logs,
+                                        watchdog);
         }
     }
 
@@ -997,6 +1094,8 @@ private :
                 std::size_t time_budget,
                 std::size_t rollout_budget,
                 std::size_t max_depth,
+                std::size_t epsilon_moving_average_window,
+                double epsilon,
                 double discount,
                 double ucb_constant,
                 bool online_node_garbage,
@@ -1004,7 +1103,8 @@ private :
                 const HeuristicFunctor& heuristic,
                 double state_expansion_rate,
                 double action_expansion_rate,
-                bool debug_logs = false) {
+                bool debug_logs,
+                const WatchdogFunctor& watchdog) {
         _implementation = std::make_unique<Implementation<Texecution,
                                                           TtransitionMode,
                                                           TtreePolicy,
@@ -1017,6 +1117,8 @@ private :
                                     time_budget,
                                     rollout_budget,
                                     max_depth,
+                                    epsilon_moving_average_window,
+                                    epsilon,
                                     discount,
                                     ucb_constant,
                                     online_node_garbage,
@@ -1024,7 +1126,8 @@ private :
                                     heuristic,
                                     state_expansion_rate,
                                     action_expansion_rate,
-                                    debug_logs);
+                                    debug_logs,
+                                    watchdog);
     }
 };
 
@@ -1061,6 +1164,8 @@ void init_pymcts(py::module& m) {
                           std::size_t,
                           std::size_t,
                           std::size_t,
+                          std::size_t,
+                          double,
                           double,
                           bool,
                           double,
@@ -1077,11 +1182,14 @@ void init_pymcts(py::module& m) {
                           PyMCTSOptions::RolloutPolicy,
                           PyMCTSOptions::BackPropagator,
                           bool,
-                          bool>(),
+                          bool,
+                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&)>&>(),
                  py::arg("domain"),
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
+                 py::arg("epsilon_moving_average_window")=100,
+                 py::arg("epsilon")=0.0, // not a stopping criterion by default
                  py::arg("discount")=1.0,
                  py::arg("uct_mode")=true,
                  py::arg("ucb_constant")=1.0/std::sqrt(2.0),
@@ -1098,7 +1206,8 @@ void init_pymcts(py::module& m) {
                  py::arg("rollout_policy")=PyMCTSOptions::RolloutPolicy::Random,
                  py::arg("back_propagator")=PyMCTSOptions::BackPropagator::Graph,
                  py::arg("parallel")=false,
-                 py::arg("debug_logs")=false)
+                 py::arg("debug_logs")=false,
+                 py::arg("watchdog")=nullptr)
             .def("clear", &PyMCTSSolver::clear)
             .def("solve", &PyMCTSSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &PyMCTSSolver::is_solution_defined_for, py::arg("state"))

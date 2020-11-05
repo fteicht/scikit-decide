@@ -367,7 +367,11 @@ class SingleAgentMaze(D):
     
 def martdp_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
     print('Epsilon moving average: {}'.format(epsilon_moving_average))
-    return epsilon_moving_average < 0.1
+    return epsilon_moving_average > 0.1
+
+def mcts_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
+    print('Epsilon moving average: {}'.format(epsilon_moving_average))
+    return epsilon_moving_average > 0.01
 
 
 if __name__ == '__main__':
@@ -421,14 +425,16 @@ if __name__ == '__main__':
                         'domain_factory': lambda: MultiAgentMaze(flatten_transition_values=True),
                         'time_budget': 600000,
                         'max_depth': 500,
+                        'epsilon_moving_average_window': 10,
                         'heuristic_confidence': 1000,
                         'action_choice_noise': 0.1,
                         'expander': HMCTS.Options.Expander.Partial,
-                        'state_expansion_rate': 0.1,
-                        'action_expansion_rate': 0.1,
+                        'state_expansion_rate': 0.01,
+                        'action_expansion_rate': 0.01,
                         'transition_mode': HMCTS.Options.TransitionMode.Sample,
                         'online_node_garbage': True,
                         'continuous_planning': False,
+                        'watchdog': lambda etime, nbr, ema: mcts_watchdog(etime, nbr, ema),
                         'debug_logs': False
                     },
                     'singleagent_solver_kwargs': {
