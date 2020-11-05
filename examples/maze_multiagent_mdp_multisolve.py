@@ -4,7 +4,6 @@
 
 from enum import Enum
 
-from skdecide.hub.solver.mcts.mcts import HMCTS
 from skdecide.builders.domain.observability import FullyObservable
 from skdecide.builders.domain.renderability import Renderable
 from skdecide.builders.domain.goals import Goals
@@ -22,7 +21,7 @@ from skdecide.utils import load_registered_solver, rollout
 
 from skdecide.hub.solver.mahd import MAHD
 from skdecide.hub.solver.martdp import MARTDP
-from skdecide.hub.solver.mcts import HMCTS
+# from skdecide.hub.solver.mcts import HMCTS
 from skdecide.hub.solver.lrtdp import LRTDP
 
 from typing import Any, Callable, NamedTuple, Optional, Tuple
@@ -80,6 +79,7 @@ class D(Domain, MultiAgent, Sequential, Simulation, Actions, DeterministicInitia
     T_observation = T_state  # Type of observations
     T_event = StrDict[AgentAction]  # Type of events
     T_value = StrDict[Value]  # Type of transition values (rewards or costs)
+    T_predicate = StrDict[bool]  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -143,11 +143,11 @@ class MultiAgentMaze(D):
         return HashableDict(self._agents_starts)
     
     def _state_sample(self, memory: D.T_memory[D.T_state], action: D.T_agent[D.T_concurrency[D.T_event]]) -> \
-            TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
+            TransitionOutcome[D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         next_state = {}
         transition_value = {}
-        occupied_cells = set()
-        dead_end = False
+        occupied_cells = {}
+        dead_end = {a: False for a in memory}
 
         for agent, state in memory.items():
             if state == self._agents_goals[agent]:
@@ -190,8 +190,10 @@ class MultiAgentMaze(D):
             next_state[agent] = rd.choices([next_state_1, next_state_2, next_state_3], [0.8, 0.1, 0.1], k=1)[0]
             transition_value[agent] = Value(cost=1)
             if tuple(next_state[agent]) in occupied_cells:
-                dead_end = True
-            occupied_cells.add(tuple(next_state[agent]))
+                dead_end[agent] = True
+                dead_end[occupied_cells[tuple(next_state[agent])]] = True
+            else:
+                occupied_cells[tuple(next_state[agent])] = agent
         return TransitionOutcome(state=HashableDict(next_state),
                                  value=transition_value if not self._flatten_transition_values else \
                                        Value(cost=sum(v.cost for a, v in transition_value.items())),
@@ -284,6 +286,7 @@ class D(Domain, SingleAgent, Sequential, UncertainTransitions, Actions, Initiali
     T_observation = T_state  # Type of observations
     T_event = AgentAction  # Type of events
     T_value = Value  # Type of transition values (rewards or costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -349,7 +352,7 @@ class SingleAgentMaze(D):
         else:
             return Value(cost=1)
         
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self._is_goal(state)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:

@@ -37,7 +37,7 @@ try:
                      domain_factory: Callable[[], Domain],
                      state_features: Callable[[Domain, D.T_state], Any],
                      heuristic: Callable[[Domain, D.T_state], D.T_agent[Value[D.T_value]]],
-                     termination_checker: Callable[[Domain, D.T_state], bool],
+                     termination_checker: Callable[[Domain, D.T_state], D.T_agent[D.T_predicate]],
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False) -> None:

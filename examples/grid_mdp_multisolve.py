@@ -32,6 +32,7 @@ class D(GoalMDPDomain, Actions):
     T_observation = T_state  # Type of observations
     T_event = Action  # Type of events
     T_value = float  # Type of transition values (rewards or costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -83,7 +84,7 @@ class MyDomain(D):
         # every move costs 1
         return Value(cost=abs(next_state.x - memory.x) + abs(next_state.y - memory.y))
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self._is_goal(state)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:

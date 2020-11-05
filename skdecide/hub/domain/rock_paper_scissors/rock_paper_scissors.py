@@ -27,6 +27,7 @@ class D(Domain, MultiAgent, Sequential, Environment, UnrestrictedActions, Initia
     T_observation = Move  # Type of observations
     T_event = Move  # Type of events
     T_value = int  # Type of transition values (rewards or costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -36,7 +37,7 @@ class RockPaperScissors(D):
         self._max_moves = max_moves
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
 
         # Get players' moves
         move1, move2 = action['player1'], action['player2']

@@ -30,6 +30,7 @@ class D(GoalPOMDPDomain, DeterministicTransitions, UnrestrictedActions, Transfor
     T_observation = Score  # Type of observations
     T_event = Row  # Type of events (a row guess in this case)
     T_value = int  # Type of transition values (costs)
+    T_predicate = bool  # Type of logical checks
     T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -56,7 +57,7 @@ class MasterMind(D):
     def _is_transition_value_dependent_on_next_state_(self) -> bool:
         return False
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self._is_goal(state.score)
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:

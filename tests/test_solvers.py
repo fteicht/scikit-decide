@@ -46,6 +46,7 @@ class D(DeterministicPlanningDomain, UnrestrictedActions):
         T_observation = T_state  # Type of observations
         T_event = Action  # Type of events
         T_value = float  # Type of transition values (rewards or costs)
+        T_predicate = bool  # Type of logical checks
         T_info = None  # Type of additional information given as part of an environment outcome
 
 
@@ -79,7 +80,7 @@ class GridDomain(D):
 
         return Value(cost=cost)
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         return self._is_goal(state) or state.s >= 100
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:

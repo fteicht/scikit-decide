@@ -47,7 +47,7 @@ class GymDomain(D):
         return self._gym_env.reset()
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
         return TransitionOutcome(state=obs, value=Value(reward=reward), termination=done, info=info)
 
@@ -135,7 +135,7 @@ class GymDomainHashable(GymDomain):
         return GymDomainStateProxy(super()._state_reset())
 
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         outcome = super()._state_step(action)
         outcome.state = GymDomainStateProxy(outcome.state)
         return outcome
@@ -201,7 +201,7 @@ class DeterministicInitializedGymDomain(D):
         return self._initial_state
     
     def _state_step(self, action: D.T_agent[D.T_concurrency[D.T_event]]) -> TransitionOutcome[
-            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_info]]:
+            D.T_state, D.T_agent[Value[D.T_value]], D.T_agent[D.T_predicate], D.T_agent[D.T_info]]:
         obs, reward, done, info = self._gym_env.step(action)
         if self._set_state is not None and self._get_state is not None:
             state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
@@ -727,7 +727,7 @@ class DeterministicGymDomain(D):
         #         self._are_same(self._gym_env.action_space, action, last_action))
         return outcome.value
 
-    def _is_terminal(self, state: D.T_state) -> bool:
+    def _is_terminal(self, state: D.T_state) -> D.T_agent[D.T_predicate]:
         outcome = state._context[3]
         return outcome.termination if outcome is not None else False
     
