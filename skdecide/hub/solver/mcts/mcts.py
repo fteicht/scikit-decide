@@ -63,7 +63,7 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False,
-                     watchdog: Callable[[int, int, float], bool] = None) -> None:
+                     watchdog: Callable[[int, int, float, float], bool] = None) -> None:
             ParallelSolver.__init__(self,
                                     domain_factory=domain_factory,
                                     parallel=parallel,
@@ -128,7 +128,7 @@ try:
                                        parallel=self._parallel,
                                        debug_logs=self._debug_logs,
                                        watchdog=self._watchdog if self._watchdog is not None else \
-                                                lambda elapsed_time, number_rollouts, epsilon_moving_average: True)
+                                                lambda elapsed_time, number_rollouts, best_value, epsilon_moving_average: True)
             self._solver.clear()
 
         def _solve_domain(self, domain_factory: Callable[[], D]) -> None:
@@ -198,7 +198,7 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False,
-                     watchdog: Callable[[int, int, float], bool] = None):
+                     watchdog: Callable[[int, int, float, float], bool] = None):
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,
@@ -273,7 +273,7 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False,
-                     watchdog: Callable[[int, int, float], bool] = None) -> None:
+                     watchdog: Callable[[int, int, float, float], bool] = None) -> None:
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,
@@ -317,7 +317,7 @@ try:
                      parallel: bool = False,
                      shared_memory_proxy = None,
                      debug_logs: bool = False,
-                     watchdog: Callable[[int, int, float], bool] = None) -> None:
+                     watchdog: Callable[[int, int, float, float], bool] = None) -> None:
             super().__init__(domain_factory=domain_factory,
                              time_budget=time_budget,
                              rollout_budget=rollout_budget,

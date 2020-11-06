@@ -259,47 +259,44 @@ public :
     };
 
     template <typename DData, typename TTagent, typename Enable = void>
-    struct AgentData {};
+    struct DataDeducer {};
 
     template <typename DData, typename TTagent>
-    struct AgentData<DData, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> : public DData {
+    struct DataDeducer<DData, TTagent,
+                      typename std::enable_if<std::is_same<TTagent, SingleAgent>::value>::type> {
+        typedef DData Data;
         typedef void Agent;
-        typedef AgentData<DData, TTagent> Data;
-        AgentData() : DData() {}
-        AgentData(std::unique_ptr<py::object>&& ad) : DData(std::move(ad)) {}
-        AgentData(const py::object& ad) : DData(ad) {}
-        AgentData(const AgentData& other) : DData(other) {}
-        AgentData& operator=(const AgentData& other) { static_cast<DData&>(*this) = other; return *this; }
-        virtual ~AgentData() {}
+        typedef Data AgentData;
     };
 
     template <typename DData, typename TTagent>
-    struct AgentData<DData, TTagent,
-                     typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<DData, py::dict> {
-        // AgentData inherits from pyObj<> to manage its python object but Data is passed to
-        // PyObj as template parameter to print Data::class_name when managing AgentData objects
+    struct DataDeducer<DData, TTagent,
+                      typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<DData, py::dict> {
+        // DataDeducer inherits from pyObj<> to manage its python object but DData is passed to
+        // PyObj as template parameter to print DData::class_name when managing DataDeducer objects
 
-        // Data are dict values
-        typedef DData Data;
+        typedef DataDeducer<DData, TTagent> Data;
 
-        AgentData() : PyObj<Data, py::dict>() {}
+        // AgentData are dict values
+        typedef DData AgentData;
 
-        AgentData(std::unique_ptr<py::object>&& ad)
-        : PyObj<Data, py::dict>(std::move(ad)) {}
+        DataDeducer() : PyObj<AgentData, py::dict>() {}
 
-        AgentData(const py::object& ad)
-        : PyObj<Data, py::dict>(ad) {}
+        DataDeducer(std::unique_ptr<py::object>&& ad)
+        : PyObj<AgentData, py::dict>(std::move(ad)) {}
+
+        DataDeducer(const py::object& ad)
+        : PyObj<AgentData, py::dict>(ad) {}
         
-        AgentData(const AgentData& other)
-        : PyObj<Data, py::dict>(other) {}
+        DataDeducer(const DataDeducer& other)
+        : PyObj<AgentData, py::dict>(other) {}
 
-        AgentData& operator=(const AgentData& other) {
-            static_cast<PyObj<Data, py::dict>&>(*this) = other;
+        DataDeducer& operator=(const DataDeducer& other) {
+            static_cast<PyObj<AgentData, py::dict>&>(*this) = other;
             return *this;
         }
 
-        virtual ~AgentData() {}
+        virtual ~DataDeducer() {}
 
         std::size_t size() const {
             typename GilControl<Texecution>::Acquire acquire;
@@ -338,19 +335,19 @@ public :
                 return Agent(py::cast<py::object>((*(this->_pyobj))[0]));
             }
 
-            Data data() {
+            AgentData data() {
                 typename GilControl<Texecution>::Acquire acquire;
-                return Data(py::cast<py::object>((*(this->_pyobj))[1]));
+                return AgentData(py::cast<py::object>((*(this->_pyobj))[1]));
             }
         };
 
         // To access elements with dict operator []
-        // Objective #1: access Data's methods
+        // Objective #1: access AgentData's methods
         // Objective #2: modify internal Python object with operator =
         struct DataAccessor : public PyObj<DataAccessor, py::detail::item_accessor>,
-                              public Data {
+                              public AgentData {
             explicit DataAccessor(const py::detail::item_accessor& a)
-            : PyObj<DataAccessor, py::detail::item_accessor>(a), Data(a) {}
+            : PyObj<DataAccessor, py::detail::item_accessor>(a), AgentData(a) {}
             
             // We shall not assign data accessor lvalues because statements like
             // 'auto d = my_data[my_key]; d = other_data;' would assign 'other_data'
@@ -358,19 +355,19 @@ public :
             // (since one thinks to reason about the actual data but not the
             // dictionary accessor...).
             DataAccessor& operator=(DataAccessor&& other) & = delete;
-            void operator=(const Data& other) & = delete;
+            void operator=(const AgentData& other) & = delete;
 
             DataAccessor& operator=(DataAccessor&& other) && {
-                std::forward<DataAccessor&&>(*this) = static_cast<const Data&>(other);
+                std::forward<DataAccessor&&>(*this) = static_cast<const AgentData&>(other);
                 return *this;
             }
 
-            void operator=(const Data& other) && {
+            void operator=(const AgentData& other) && {
                 typename GilControl<Texecution>::Acquire acquire;
                     std::forward<py::detail::item_accessor&&>(
                         *static_cast<PyObj<DataAccessor, py::detail::item_accessor>*>(this)->_pyobj) =
                             other.pyobj();
-                *static_cast<Data*>(this)->_pyobj = other.pyobj();
+                *static_cast<AgentData*>(this)->_pyobj = other.pyobj();
             }
             
             virtual ~DataAccessor() {}
@@ -380,12 +377,12 @@ public :
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!(this->_pyobj->contains(a.pyobj()))) {
-                    (*(this->_pyobj))[a.pyobj()] = Data().pyobj();
+                    (*(this->_pyobj))[a.pyobj()] = AgentData().pyobj();
                 }
                 return DataAccessor((*(this->_pyobj))[a.pyobj()]);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
-                              Data::class_name + " of agent " + a.print() +
+                              AgentData::class_name + " of agent " + a.print() +
                               ": " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
@@ -393,18 +390,18 @@ public :
             }
         }
 
-        const Data operator[](const Agent& a) const {
+        const AgentData operator[](const Agent& a) const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!(this->_pyobj->contains(a.pyobj()))) {
                     throw std::runtime_error(std::string("SKDECIDE exception when getting ") +
-                                             Data::class_name + " of agent " + a.print() +
+                                             AgentData::class_name + " of agent " + a.print() +
                                              ": agent not in dictionary");
                 }
-                return Data((*(this->_pyobj))[a.pyobj()]);
+                return AgentData((*(this->_pyobj))[a.pyobj()]);
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when getting ") +
-                              Data::class_name + " of agent " + a.print() +
+                              AgentData::class_name + " of agent " + a.print() +
                               ": " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 delete e;
@@ -424,6 +421,7 @@ public :
     };
 
     struct StateBase : public PyObj<StateBase> {
+        typedef StateBase AgentData;
         static constexpr char class_name[] = "state";
         StateBase() : PyObj<StateBase>() {}
         StateBase(std::unique_ptr<py::object>&& s) : PyObj<StateBase>(std::move(s)) {}
@@ -432,9 +430,10 @@ public :
         StateBase& operator=(const StateBase& other) { static_cast<PyObj<StateBase>&>(*this) = other; return *this; }
         virtual ~StateBase() {}
     };
-    typedef AgentData<StateBase, Tagent> State;
+    typedef typename DataDeducer<StateBase, Tagent>::Data State;
 
     struct ObservationBase : public PyObj<ObservationBase> {
+        typedef ObservationBase AgentData;
         static constexpr char class_name[] = "observation";
         ObservationBase() : PyObj<ObservationBase>() {}
         ObservationBase(std::unique_ptr<py::object>&& o) : PyObj<ObservationBase>(std::move(o)) {}
@@ -447,12 +446,13 @@ public :
     typedef typename std::conditional<std::is_same<Tobservability, FullyObservable>::value,
                                         State,
                                         typename std::conditional<std::is_same<Tobservability, PartiallyObservable>::value,
-                                                                    AgentData<ObservationBase, Tagent>,
+                                                                    typename DataDeducer<ObservationBase, Tagent>::Data,
                                                                     void
                                                                  >::type
                                      >::type Observation;
     
     struct MemoryState : PyObj<MemoryState, py::list> {
+        typedef State AgentData;
         static constexpr char class_name[] = "memory";
 
         MemoryState() : PyObj<MemoryState, py::list>() {}
@@ -495,6 +495,7 @@ public :
                                      >::type Memory;
 
     struct EventBase : public PyObj<EventBase> {
+        typedef EventBase AgentData;
         static constexpr char class_name[] = "event";
         EventBase() : PyObj<EventBase>() {}
         EventBase(std::unique_ptr<py::object>&& e) : PyObj<EventBase>(std::move(e)) {}
@@ -505,6 +506,7 @@ public :
     };
 
     struct ActionBase : public PyObj<ActionBase> {
+        typedef ActionBase AgentData;
         static constexpr char class_name[] = "action";
         ActionBase() : PyObj<ActionBase>() {}
         ActionBase(std::unique_ptr<py::object>&& a) : PyObj<ActionBase>(std::move(a)) {}
@@ -515,19 +517,20 @@ public :
     };
 
     typedef typename std::conditional<std::is_same<Tcontrollability, FullyControllable>::value,
-                                        AgentData<ActionBase, Tagent>,
+                                        typename DataDeducer<ActionBase, Tagent>::Data,
                                         void
                                      >::type Action;
 
     typedef typename std::conditional<std::is_same<Tcontrollability, FullyControllable>::value,
                                         Action,
                                         typename std::conditional<std::is_same<Tcontrollability, PartiallyControllable>::value,
-                                                                    AgentData<EventBase, Tagent>,
+                                                                    typename DataDeducer<EventBase, Tagent>::Data,
                                                                     void
                                                                  >::type
                                      >::type Event;
 
     struct ApplicableActionSpaceBase : public PyObj<ApplicableActionSpaceBase> {
+        typedef ApplicableActionSpaceBase AgentData;
         static constexpr char class_name[] = "applicable action space";
 
         ApplicableActionSpaceBase() : PyObj<ApplicableActionSpaceBase>() {
@@ -582,14 +585,14 @@ public :
 
             virtual ~ApplicableActionSpaceElements() {}
 
-            PyIter<typename Action::Data> begin() const {
+            PyIter<typename Action::AgentData> begin() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<typename Action::Data>(this->_pyobj->begin());
+                return PyIter<typename Action::AgentData>(this->_pyobj->begin());
             }
 
-            PyIter<typename Action::Data> end() const {
+            PyIter<typename Action::AgentData> end() const {
                 typename GilControl<Texecution>::Acquire acquire;
-                return PyIter<typename Action::Data> (this->_pyobj->end());
+                return PyIter<typename Action::AgentData> (this->_pyobj->end());
             }
 
             bool empty() const {
@@ -648,13 +651,13 @@ public :
             }
         }
 
-        typename Action::Data sample() const {
+        typename Action::AgentData sample() const {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!py::hasattr(*(this->_pyobj), "sample")) {
                     throw std::invalid_argument("SKDECIDE exception: python applicable action object must implement sample()");
                 } else {
-                    return typename Action::Data(this->_pyobj->attr("sample")());
+                    return typename Action::AgentData(this->_pyobj->attr("sample")());
                 }
             } catch(const py::error_already_set* e) {
                 spdlog::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e->what()));
@@ -667,7 +670,7 @@ public :
             }
         }
 
-        bool contains(const typename Action::Data& action) {
+        bool contains(const typename Action::AgentData& action) {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (!py::hasattr(*(this->_pyobj), "contains")) {
@@ -683,9 +686,10 @@ public :
             }
         }
     };
-    typedef AgentData<ApplicableActionSpaceBase, Tagent> ApplicableActionSpace;
+    typedef typename DataDeducer<ApplicableActionSpaceBase, Tagent>::Data ApplicableActionSpace;
 
     struct ValueBase : public PyObj<ValueBase> {
+        typedef ValueBase AgentData;
         static constexpr char class_name[] = "value";
 
         ValueBase() : PyObj<ValueBase>() { construct(); }
@@ -772,9 +776,10 @@ public :
             }
         }
     };
-    typedef AgentData<ValueBase, Tagent> Value;
+    typedef typename DataDeducer<ValueBase, Tagent>::Data Value;
 
     struct PredicateBase : public PyObj<PredicateBase, py::bool_> {
+        typedef PredicateBase AgentData;
         static constexpr char class_name[] = "predicate";
 
         PredicateBase() : PyObj<PredicateBase, py::bool_>() { construct(); }
@@ -810,7 +815,7 @@ public :
             predicate(p);
         }
     };
-    typedef AgentData<PredicateBase, Tagent> Predicate;
+    typedef typename DataDeducer<PredicateBase, Tagent>::Data Predicate;
 
     template <typename Derived, typename Situation>
     struct Outcome : public PyObj<Derived> {
@@ -839,7 +844,7 @@ public :
                 }
             }
         };
-        typedef AgentData<InfoBase, Tagent> Info;
+        typedef typename DataDeducer<InfoBase, Tagent>::Data Info;
 
         Outcome() : PyObj<Derived>() { construct(); }
 
@@ -1235,15 +1240,15 @@ public :
         } catch(const std::exception& e) {
             typename GilControl<Texecution>::Acquire acquire;
             spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
-                          Memory::Data::class_name + " " +
+                          Memory::AgentData::class_name + " " +
                           m.print() + ": " + std::string(e.what()));
             throw;
         }
     }
 
     template <typename TTagent = Tagent,
-              typename TactionAgent = typename Action::Agent,
-              typename TagentApplicableActions = typename ApplicableActionSpace::Data>
+              typename TactionAgent = typename DataDeducer<ActionBase, Tagent>::Agent,
+              typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
                                  const Action& other_agents_actions,
@@ -1254,7 +1259,7 @@ public :
         } catch(const std::exception& e) {
             typename GilControl<Texecution>::Acquire acquire;
             spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
-                          Memory::Data::class_name + " " +
+                          Memory::AgentData::class_name + " " +
                           m.print() + ": " + std::string(e.what()));
             throw;
         }
@@ -1287,7 +1292,7 @@ public :
         } catch(const std::exception& ex) {
             typename GilControl<Texecution>::Acquire acquire;
             spdlog::error(std::string("SKDECIDE exception when sampling from ") +
-                          Memory::Data::class_name +
+                          Memory::AgentData::class_name +
                           m.print() + " " + " with action " + e.print() + ": " + ex.what());
             throw;
         }
@@ -1299,7 +1304,7 @@ public :
         } catch(const std::exception& ex) {
             typename GilControl<Texecution>::Acquire acquire;
             spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
-                          Memory::Data::class_name + " " +
+                          Memory::AgentData::class_name + " " +
                           m.print() + " and applying action " + e.print() + ": " + ex.what());
             throw;
         }
@@ -1311,7 +1316,7 @@ public :
         } catch(const std::exception& ex) {
             typename GilControl<Texecution>::Acquire acquire;
             spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
-                          Memory::Data::class_name + " " +
+                          Memory::AgentData::class_name + " " +
                           m.print() + " and applying action " + e.print() + ": " + ex.what());
             throw;
         }
@@ -1385,8 +1390,8 @@ protected :
         }
 
         template <typename TTagent = Tagent,
-                  typename TactionAgent = typename Action::Agent,
-                  typename TagentApplicableActions = typename ApplicableActionSpace::Data>
+                  typename TactionAgent = typename DataDeducer<ActionBase, Tagent>::Agent,
+                  typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
         std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
         get_agent_applicable_actions(const State& s,
                                      const Action& other_agents_actions,
@@ -1606,8 +1611,8 @@ protected :
         }
 
         template <typename TTagent = Tagent,
-                  typename TactionAgent = typename Action::Agent,
-                  typename TagentApplicableActions = typename ApplicableActionSpace::Data>
+                  typename TactionAgent = typename DataDeducer<ActionBase, Tagent>::Agent,
+                  typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
         std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
         get_agent_applicable_actions(const Memory& m,
                                      const Action& other_agents_actions,

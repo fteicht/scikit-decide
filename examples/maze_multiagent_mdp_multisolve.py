@@ -368,11 +368,13 @@ class SingleAgentMaze(D):
         return MultiDiscreteSpace([self._num_cols, self._num_rows])
 
     
-def martdp_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
+def martdp_watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average):
+    print('Best value: {}'.format(best_value))
     print('Epsilon moving average: {}'.format(epsilon_moving_average))
     return epsilon_moving_average > 0.1
 
-def mcts_watchdog(elapsed_time, nb_rollouts, epsilon_moving_average):
+def mcts_watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average):
+    print('Best value: {}'.format(best_value))
     print('Epsilon moving average: {}'.format(epsilon_moving_average))
     return epsilon_moving_average > 0.01
 
@@ -393,13 +395,14 @@ if __name__ == '__main__':
                     'multiagent_solver_kwargs': {
                         'domain_factory': lambda: MultiAgentMaze(),
                         'time_budget': 600000,
-                        'max_depth': 500,
+                        'max_depth': 50,
                         'epsilon_moving_average_window': 10,
                         'max_feasibility_trials': 10,
-                        'nb_transition_samples': 10,
+                        'graph_expansion_rate': 0.01,
                         'action_choice_noise': 0.1,
                         'dead_end_cost': 1000,
-                        'watchdog': lambda etime, nbr, ema: martdp_watchdog(etime, nbr, ema),
+                        'watchdog': lambda etime, nbr, bval, ema: martdp_watchdog(etime, nbr, bval, ema),
+                        'online_node_garbage': True,
                         'continuous_planning': False,
                         'debug_logs': False
                     },
@@ -427,7 +430,7 @@ if __name__ == '__main__':
                     'multiagent_solver_kwargs': {
                         'domain_factory': lambda: MultiAgentMaze(flatten_data=True),
                         'time_budget': 600000,
-                        'max_depth': 500,
+                        'max_depth': 50,
                         'epsilon_moving_average_window': 10,
                         'heuristic_confidence': 1000,
                         'action_choice_noise': 0.1,
@@ -437,7 +440,7 @@ if __name__ == '__main__':
                         'transition_mode': HMCTS.Options.TransitionMode.Sample,
                         'online_node_garbage': True,
                         'continuous_planning': False,
-                        'watchdog': lambda etime, nbr, ema: mcts_watchdog(etime, nbr, ema),
+                        'watchdog': lambda etime, nbr, bval, ema: mcts_watchdog(etime, nbr, bval, ema),
                         'debug_logs': False
                     },
                     'singleagent_solver_kwargs': {

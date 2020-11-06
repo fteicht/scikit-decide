@@ -988,7 +988,7 @@ public :
     };
 
     typedef typename SetTypeDeducer<StateNode, State>::Set Graph;
-    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> WatchdogFunctor;
 
     MCTSSolver(Domain& domain,
                std::size_t time_budget = 3600000,
@@ -999,7 +999,7 @@ public :
                double discount = 1.0,
                bool online_node_garbage = false,
                bool debug_logs = false,
-               const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&){ return true; },
+               const WatchdogFunctor& watchdog = [](const std::size_t&, const std::size_t&, const double&, const double&){ return true; },
                std::unique_ptr<TreePolicy> tree_policy = std::make_unique<TreePolicy>(),
                std::unique_ptr<Expander> expander = std::make_unique<Expander>(),
                std::unique_ptr<ActionSelectorOptimization> action_selector_optimization = std::make_unique<ActionSelectorOptimization>(),
@@ -1072,6 +1072,7 @@ public :
                     update_epsilon_moving_average(root_node, root_node_record_value);
                     _nb_rollouts++;
                 } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
+                                   root_node.value,
                                    (_epsilons.size() >= _epsilon_moving_average_window) ?
                                         (double) _epsilon_moving_average :
                                         std::numeric_limits<double>::infinity()) &&

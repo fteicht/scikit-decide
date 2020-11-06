@@ -43,31 +43,32 @@ public :
                   std::size_t rollout_budget = 100000,
                   std::size_t max_depth = 1000,
                   std::size_t max_feasibility_trials = 0,
-                  std::size_t nb_transition_samples = 0,
+                  double graph_expansion_rate = 0.1,
                   std::size_t epsilon_moving_average_window = 100,
                   double epsilon = 0.0, // not a stopping criterion by default
                   double discount = 1.0,
                   double action_choice_noise = 0.1,
                   double dead_end_cost = 10e4,
+                  bool online_node_garbage = false,
                   bool parallel = false,
                   bool debug_logs = false,
-                  const std::function<bool (const std::size_t&, const std::size_t&, const double&)>& watchdog = nullptr) {
+                  const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr) {
 
         if (parallel) {
             _implementation = std::make_unique<Implementation<skdecide::ParallelExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                max_feasibility_trials, nb_transition_samples,
+                max_feasibility_trials, graph_expansion_rate,
                 epsilon_moving_average_window, epsilon, discount,
-                action_choice_noise, dead_end_cost, debug_logs, watchdog
+                action_choice_noise, dead_end_cost, online_node_garbage, debug_logs, watchdog
             );
         } else {
             _implementation = std::make_unique<Implementation<skdecide::SequentialExecution>>(
                 domain, goal_checker, heuristic,
                 time_budget, rollout_budget, max_depth,
-                max_feasibility_trials, nb_transition_samples,
+                max_feasibility_trials, graph_expansion_rate,
                 epsilon_moving_average_window, epsilon, discount,
-                action_choice_noise, dead_end_cost, debug_logs, watchdog
+                action_choice_noise, dead_end_cost, online_node_garbage, debug_logs, watchdog
             );
         }
     }
@@ -130,14 +131,15 @@ private :
                        std::size_t rollout_budget = 100000,
                        std::size_t max_depth = 1000,
                        std::size_t max_feasibility_trials = 0,
-                       std::size_t nb_transition_samples = 0,
+                       double graph_expansion_rate = 0.1,
                        std::size_t epsilon_moving_average_window = 100,
                        double epsilon = 0.0, // not a stopping criterion by default
                        double discount = 1.0,
                        double action_choice_noise = 0.1,
                        double dead_end_cost = 10e4,
+                       bool online_node_garbage = false,
                        bool debug_logs = false,
-                       const std::function<bool (const std::size_t&, const std::size_t&, const double&)>& watchdog = nullptr)
+                       const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr)
         : _goal_checker(goal_checker), _heuristic(heuristic), _watchdog(watchdog) {
             
             _domain = std::make_unique<PyMARTDPDomain<Texecution>>(domain);
@@ -178,16 +180,17 @@ private :
                         rollout_budget,
                         max_depth,
                         max_feasibility_trials,
-                        nb_transition_samples,
+                        graph_expansion_rate,
                         epsilon_moving_average_window,
                         epsilon,
                         discount,
                         action_choice_noise,
                         dead_end_cost,
+                        online_node_garbage,
                         debug_logs,
-                        [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& epsilon_moving_average)->bool{
+                        [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
                             if (_watchdog) {
-                                return _watchdog(elapsed_time, nb_rollouts, epsilon_moving_average);
+                                return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
                             } else {
                                 return true;
                             }
@@ -252,7 +255,7 @@ private :
         
         std::function<py::object (const py::object&, const py::object&)> _goal_checker;
         std::function<py::object (const py::object&, const py::object&)> _heuristic;
-        std::function<bool (const std::size_t&, const std::size_t&, const double&)> _watchdog;
+        std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> _watchdog;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -272,7 +275,7 @@ void init_pymartdp(py::module& m) {
                           std::size_t,
                           std::size_t,
                           std::size_t,
-                          std::size_t,
+                          double,
                           std::size_t,
                           double,
                           double,
@@ -280,7 +283,8 @@ void init_pymartdp(py::module& m) {
                           double,
                           bool,
                           bool,
-                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&)>&>(),
+                          bool,
+                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&, const py::float_&)>&>(),
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
@@ -288,12 +292,13 @@ void init_pymartdp(py::module& m) {
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
                  py::arg("max_feasibility_trials")=0,
-                 py::arg("nb_transition_samples")=0,
+                 py::arg("graph_expansion_rate")=0.1,
                  py::arg("epsilon_moving_average_window")=100,
                  py::arg("epsilon")=0.0, // not a stopping criterion by default
                  py::arg("discount")=1.0,
                  py::arg("action_choice_noise")=0.1,
                  py::arg("dead_end_cost")=10e4,
+                 py::arg("online_node_garbage")=false,
                  py::arg("parallel")=false,
                  py::arg("debug_logs")=false,
                  py::arg("watchdog")=nullptr)

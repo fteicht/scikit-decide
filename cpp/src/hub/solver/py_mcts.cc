@@ -102,7 +102,7 @@ public :
 
     typedef std::function<py::object (py::object&, const py::object&, const py::object&)> CustomPolicyFunctor;
     typedef std::function<py::object (py::object&, const py::object&, const py::object&)> HeuristicFunctor;
-    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&)> WatchdogFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> WatchdogFunctor;
 
     PyMCTSSolver(py::object& domain,
                  std::size_t time_budget = 3600000,
@@ -293,9 +293,9 @@ private :
         virtual ~Implementation() {}
 
         WatchdogFunctor init_watchdog() {
-            return [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& epsilon_moving_average)->bool{
+            return [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
                 if (_watchdog) {
-                    return _watchdog(elapsed_time, nb_rollouts, epsilon_moving_average);
+                    return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
                 } else {
                     return true;
                 }
@@ -1183,7 +1183,7 @@ void init_pymcts(py::module& m) {
                           PyMCTSOptions::BackPropagator,
                           bool,
                           bool,
-                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&)>&>(),
+                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&, const py::float_&)>&>(),
                  py::arg("domain"),
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
