@@ -308,13 +308,12 @@ private :
           all_value(std::numeric_limits<double>::infinity()),
           all_goal(false), all_termination(false) {}
         
-        StateNode(const StateNode& s) {
-            state(s.state), action(s.action), best_action(s.best_action),
-            expansions_count(s.expansions_count), actions(s.actions),
-            value(s.value), all_value(s.all_value), goal(s.goal),
-            all_goal(s.all_goal), termination(s.termination),
-            all_termination(s.all_termination), parents(s.parents) {}
-        }
+        StateNode(const StateNode& s)
+        : state(s.state), action(s.action), best_action(s.best_action),
+          expansions_count(s.expansions_count), actions(s.actions),
+          value(s.value), all_value(s.all_value), goal(s.goal),
+          all_goal(s.all_goal), termination(s.termination),
+          all_termination(s.all_termination), parents(s.parents) {}
         
         struct Key {
             const State& operator()(const StateNode& sn) const { return sn.state; }
