@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
-    tags:
-    - 'v*'
+    branches:
+      - main
+      - fteicht/dev
 
 jobs:
   build-unix:
@@ -103,61 +104,3 @@ jobs:
         with:
           name: wh_windows
           path: dist
-  deploy:
-    needs: [build-unix, build-macos, build-windows]
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - name: Download Unix artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_unix
-      - name: Download MacOS artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_macos
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v1.0.0
-        with:
-          name: wh_windows
-      - name: Move everything in wheelhouse
-        run: mkdir wheelhouse && mv wh_*/*.whl wheelhouse/ && mv wh_windows/*.tar.gz wheelhouse/
-      - name: Publish distribution 📦 to Test PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.test_pypi_password }}
-          packages_dir: wheelhouse/
-          repository_url: https://test.pypi.org/legacy/
-      - name: Publish distribution 📦 to PyPI
-        if: startsWith(github.event.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.pypi_password }}
-          packages_dir: wheelhouse/
-  build-docs:
-    needs: deploy
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        python-version: [3.8]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: generate documentation
-        run: yarn global add vuepress && yarn install && yarn docs:build && touch docs/.vuepress/dist/.nojekyll
-      - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@releases/v3
-        with:
-          ACCESS_TOKEN: ${{ secrets.gh_access_token }}
-          BRANCH: gh-pages # The branch the action should deploy to.
-          FOLDER: docs/.vuepress/dist # The folder the action should deploy.
-          GIT_CONFIG_EMAIL: guillaume.alleon@gmail.com
-          COMMIT_MESSAGE: publish documentation
-          CLEAN: true
-          SINGLE_COMMIT: true
