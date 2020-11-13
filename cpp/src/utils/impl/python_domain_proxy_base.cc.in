@@ -1,0 +1,4 @@
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy_base.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_base_impl.hh"
+
+template class PythonDomainProxyBase<${Texecution}>;

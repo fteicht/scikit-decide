@@ -239,7 +239,7 @@ public :
 
         // Dict items
         template <typename TagentData>
-        class Item : public PyObj<Item, py::tuple> {
+        class Item : public PyObj<Item<TagentData>, py::tuple> {
         public :
             static constexpr char class_name[] = "dictionary item";
 
@@ -258,7 +258,7 @@ public :
         // Objective #1: access TagentData's methods
         // Objective #2: modify internal Python object with operator =
         template <typename TagentData>
-        class AgentDataAccessor : public PyObj<AgentDataAccessor, py::detail::item_accessor>,
+        class AgentDataAccessor : public PyObj<AgentDataAccessor<TagentData>, py::detail::item_accessor>,
                                   public TagentData {
         public :
             explicit AgentDataAccessor(const py::detail::item_accessor& a);

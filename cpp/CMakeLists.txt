@@ -14,6 +14,9 @@ IF (NOT WIN32 AND NOT CYGWIN)
     SET(CMAKE_CXX_FLAGS "-fvisibility=hidden -fvisibility-inlines-hidden ${CMAKE_CXX_FLAGS}")
 ENDIF ()
 
+SET(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+INCLUDE(GenerateTemplateInstantiationFiles)
+
 SET(LIBS "")
 SET(INTERFACES "")
 SET(INCLUDE_DIRS "")

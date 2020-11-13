@@ -924,23 +924,23 @@ PythonDomainProxyBase<Texecution>::AgentDataAccess::Item<TagentData>
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::Item()
-: PyObj<Item, py::tuple>() {}
+: PyObj<Item<TagentData>, py::tuple>() {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::Item(std::unique_ptr<py::object>&& a)
-: PyObj<Item, py::tuple>(std::move(a)) {}
+: PyObj<Item<TagentData>, py::tuple>(std::move(a)) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::Item(const py::object& a)
-: PyObj<Item, py::tuple>(a) {}
+: PyObj<Item<TagentData>, py::tuple>(a) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-SK_PY_AGENT_DATA_ITEM_CLASS::Item(const Item& other)
-: PyObj<Item, py::tuple>(other) {}
+SK_PY_AGENT_DATA_ITEM_CLASS::Item(const Item<TagentData>& other)
+: PyObj<Item<TagentData>, py::tuple>(other) {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ITEM_CLASS& SK_PY_AGENT_DATA_ITEM_CLASS::operator=(const Item& other) {
-    static_cast<PyObj<Item, py::tuple>&>(*this) = other;
+typename SK_PY_AGENT_DATA_ITEM_CLASS& SK_PY_AGENT_DATA_ITEM_CLASS::operator=(const Item<TagentData>& other) {
+    static_cast<PyObj<Item<TagentData>, py::tuple>&>(*this) = other;
     return *this;
 }
 
@@ -969,16 +969,16 @@ PythonDomainProxyBase<Texecution>::AgentAccess::AgentDataAccessor<TagentData>
 
 SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESSOR_CLASS::AgentDataAccessor(const py::detail::item_accessor& a)
-: PyObj<AgentDataAccessor, py::detail::item_accessor>(a), TagentData(a) {}
+: PyObj<AgentDataAccessor<TagentData>, py::detail::item_accessor>(a), TagentData(a) {}
 
 SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ACCESSOR_CLASS& SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(AgentDataAccessor&& other) && {
-    std::forward<AgentDataAccessor&&>(*this) = static_cast<const TagentData&>(other);
+typename SK_PY_AGENT_DATA_ACCESSOR_CLASS& SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(AgentDataAccessor<TagentData>&& other) && {
+    std::forward<AgentDataAccessor<TagentData>&&>(*this) = static_cast<const TagentData&>(other);
     return *this;
 }
 
 SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
-void SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(const AgentData& other) && {
+void SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(const TagentData& other) && {
     typename GilControl<Texecution>::Acquire acquire;
         std::forward<py::detail::item_accessor&&>(
             *static_cast<PyObj<AgentDataAccessor, py::detail::item_accessor>*>(this)->_pyobj) =

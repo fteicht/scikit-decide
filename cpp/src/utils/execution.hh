@@ -6,6 +6,7 @@
 #define SKDECIDE_EXECUTION_HH
 
 #include "config.h"
+#include <functional>
 #if defined(HAS_EXECUTION)
 #include <execution>
 #elif defined(HAS_OPENMP)

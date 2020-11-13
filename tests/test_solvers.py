@@ -12,8 +12,6 @@ from typing import NamedTuple, Optional
 from math import sqrt
 from pathos.helpers import mp
 
-from stable_baselines3 import PPO
-
 from skdecide import DeterministicPlanningDomain, Value, \
                      Value, Space, ImplicitSpace, \
                      EnvironmentOutcome, TransitionOutcome, \
@@ -160,8 +158,7 @@ def solver_cpp(request):
                          'config': {'verbose': False},
                          'optimal': True},
                         {'entry': 'StableBaseline',
-                         'config': {'algo_class': PPO,
-                                    'baselines_policy': 'MlpPolicy',
+                         'config': {'baselines_policy': 'MlpPolicy',
                                     'learn_config': {'total_timesteps': 10},
                                     'verbose': 1},
                          'optimal': False}])
@@ -434,6 +431,9 @@ def do_test_python(solver_python, result):
         dom = GridDomain()
         solver_type = load_registered_solver(solver_python['entry'])
         solver_args = solver_python['config']
+        if solver_python['entry'] == 'StableBaseline':
+            from stable_baselines3 import PPO
+            solver_args['algo_class'] = PPO
     
         with solver_type(**solver_args) as slv:
             GridDomain.solve_with(slv)
