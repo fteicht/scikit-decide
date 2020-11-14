@@ -34,10 +34,10 @@ class PythonDomainProxy {
 public :
 
     template <typename Derived, typename Tpyobj = py::object>
-    using PyObj = typename PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>;
+    using PyObj = typename PythonDomainProxyBase<Texecution>::template PyObj<Derived, Tpyobj>;
 
     template<typename T, typename Titerator = py::iterator>
-    using PyIter = typename PythonDomainProxyBase<Texecution>::PyIter<T, Titerator>;
+    using PyIter = typename PythonDomainProxyBase<Texecution>::template PyIter<T, Titerator>;
 
     template <typename DData, typename TTagent, typename Enable = void>
     class AgentDataAccess {};
@@ -73,8 +73,8 @@ public :
         std::size_t size() const;
 
         typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::Agent Agent;
-        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::Item<AgentData> Item;
-        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::AgentDataAccessor<AgentData> AgentDataAccessor;
+        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::template Item<AgentData> Item;
+        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::template AgentDataAccessor<AgentData> AgentDataAccessor;
         typedef PyIter<Item, py::detail::dict_iterator> PyIter;
 
         AgentDataAccessor operator[](const Agent& a);
@@ -140,10 +140,10 @@ public :
     typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Value, Tagent>::Data Value;
     typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Predicate, Tagent>::Data Predicate;
 
-    template <typename Derived, typename Situation>
+    template <typename Derived, typename SSituation>
     class Outcome : public PyObj<Derived> {
     public :
-        typedef Situation Situation;
+        typedef SSituation Situation;
         typedef Value Value;
         typedef Predicate Predicate;
         typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::OutcomeInfo, Tagent>::Data Info;
@@ -242,8 +242,8 @@ public :
             DistributionValue(const DistributionValue& other);
             DistributionValue& operator=(const DistributionValue& other);
 
-            const State& state() const { return _state; }
-            const double& probability() const { return _probability; }
+            const State& state() const;
+            const double& probability() const;
         };
 
         class NextStateDistributionValues : public PyObj<NextStateDistributionValues> {
@@ -269,12 +269,13 @@ public :
     };
 
     PythonDomainProxy(const py::object& domain);
+    ~PythonDomainProxy();
 
     std::size_t get_parallel_capacity();
     ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr);
 
     template <typename TTagent = Tagent,
-              typename TactionAgent = typename AgentDataAccess<ActionBase, Tagent>::Agent,
+              typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
               typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,

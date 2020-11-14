@@ -29,6 +29,15 @@ PythonDomainProxy<Texecution, \
                                             TTagent, \
                                             typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type>
 
+#define SK_PY_AGENT_DATA_ACCESS_TYPE \
+typename PythonDomainProxy<Texecution, \
+                           Tagent, \
+                           Tobservability, \
+                           Tcontrollability, \
+                           Tmemory>::template AgentDataAccess<DData, \
+                                                              TTagent, \
+                                                              typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type>
+
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess()
 : PyObj<AgentData, py::dict>() {}
@@ -46,7 +55,7 @@ SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccess(const AgentDataAccess& other)
 : PyObj<AgentData, py::dict>(other) {}
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ACCESS_CLASS& SK_PY_AGENT_DATA_ACCESS_CLASS::operator=(const AgentDataAccess& other) {
+SK_PY_AGENT_DATA_ACCESS_TYPE& SK_PY_AGENT_DATA_ACCESS_CLASS::operator=(const AgentDataAccess& other) {
     static_cast<PyObj<AgentData, py::dict>&>(*this) = other;
     return *this;
 }
@@ -62,7 +71,7 @@ std::size_t SK_PY_AGENT_DATA_ACCESS_CLASS::size() const {
 }
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccessor SK_PY_AGENT_DATA_ACCESS_CLASS::operator[](const Agent& a) {
+SK_PY_AGENT_DATA_ACCESS_TYPE::AgentDataAccessor SK_PY_AGENT_DATA_ACCESS_CLASS::operator[](const Agent& a) {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         if (!(this->_pyobj->contains(a.pyobj()))) {
@@ -80,7 +89,7 @@ typename SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccessor SK_PY_AGENT_DATA_ACCES
 }
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-const typename SK_PY_AGENT_DATA_ACCESS_CLASS::AgentData SK_PY_AGENT_DATA_ACCESS_CLASS::operator[](const Agent& a) const {
+const SK_PY_AGENT_DATA_ACCESS_TYPE::AgentData SK_PY_AGENT_DATA_ACCESS_CLASS::operator[](const Agent& a) const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         if (!(this->_pyobj->contains(a.pyobj()))) {
@@ -100,13 +109,13 @@ const typename SK_PY_AGENT_DATA_ACCESS_CLASS::AgentData SK_PY_AGENT_DATA_ACCESS_
 }
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ACCESS_CLASS::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::begin() const {
+SK_PY_AGENT_DATA_ACCESS_TYPE::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::begin() const {
     typename GilControl<Texecution>::Acquire acquire;
     return PyIter(this->_pyobj->begin());
 }
 
 SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-typename SK_PY_AGENT_DATA_ACCESS_CLASS::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::end() const {
+SK_PY_AGENT_DATA_ACCESS_TYPE::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::end() const {
     typename GilControl<Texecution>::Acquire acquire;
     return PyIter(this->_pyobj->end());
 }
@@ -118,6 +127,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_MEMORY_STATE_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::MemoryState
+
+#define SK_PY_MEMORY_STATE_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::MemoryState
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
 SK_PY_MEMORY_STATE_CLASS::MemoryState()
@@ -136,7 +148,7 @@ SK_PY_MEMORY_STATE_CLASS::MemoryState(const MemoryState& other)
 : PyObj<MemoryState, py::list>(other) {}
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
-typename SK_PY_MEMORY_STATE_CLASS& SK_PY_MEMORY_STATE_CLASS::operator=(const MemoryState& other) {
+SK_PY_MEMORY_STATE_TYPE& SK_PY_MEMORY_STATE_CLASS::operator=(const MemoryState& other) {
     static_cast<PyObj<MemoryState, py::list>&>(*this) = other;
     return *this;
 }
@@ -151,7 +163,7 @@ void SK_PY_MEMORY_STATE_CLASS::push_state(const State& s) {
 }
 
 SK_PY_MEMORY_STATE_TEMPLATE_DECL
-typename SK_PY_MEMORY_STATE_CLASS::State SK_PY_MEMORY_STATE_CLASS::last_state() {
+SK_PY_MEMORY_STATE_TYPE::State SK_PY_MEMORY_STATE_CLASS::last_state() {
     typename GilControl<Texecution>::Acquire acquire;
     if (this->_pyobj->empty()) {
         throw std::runtime_error("Cannot get last state of empty memory state " + this->print());
@@ -168,6 +180,9 @@ template <typename Derived, typename Situation>
 
 #define SK_PY_OUTCOME_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Outcome<Derived, Situation>
+
+#define SK_PY_OUTCOME_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::template Outcome<Derived, Situation>
 
 SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_CLASS::Outcome()
@@ -195,10 +210,10 @@ SK_PY_OUTCOME_CLASS::Outcome(const Situation& situation, const Value& transition
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-void SK_PY_OUTCOME_CLASS::construct(const Situation& situation = Situation(),
-                                    const Value& transition_value = Value(),
-                                    const Predicate& termination = Predicate(),
-                                    const Info& info = Info()) {
+void SK_PY_OUTCOME_CLASS::construct(const Situation& situation,
+                                    const Value& transition_value,
+                                    const Predicate& termination,
+                                    const Info& info) {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         if (this->_pyobj->is_none()) {
@@ -237,7 +252,7 @@ SK_PY_OUTCOME_CLASS::Outcome(const Outcome& other)
 : PyObj<Derived>(other) {}
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-typename SK_PY_OUTCOME_CLASS& SK_PY_OUTCOME_CLASS::operator=(const Outcome& other) {
+SK_PY_OUTCOME_TYPE& SK_PY_OUTCOME_CLASS::operator=(const Outcome& other) {
     static_cast<PyObj<Derived>&>(*this) = other;
     return *this;
 }
@@ -246,7 +261,7 @@ SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_CLASS::~Outcome() {}
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-typename SK_PY_OUTCOME_CLASS::Situation SK_PY_OUTCOME_CLASS::situation() const {
+SK_PY_OUTCOME_TYPE::Situation SK_PY_OUTCOME_CLASS::situation() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         return Situation(this->_pyobj->attr(Derived::situation_name));
@@ -278,7 +293,7 @@ void SK_PY_OUTCOME_CLASS::situation(const Situation& s) {
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-typename SK_PY_OUTCOME_CLASS::Value SK_PY_OUTCOME_CLASS::transition_value() const {
+SK_PY_OUTCOME_TYPE::Value SK_PY_OUTCOME_CLASS::transition_value() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         return Value(this->_pyobj->attr("value"));
@@ -309,7 +324,7 @@ void SK_PY_OUTCOME_CLASS::transition_value(const Value& tv) {
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-typename SK_PY_OUTCOME_CLASS::Predicate SK_PY_OUTCOME_CLASS::termination() const {
+SK_PY_OUTCOME_TYPE::Predicate SK_PY_OUTCOME_CLASS::termination() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         return Predicate(this->_pyobj->attr("termination"));
@@ -341,7 +356,7 @@ void SK_PY_OUTCOME_CLASS::termination(const Predicate& t) {
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-typename SK_PY_OUTCOME_CLASS::Info SK_PY_OUTCOME_CLASS::info() const {
+SK_PY_OUTCOME_TYPE::Info SK_PY_OUTCOME_CLASS::info() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         return Info(this->_pyobj.attr("info"));
@@ -359,7 +374,7 @@ typename SK_PY_OUTCOME_CLASS::Info SK_PY_OUTCOME_CLASS::info() const {
 }
 
 SK_PY_OUTCOME_TEMPLATE_DECL
-void SK_PY_OUTCOME_CLASS::(const Info& i) {
+void SK_PY_OUTCOME_CLASS::info(const Info& i) {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         this->_pyobj->attr("info") = i.pyobj();
@@ -379,6 +394,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_TRANSITION_OUTCOME_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::TransitionOutcome
+
+#define SK_PY_TRANSITION_OUTCOME_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::TransitionOutcome
 
 SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
 SK_PY_TRANSITION_OUTCOME_CLASS::TransitionOutcome()
@@ -404,7 +422,7 @@ SK_PY_TRANSITION_OUTCOME_CLASS::TransitionOutcome(const Outcome<TransitionOutcom
 : Outcome<TransitionOutcome, State>(other) {}
 
 SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
-typename SK_PY_TRANSITION_OUTCOME_CLASS& SK_PY_TRANSITION_OUTCOME_CLASS::operator=(const TransitionOutcome& other) {
+SK_PY_TRANSITION_OUTCOME_TYPE& SK_PY_TRANSITION_OUTCOME_CLASS::operator=(const TransitionOutcome& other) {
     static_cast<Outcome<TransitionOutcome, State>&>(*this) = other;
     return *this;
 }
@@ -413,12 +431,12 @@ SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
 SK_PY_TRANSITION_OUTCOME_CLASS::~TransitionOutcome() {}
 
 SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
-typename SK_PY_TRANSITION_OUTCOME_CLASS::State SK_PY_TRANSITION_OUTCOME_CLASS::state() {
+SK_PY_TRANSITION_OUTCOME_TYPE::State SK_PY_TRANSITION_OUTCOME_CLASS::state() {
     return this->situation();
 }
 
-void SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
-SK_PY_TRANSITION_OUTCOME_CLASS::state(const State& s) {
+SK_PY_TRANSITION_OUTCOME_TEMPLATE_DECL
+void SK_PY_TRANSITION_OUTCOME_CLASS::state(const State& s) {
     this->situation(s);
 }
 
@@ -429,6 +447,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_ENVIRONMENT_OUTCOME_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::EnvironmentOutcome
+
+#define SK_PY_ENVIRONMENT_OUTCOME_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::EnvironmentOutcome
 
 SK_PY_ENVIRONMENT_OUTCOME_TEMPLATE_DECL
 SK_PY_ENVIRONMENT_OUTCOME_CLASS::EnvironmentOutcome()
@@ -455,7 +476,7 @@ SK_PY_ENVIRONMENT_OUTCOME_CLASS::EnvironmentOutcome(const Outcome<EnvironmentOut
 : Outcome<EnvironmentOutcome, Observation>(other) {}
 
 SK_PY_ENVIRONMENT_OUTCOME_TEMPLATE_DECL
-typename SK_PY_ENVIRONMENT_OUTCOME_CLASS& SK_PY_ENVIRONMENT_OUTCOME_CLASS::operator=(const EnvironmentOutcome& other) {
+SK_PY_ENVIRONMENT_OUTCOME_TYPE& SK_PY_ENVIRONMENT_OUTCOME_CLASS::operator=(const EnvironmentOutcome& other) {
     static_cast<Outcome<EnvironmentOutcome, Observation>&>(*this) = other;
     return *this;
 }
@@ -464,7 +485,7 @@ SK_PY_ENVIRONMENT_OUTCOME_TEMPLATE_DECL
 SK_PY_ENVIRONMENT_OUTCOME_CLASS::~EnvironmentOutcome() {}
 
 SK_PY_ENVIRONMENT_OUTCOME_TEMPLATE_DECL
-typename SK_PY_ENVIRONMENT_OUTCOME_CLASS::Observation SK_PY_ENVIRONMENT_OUTCOME_CLASS::observation() {
+SK_PY_ENVIRONMENT_OUTCOME_TYPE::Observation SK_PY_ENVIRONMENT_OUTCOME_CLASS::observation() {
     return this->situation();
 }
 
@@ -480,6 +501,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_DISTRIBUTION_VALUE_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution::DistributionValue
+
+#define SK_PY_DISTRIBUTION_VALUE_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution::DistributionValue
 
 SK_PY_DISTRIBUTION_VALUE_TEMPLATE_DECL
 SK_PY_DISTRIBUTION_VALUE_CLASS::DistributionValue() {}
@@ -509,14 +533,14 @@ SK_PY_DISTRIBUTION_VALUE_CLASS::DistributionValue(const DistributionValue& other
 }
 
 SK_PY_DISTRIBUTION_VALUE_TEMPLATE_DECL
-typename SK_PY_DISTRIBUTION_VALUE_CLASS& SK_PY_DISTRIBUTION_VALUE_CLASS::operator=(const DistributionValue& other) {
+SK_PY_DISTRIBUTION_VALUE_TYPE& SK_PY_DISTRIBUTION_VALUE_CLASS::operator=(const DistributionValue& other) {
     this->_state = other._state;
     this->_probability = other._probability;
     return *this;
 }
 
 SK_PY_DISTRIBUTION_VALUE_TEMPLATE_DECL
-const typename SK_PY_DISTRIBUTION_VALUE_CLASS::State& SK_PY_DISTRIBUTION_VALUE_CLASS::state() const {
+const SK_PY_DISTRIBUTION_VALUE_TYPE::State& SK_PY_DISTRIBUTION_VALUE_CLASS::state() const {
     return _state;
 }
 
@@ -532,6 +556,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution::NextStateDistributionValues
+
+#define SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution::NextStateDistributionValues
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues()
@@ -550,7 +577,7 @@ SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::NextStateDistributionValues(const Ne
 : PyObj<NextStateDistributionValues>(other) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
-typename SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS&
+SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE&
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::operator=(const NextStateDistributionValues& other) {
     static_cast<PyObj<NextStateDistributionValues>&>(*this) = other;
     return *this;
@@ -560,17 +587,17 @@ SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::~NextStateDistributionValues() {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
-typename SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::PyIter
+SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE::PyIter
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::begin() const {
     typename GilControl<Texecution>::Acquire acquire;
-    return PyIter<DistributionValue>(this->_pyobj->begin());
+    return PyIter(this->_pyobj->begin());
 }
 
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TEMPLATE_DECL
-typename SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::PyIter
+SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE::PyIter
 SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS::end() const {
     typename GilControl<Texecution>::Acquire acquire;
-    return PyIter<DistributionValue>(this->_pyobj->end());
+    return PyIter(this->_pyobj->end());
 }
 
 // === NextStateDistribution implementation ===
@@ -580,6 +607,9 @@ template <typename Texecution, typename Tagent, typename Tobservability, typenam
 
 #define SK_PY_NEXT_STATE_DISTRIBUTION_CLASS \
 PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution
+
+#define SK_PY_NEXT_STATE_DISTRIBUTION_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::NextStateDistribution
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution()
@@ -619,7 +649,7 @@ SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::NextStateDistribution(const NextStateDistri
 : PyObj<NextStateDistribution>(other) {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
-typename SK_PY_NEXT_STATE_DISTRIBUTION_CLASS&
+SK_PY_NEXT_STATE_DISTRIBUTION_TYPE&
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::operator=(const NextStateDistribution& other) {
     static_cast<PyObj<NextStateDistribution>&>(*this) = other;
     return *this;
@@ -629,7 +659,7 @@ SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
 SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::~NextStateDistribution() {}
 
 SK_PY_NEXT_STATE_DISTRIBUTION_TEMPLATE_DECL
-SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_CLASS SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::get_values() const {
+SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::get_values() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
         if (!py::hasattr(*(this->_pyobj), "get_values")) {
@@ -654,11 +684,12 @@ template <typename TexecutionPolicy>
 struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::TypeProxy<
                 TexecutionPolicy,
                 typename std::enable_if<std::is_same<TexecutionPolicy, SequentialExecution>::value>::type> {
-    static construct(std::unique_ptr<py::object>& domain, const py::object& other) {
+    
+    static void construct(std::unique_ptr<py::object>& domain, const py::object& other) {
         domain = std::make_unique<py::object>(other);
     }
 
-    static destroy(std::unique_ptr<py::object>& domain) {
+    static void destroy(std::unique_ptr<py::object>& domain) {
         domain.reset();
     }
 
@@ -679,7 +710,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename TTagent = Tagent,
-                typename TactionAgent = typename AgentDataAccess<ActionBase, Tagent>::Agent,
+                typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
                 typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     static get_agent_applicable_actions(py::object& domain, const State& s,
@@ -820,7 +851,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
                 typename std::enable_if<std::is_same<TexecutionPolicy, ParallelExecution>::value>::type> {
     std::vector<std::unique_ptr<nng::socket>> _connections;
     
-    static construct(std::unique_ptr<py::object>& domain, const py::object& other) {
+    static void construct(std::unique_ptr<py::object>& domain, const py::object& other) {
         typename GilControl<Texecution>::Acquire acquire;
         domain = std::make_unique<py::object>(other);
 
@@ -844,7 +875,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static destroy(std::unique_ptr<py::object>& domain) {
+    static void destroy(std::unique_ptr<py::object>& domain) {
         typename GilControl<Texecution>::Acquire acquire;
         domain.reset();
     }
@@ -936,7 +967,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename TTagent = Tagent,
-                typename TactionAgent = typename AgentDataAccess<ActionBase, Tagent>::Agent,
+                typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
                 typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     static get_agent_applicable_actions(py::object& domain,
@@ -1035,6 +1066,15 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
 
 // === PythonDomainProxy implementation ===
 
+#define SK_PY_DOMAIN_PROXY_TEMPLATE_DECL \
+template <typename Texecution, typename Tagent, typename Tobservability, typename Tcontrollability, typename Tmemory>
+
+#define SK_PY_DOMAIN_PROXY_CLASS \
+PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>
+
+#define SK_PY_DOMAIN_PROXY_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>
+
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_CLASS::PythonDomainProxy(const py::object& domain) {
     TypeProxy<Texecution>::construct(_domain, domain);
@@ -1052,7 +1092,7 @@ std::size_t SK_PY_DOMAIN_PROXY_CLASS::get_parallel_capacity() {
     
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 typename SK_PY_DOMAIN_PROXY_CLASS::ApplicableActionSpace
-SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::size_t* thread_id) {
     try {
         return TypeProxy<Texecution>::get_applicable_actions(*_domain, m, thread_id);
     } catch(const std::exception& e) {
@@ -1066,13 +1106,13 @@ SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::siz
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 template <typename TTagent = Tagent,
-            typename TactionAgent = typename SK_PY_DOMAIN_PROXY_CLASS::AgentDataAccess<ActionBase, Tagent>::Agent,
-            typename TagentApplicableActions = typename SK_PY_DOMAIN_PROXY_CLASS::ApplicableActionSpace::AgentData>
+          typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
+          typename TagentApplicableActions = typename SK_PY_DOMAIN_PROXY_CLASS::ApplicableActionSpace::AgentData>
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
-get_agent_applicable_actions(const Memory& m,
-                             const Action& other_agents_actions,
-                             const TactionAgent& agent,
-                             const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
+                                                       const Action& other_agents_actions,
+                                                       const TactionAgent& agent,
+                                                       const std::size_t* thread_id = nullptr) {
     try {
         return TypeProxy<Texecution>::get_agent_applicable_actions(*_domain, m, other_agents_actions, agent, thread_id);
     } catch(const std::exception& e) {
@@ -1085,9 +1125,9 @@ get_agent_applicable_actions(const Memory& m,
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::Observation reset(const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::Observation SK_PY_DOMAIN_PROXY_CLASS::reset(const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::reset(*_domain, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::reset(*_domain, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + std::string(e.what()));
@@ -1096,9 +1136,10 @@ typename SK_PY_DOMAIN_PROXY_CLASS::Observation reset(const std::size_t* thread_i
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::EnvironmentOutcome step(const Event& e, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::step(const Event& e,
+                                                                           const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::step(*_domain, e, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::step(*_domain, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
@@ -1108,9 +1149,11 @@ typename SK_PY_DOMAIN_PROXY_CLASS::EnvironmentOutcome step(const Event& e, const
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::EnvironmentOutcome sample(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::sample(const Memory& m,
+                                                                             const Event& e,
+                                                                             const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::sample(*_domain, m, e, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::sample(*_domain, m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when sampling from ") +
@@ -1121,9 +1164,11 @@ typename SK_PY_DOMAIN_PROXY_CLASS::EnvironmentOutcome sample(const Memory& m, co
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::State get_next_state(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::State SK_PY_DOMAIN_PROXY_CLASS::get_next_state(const Memory& m,
+                                                                        const Event& e,
+                                                                        const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::get_next_state(*_domain, m, e, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_next_state(*_domain, m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
@@ -1135,10 +1180,11 @@ typename SK_PY_DOMAIN_PROXY_CLASS::State get_next_state(const Memory& m, const E
 
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::NextStateDistribution
-get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::NextStateDistribution SK_PY_DOMAIN_PROXY_CLASS::get_next_state_distribution(const Memory& m,
+                                                                                                     const Event& e,
+                                                                                                     const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::get_next_state_distribution(*_domain, m, e, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_next_state_distribution(*_domain, m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
@@ -1149,10 +1195,12 @@ get_next_state_distribution(const Memory& m, const Event& e, const std::size_t* 
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-typename SK_PY_DOMAIN_PROXY_CLASS::Value
-get_transition_value(const Memory& m, const Event& e, const State& sp, const std::size_t* thread_id = nullptr) {
+SK_PY_DOMAIN_PROXY_TYPE::Value SK_PY_DOMAIN_PROXY_CLASS::get_transition_value(const Memory& m,
+                                                                              const Event& e,
+                                                                              const State& sp,
+                                                                              const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::get_transition_value(*_domain, m, e, sp, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_transition_value(*_domain, m, e, sp, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
@@ -1162,9 +1210,9 @@ get_transition_value(const Memory& m, const Event& e, const State& sp, const std
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread_id = nullptr) {
+bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::is_goal(*_domain, s, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::is_goal(*_domain, s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
@@ -1174,9 +1222,9 @@ bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-bool SK_PY_DOMAIN_PROXY_CLASS::is_terminal(const State& s, const std::size_t* thread_id = nullptr) {
+bool SK_PY_DOMAIN_PROXY_CLASS::is_terminal(const State& s, const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::is_terminal(*_domain, s, thread_id);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::is_terminal(*_domain, s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
@@ -1189,7 +1237,7 @@ SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 template <typename Tfunction, typename ... Types>
 std::unique_ptr<py::object> SK_PY_DOMAIN_PROXY_CLASS::call(const std::size_t* thread_id, const Tfunction& func, const Types& ... args) {
     try {
-        return TypeProxy<Texecution>::call(*_domain, thread_id, func, args...);
+        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::call(*_domain, thread_id, func, args...);
     } catch(const std::exception& e) {
         spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + std::string(e.what()));
         throw;

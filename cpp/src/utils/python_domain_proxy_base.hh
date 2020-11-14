@@ -143,7 +143,7 @@ public :
             Elements(const py::object& applicable_action_space_elements);
             Elements(const Elements& other);
             Elements& operator=(const Elements& other);
-            virtual ~Elements() {}
+            virtual ~Elements();
 
             PyIter begin() const;
             PyIter end() const;
@@ -153,8 +153,8 @@ public :
         Elements get_elements() const;
         bool empty() const;
 
-        typename Action sample() const;
-        bool contains(const typename Action& action);
+        Action sample() const;
+        bool contains(const Action& action);
     
     private :
         void construct();
@@ -193,7 +193,7 @@ public :
         Predicate(const bool& predicate);
         Predicate(const Predicate& other);
         Predicate& operator=(const Predicate& other);
-        virtual ~Predicate() {}
+        virtual ~Predicate();
 
         void predicate(const bool& p);
         void operator=(const bool& p);
@@ -204,7 +204,7 @@ public :
         void construct(const bool& predicate = false);
     };
 
-    class OutcomeInfo : PyObj<OutcomeInfo> {
+    class OutcomeInfo : public PyObj<OutcomeInfo> {
     public :
         static constexpr char class_name[] = "info";
 
