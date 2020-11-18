@@ -21,6 +21,14 @@ namespace py = pybind11;
 
 namespace skdecide {
 
+inline std::size_t hash_value(const PythonHash<SequentialExecution>::ItemHasher& ih) {
+    return ih.hash();
+}
+
+inline std::size_t hash_value(const PythonHash<ParallelExecution>::ItemHasher& ih) {
+    return ih.hash();
+}
+
 template <typename Texecution>
 std::size_t PythonHash<Texecution>::operator()(const py::object& o) const {
     typename GilControl<Texecution>::Acquire acquire;
@@ -91,14 +99,6 @@ PythonHash<Texecution>::ItemHasher::ItemHasher(const py::object& o) : _pyobj(o) 
 template <typename Texecution>
 std::size_t PythonHash<Texecution>::ItemHasher::hash() const {
     return PythonHash<Texecution>()(_pyobj);
-}
-
-std::size_t hash_value(const PythonHash<skdecide::SequentialExecution>::ItemHasher& ih) {
-    return ih.hash();
-}
-
-std::size_t hash_value(const PythonHash<skdecide::ParallelExecution>::ItemHasher& ih) {
-    return ih.hash();
 }
 
 

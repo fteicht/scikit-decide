@@ -13,11 +13,21 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include "utils/python_gil_control.hh"
+#include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
 
 namespace py = pybind11;
 
 namespace skdecide {
+
+inline std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o) {
+    return o.hash();
+}
+
+inline std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o) {
+    return o.hash();
+}
 
 // === PythonContainerProxy::value_type implementation ===
 
@@ -92,14 +102,14 @@ PythonContainerProxy<Texecution>::value_type::ObjectType::ObjectType(const py::o
 template <typename Texecution>
 PythonContainerProxy<Texecution>::value_type::ObjectType::ObjectType(const ObjectType& other) {
     typename GilControl<Texecution>::Acquire acquire;
-    this->_value = std::make_unique<py::object>(*other.value);
+    this->_value = std::make_unique<py::object>(*other._value);
 }
 
 template <typename Texecution>
 typename PythonContainerProxy<Texecution>::value_type::ObjectType&
 PythonContainerProxy<Texecution>::value_type::ObjectType::operator=(const ObjectType& other) {
     typename GilControl<Texecution>::Acquire acquire;
-    this->_value = std::make_unique<py::object>(*other.value);
+    this->_value = std::make_unique<py::object>(*other._value);
     return *this;
 }
 
@@ -204,7 +214,8 @@ std::size_t PythonContainerProxy<Texecution>::size() const {
 }
 
 template <typename Texecution>
-PythonContainerProxy<Texecution>::value_type PythonContainerProxy<Texecution>::operator[](std::size_t index) const {
+typename PythonContainerProxy<Texecution>::value_type
+PythonContainerProxy<Texecution>::operator[](std::size_t index) const {
     return _implementation->at(index);
 }
 
@@ -214,8 +225,8 @@ std::size_t PythonContainerProxy<Texecution>::hash() const {
 }
 
 template <typename Texecution>
-bool PythonContainerProxy<Texecution>::operator== (const value_type& other) const {
-    return _implementation->equal(*(other._value));
+bool PythonContainerProxy<Texecution>::operator== (const PythonContainerProxy& other) const {
+    return _implementation->equal(*(other._implementation));
 }
 
 // === PythonContainerProxy::BaseImplementation implementation ===
@@ -316,7 +327,7 @@ PythonContainerProxy<Texecution>::NumpyImplementation<T>::NumpyImplementation(co
 
 template <typename Texecution>
 template <typename T>
-typename PythonContainerProxy<Texecution>::NumpyImplementation<T>:&
+typename PythonContainerProxy<Texecution>::template NumpyImplementation<T>&
 PythonContainerProxy<Texecution>::NumpyImplementation<T>::operator=(const NumpyImplementation& other) {
     typename GilControl<Texecution>::Acquire acquire;
     this->_vector = std::make_unique<py::array_t<T>>(*other._vector);
@@ -351,14 +362,6 @@ template <typename Texecution>
 template <typename T>
 bool PythonContainerProxy<Texecution>::NumpyImplementation<T>::same_type(const BaseImplementation& other) const {
     return dynamic_cast<const NumpyImplementation<T>*>(&other) != nullptr;
-}
-
-std::size_t hash_value(const PythonContainerProxy<skdecide::SequentialExecution>::value_type& o) {
-    return o.hash();
-}
-
-std::size_t hash_value(const PythonContainerProxy<skdecide::ParallelExecution>::value_type& o) {
-    return o.hash();
 }
 
 } // namespace skdecide

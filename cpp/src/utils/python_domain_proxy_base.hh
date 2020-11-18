@@ -20,10 +20,12 @@ public :
 
         PyObj();
 
-        template <typename TTpyobj>
+        template <typename TTpyobj,
+                  std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int> = 0>
         PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true);
 
-        template <typename TTpyobj>
+        template <typename TTpyobj,
+                  std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int> = 0>
         PyObj(const TTpyobj& o, bool check = true);
 
         PyObj(const PyObj& other);

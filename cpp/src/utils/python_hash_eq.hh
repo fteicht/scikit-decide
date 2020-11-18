@@ -23,9 +23,6 @@ struct PythonHash {
     };
 };
 
-std::size_t hash_value(const PythonHash<skdecide::SequentialExecution>::ItemHasher& ih);
-std::size_t hash_value(const PythonHash<skdecide::ParallelExecution>::ItemHasher& ih);
-
 
 template <typename Texecution>
 struct PythonEqual {

@@ -41,8 +41,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
         typename GilControl<Texecution>::Acquire acquire; // !(*po) class python if *po is of type py::bool_
         po = std::move(o);
         if (check && (!po || !(*po))) {
-            throw std::runtime_error(std::string("Unitialized python ") +
-                                        Derived::class_name + " object!");
+            throw std::runtime_error(std::string("Unitialized python ") + Derived::class_name + " object!");
         }
     }
 
@@ -53,7 +52,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
         typename GilControl<Texecution>::Acquire acquire;
         if (check && (!o || !(*o) || !py::isinstance<Tpyobj>(*o))) {
             throw std::runtime_error(std::string("Python ") + Derived::class_name + " object not initialized as a " +
-                                        std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
+                                     std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
         }
         po = std::make_unique<Tpyobj>(o->template cast<Tpyobj>());
         o.reset();
@@ -66,8 +65,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
         typename GilControl<Texecution>::Acquire acquire; // !(*po) class python if *po is of type py::bool_
         po = std::move(o);
         if (check && (!po || !(*po))) {
-            throw std::runtime_error(std::string("Unitialized python ") +
-                                        Derived::class_name + " object!");
+            throw std::runtime_error(std::string("Unitialized python ") + Derived::class_name + " object!");
         }
     }
 
@@ -76,8 +74,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
     static void construct(std::unique_ptr<Tpyobj>& po, std::unique_ptr<TTpyobj>&& o, bool check = true) {
         po = std::move(o);
         if (check && !po) {
-            throw std::runtime_error(std::string("Unitialized python ") +
-                                        Derived::class_name + " object!");
+            throw std::runtime_error(std::string("Unitialized python ") + Derived::class_name + " object!");
         }
     }
 
@@ -87,8 +84,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
         typename GilControl<Texecution>::Acquire acquire;
         po = std::make_unique<py::object>(o);
         if (check && !(*po)) {
-            throw std::runtime_error(std::string("Unitialized python ") +
-                                        Derived::class_name + " object!");
+            throw std::runtime_error(std::string("Unitialized python ") + Derived::class_name + " object!");
         }
     }
 
@@ -98,7 +94,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
     static void construct(std::unique_ptr<Tpyobj>& po, const py::object& o, bool check = true) {
         if (check && (!o || !py::isinstance<Tpyobj>(o))) {
             throw std::runtime_error(std::string("Python ") + Derived::class_name + " object not initialized as a " +
-                                        std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
+                                     std::string(py::str(Tpyobj().attr("__class__").attr("__name__"))));
         }
         po = std::make_unique<Tpyobj>(o.template cast<Tpyobj>());
     }
@@ -110,8 +106,7 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
         typename GilControl<Texecution>::Acquire acquire;
         po = std::make_unique<Tpyobj>(o);
         if (check && !(*po)) {
-            throw std::runtime_error(std::string("Unitialized python ") +
-                                        Derived::class_name + " object!");
+            throw std::runtime_error(std::string("Unitialized python ") + Derived::class_name + " object!");
         }
     }
 
@@ -140,9 +135,17 @@ SK_PY_OBJ_CLASS::PyObj() {
 }
 
 SK_PYOBJ_TEMPLATE_DECL
-template <typename TTpyobj>
+template <typename TTpyobj,
+          std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int>>
 SK_PY_OBJ_CLASS::PyObj(std::unique_ptr<TTpyobj>&& o, bool check) {
     TypeProxy::construct(_pyobj, std::move(o), check);
+}
+
+SK_PYOBJ_TEMPLATE_DECL
+template <typename TTpyobj,
+          std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int>>
+SK_PY_OBJ_CLASS::PyObj(const TTpyobj& o, bool check) {
+    TypeProxy::construct(_pyobj, o, check);
 }
 
 SK_PYOBJ_TEMPLATE_DECL
@@ -276,12 +279,12 @@ SK_PY_ITER_TYPE SK_PY_ITER_CLASS::operator++(int) {
 
 SK_PY_ITER_TEMPLATE_DECL
 T SK_PY_ITER_CLASS::operator*() const {
-    return typename SK_PY_ITER_CLASS::TypeProxy::dereference_object(this->_pyobj);
+    return SK_PY_ITER_TYPE::TypeProxy::dereference_object(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL
 std::unique_ptr<T> SK_PY_ITER_CLASS::operator->() const {
-    return typename SK_PY_ITER_CLASS::TypeProxy::dereference_pointer(this->_pyobj);
+    return SK_PY_ITER_TYPE::TypeProxy::dereference_pointer(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL

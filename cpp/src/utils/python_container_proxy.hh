@@ -47,7 +47,8 @@ public :
         template <typename T>
         class PrimitiveType : public BaseType {
         public :
-            PrimitiveType(const T& value); 
+            PrimitiveType(const T& value);
+            virtual ~PrimitiveType();
             virtual void copy(std::unique_ptr<BaseType>& other) const;
             virtual std::size_t hash() const;
             virtual bool equal(const BaseType& other) const;
@@ -78,7 +79,7 @@ public :
     std::size_t size() const;
     value_type operator[](std::size_t index) const;
     std::size_t hash() const;
-    bool operator== (const value_type& other) const;
+    bool operator== (const PythonContainerProxy& other) const;
 
 private :
 
@@ -125,10 +126,6 @@ private :
 
     std::unique_ptr<BaseImplementation> _implementation;
 };
-
-
-std::size_t hash_value(const PythonContainerProxy<skdecide::SequentialExecution>::value_type& o);
-std::size_t hash_value(const PythonContainerProxy<skdecide::ParallelExecution>::value_type& o);
 
 } // namespace skdecide
 
