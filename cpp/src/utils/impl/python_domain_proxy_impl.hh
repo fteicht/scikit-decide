@@ -359,7 +359,7 @@ SK_PY_OUTCOME_TEMPLATE_DECL
 SK_PY_OUTCOME_TYPE::Info SK_PY_OUTCOME_CLASS::info() const {
     typename GilControl<Texecution>::Acquire acquire;
     try {
-        return Info(this->_pyobj.attr("info"));
+        return Info(this->_pyobj->attr("info"));
     } catch(const py::error_already_set* e) {
         spdlog::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s info: " + std::string(e->what()));
@@ -677,31 +677,32 @@ SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::g
     }
 }
 
-// === PythonDomainProxy::TypeProxy<SequentialExecution> implementation ===
+// === PythonDomainProxy::Implementation<SequentialExecution> implementation ===
 
 template <typename Texecution, typename Tagent, typename Tobservability, typename Tcontrollability, typename Tmemory>
 template <typename TexecutionPolicy>
-struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::TypeProxy<
+struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Implementation<
                 TexecutionPolicy,
                 typename std::enable_if<std::is_same<TexecutionPolicy, SequentialExecution>::value>::type> {
     
-    static void construct(std::unique_ptr<py::object>& domain, const py::object& other) {
-        domain = std::make_unique<py::object>(other);
+    std::unique_ptr<py::object> _domain;
+    
+    Implementation(const py::object& other) {
+        _domain = std::make_unique<py::object>(other);
     }
 
-    static void destroy(std::unique_ptr<py::object>& domain) {
-        domain.reset();
+    ~Implementation() {
+        _domain.reset();
     }
 
-    static std::size_t get_parallel_capacity(py::object& domain) {
+    std::size_t get_parallel_capacity() {
         return 1;
     }
 
-    static ApplicableActionSpace get_applicable_actions(py::object& domain,
-                                                        const State& s,
-                                                        [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    ApplicableActionSpace get_applicable_actions(const Memory& m,
+                                                 [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return ApplicableActionSpace(domain.attr("get_applicable_actions")(s.pyobj()));
+            return ApplicableActionSpace(_domain->attr("get_applicable_actions")(m.pyobj()));
         } catch(const py::error_already_set* e) {
             std::runtime_error err(e->what());
             delete e;
@@ -710,16 +711,17 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename TTagent = Tagent,
-                typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
-                typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
+              typename TTaction = Action,
+              typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
+              typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
-    static get_agent_applicable_actions(py::object& domain, const State& s,
-                                        const Action& other_agents_actions,
-                                        const TactionAgent& agent,
-                                        [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    get_agent_applicable_actions(const Memory& m,
+                                 const TTaction& other_agents_actions,
+                                 const TactionAgent& agent,
+                                 [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return TagentApplicableActions(domain.attr("get_agent_applicable_actions")(
-                                           s.pyobj(),
+            return TagentApplicableActions(_domain->attr("get_agent_applicable_actions")(
+                                           m.pyobj(),
                                            other_agents_actions.pyobj(),
                                            agent.pyobj()));
         } catch(const py::error_already_set* e) {
@@ -729,10 +731,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static Observation reset(py::object& domain,
-                             [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    Observation reset([[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return Observation(domain.attr("reset")());
+            return Observation(_domain->attr("reset")());
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -740,11 +741,10 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static EnvironmentOutcome step(py::object& domain,
-                                   const Event& e,
-                                   [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    EnvironmentOutcome step(const Event& e,
+                            [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return EnvironmentOutcome(domain.attr("step")(e.pyobj()));
+            return EnvironmentOutcome(_domain->attr("step")(e.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -752,12 +752,11 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static EnvironmentOutcome sample(py::object& domain,
-                                     const Memory& m,
-                                     const Event& e,
-                                     [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    EnvironmentOutcome sample(const Memory& m,
+                              const Event& e,
+                              [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return EnvironmentOutcome(domain.attr("sample")(m.pyobj(), e.pyobj()));
+            return EnvironmentOutcome(_domain->attr("sample")(m.pyobj(), e.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -765,12 +764,11 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static State get_next_state(py::object& domain,
-                                const Memory& m,
-                                const Event&e,
-                                [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    State get_next_state(const Memory& m,
+                         const Event&e,
+                         [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return State(domain.attr("get_next_state")(m.pyobj(), e.pyobj()));
+            return State(_domain->attr("get_next_state")(m.pyobj(), e.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -778,12 +776,11 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static NextStateDistribution get_next_state_distribution(py::object& domain,
-                                                             const Memory& m,
-                                                             const Event& e,
-                                                             [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    NextStateDistribution get_next_state_distribution(const Memory& m,
+                                                      const Event& e,
+                                                      [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return NextStateDistribution(domain.attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
+            return NextStateDistribution(_domain->attr("get_next_state_distribution")(m.pyobj(), e.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -791,13 +788,12 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static Value get_transition_value(py::object& domain,
-                                      const Memory& m,
-                                      const Event& e,
-                                      const State& sp,
-                                      [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    Value get_transition_value(const Memory& m,
+                               const Event& e,
+                               const State& sp,
+                               [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return Value(domain.attr("get_transition_value")(m.pyobj(), e.pyobj(), sp.pyobj()));
+            return Value(_domain->attr("get_transition_value")(m.pyobj(), e.pyobj(), sp.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -805,10 +801,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static bool is_goal(py::object& domain,
-                        const State& s, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    bool is_goal(const State& s, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return py::cast<bool>(domain.attr("is_goal")(s.pyobj()));
+            return py::cast<bool>(_domain->attr("is_goal")(s.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -816,10 +811,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static bool is_terminal(py::object& domain,
-                            const State& s, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
+    bool is_terminal(const State& s, [[maybe_unused]] const std::size_t* thread_id = nullptr) {
         try {
-            return py::cast<bool>(domain.attr("is_terminal")(s.pyobj()));
+            return py::cast<bool>(_domain->attr("is_terminal")(s.pyobj()));
         } catch(const py::error_already_set* ex) {
             std::runtime_error err(ex->what());
             delete ex;
@@ -828,12 +822,11 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename Tfunction, typename ... Types>
-    static std::unique_ptr<py::object> call(py::object& domain,
-                                            [[maybe_unused]] const std::size_t* thread_id,
-                                            const Tfunction& func,
-                                            const Types& ... args) {
+    std::unique_ptr<py::object> call([[maybe_unused]] const std::size_t* thread_id,
+                                     const Tfunction& func,
+                                     const Types& ... args) {
         try {
-            return std::make_unique<py::object>(func(domain, args..., py::none()));
+            return std::make_unique<py::object>(func(*_domain, args..., py::none()));
         } catch(const py::error_already_set* e) {
             std::runtime_error err(e->what());
             delete e;
@@ -842,26 +835,28 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 };
 
-// === PythonDomainProxy::TypeProxy<ParallelExecution> implementation ===
+// === PythonDomainProxy::Implementation<ParallelExecution> implementation ===
 
 template <typename Texecution, typename Tagent, typename Tobservability, typename Tcontrollability, typename Tmemory>
 template <typename TexecutionPolicy>
-struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::TypeProxy<
+struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Implementation<
                 TexecutionPolicy,
                 typename std::enable_if<std::is_same<TexecutionPolicy, ParallelExecution>::value>::type> {
+    
+    std::unique_ptr<py::object> _domain;
     std::vector<std::unique_ptr<nng::socket>> _connections;
     
-    static void construct(std::unique_ptr<py::object>& domain, const py::object& other) {
+    Implementation(const py::object& other) {
         typename GilControl<Texecution>::Acquire acquire;
-        domain = std::make_unique<py::object>(other);
+        _domain = std::make_unique<py::object>(other);
 
-        if (!py::hasattr(*domain, "get_ipc_connections")) {
+        if (!py::hasattr(*_domain, "get_ipc_connections")) {
             std::string err_msg = "SKDECIDE exception: the python domain object must provide the get_shm_files() method in parallel mode.";
             spdlog::error(err_msg);
             throw std::runtime_error(err_msg);
         } else {
             try {
-                py::list ipc_connections = domain->attr("get_ipc_connections")();
+                py::list ipc_connections = _domain->attr("get_ipc_connections")();
                 for (auto f : ipc_connections) {
                     _connections.push_back(std::make_unique<nng::socket>(nng::pull::open()));
                     _connections.back()->listen(std::string(py::str(f)).c_str());
@@ -875,30 +870,29 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static void destroy(std::unique_ptr<py::object>& domain) {
+    ~Implementation() {
         typename GilControl<Texecution>::Acquire acquire;
-        domain.reset();
+        _domain.reset();
     }
 
-    static std::size_t get_parallel_capacity(py::object& domain) {
+    std::size_t get_parallel_capacity() {
         typename GilControl<Texecution>::Acquire acquire;
-        return py::cast<std::size_t>(domain.attr("get_parallel_capacity")());
+        return py::cast<std::size_t>(_domain->attr("get_parallel_capacity")());
     }
 
     template <typename Tfunction, typename ... Types>
-    static std::unique_ptr<py::object> do_launch(py::object& domain,
-                                                 const std::size_t* thread_id,
-                                                 const Tfunction& func,
-                                                 const Types& ... args) {
+    std::unique_ptr<py::object> do_launch(const std::size_t* thread_id,
+                                          const Tfunction& func,
+                                          const Types& ... args) {
         std::unique_ptr<py::object> id;
         nng::socket* conn = nullptr;
         {
             typename GilControl<Texecution>::Acquire acquire;
             try {
                 if (thread_id) {
-                    id = std::make_unique<py::object>(func(domain, args..., py::int_(*thread_id)));
+                    id = std::make_unique<py::object>(func(*_domain, args..., py::int_(*thread_id)));
                 } else {
-                    id = std::make_unique<py::object>(func(domain, args..., py::none()));
+                    id = std::make_unique<py::object>(func(*_domain, args..., py::none()));
                 }
                 int did = py::cast<int>(*id);
                 if (did >= 0) {
@@ -936,7 +930,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
         typename GilControl<Texecution>::Acquire acquire;
         try {
-            std::unique_ptr<py::object> r = std::make_unique<py::object>(domain.attr("get_result")(*id));
+            std::unique_ptr<py::object> r = std::make_unique<py::object>(_domain->attr("get_result")(*id));
             id.reset();
             return r;
         } catch(const py::error_already_set* e) {
@@ -951,80 +945,71 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename ... Types>
-    static std::unique_ptr<py::object> launch(py::object& domain,
-                                              const std::size_t* thread_id,
-                                              const char* name,
-                                              const Types& ... args) {
-        return do_launch(domain, thread_id, [&name](py::object& d, auto ... aargs){
+    std::unique_ptr<py::object> launch(const std::size_t* thread_id,
+                                       const char* name,
+                                       const Types& ... args) {
+        return do_launch(thread_id, [&name](py::object& d, auto ... aargs){
             return d.attr(name)(aargs...);
         }, args...);
     }
 
-    static ApplicableActionSpace get_applicable_actions(py::object& domain,
-                                                        const Memory& m,
-                                                        const std::size_t* thread_id = nullptr) {
-        return ApplicableActionSpace(launch(domain, thread_id, "get_applicable_actions", m.pyobj()));
+    ApplicableActionSpace get_applicable_actions(const Memory& m,
+                                                 const std::size_t* thread_id = nullptr) {
+        return ApplicableActionSpace(launch(thread_id, "get_applicable_actions", m.pyobj()));
     }
 
     template <typename TTagent = Tagent,
-                typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
-                typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
+              typename TTaction = Action,
+              typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
+              typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
-    static get_agent_applicable_actions(py::object& domain,
-                                        const Memory& m,
-                                        const Action& other_agents_actions,
-                                        const TactionAgent& agent,
-                                        const std::size_t* thread_id = nullptr) {
-        return TagentApplicableActions(launch(domain, thread_id, "get_agent_applicable_actions",
-                                                                    m.pyobj(),
-                                                                    other_agents_actions.pyobj(),
-                                                                    agent.pyobj()));
+    get_agent_applicable_actions(const Memory& m,
+                                 const TTaction& other_agents_actions,
+                                 const TactionAgent& agent,
+                                 const std::size_t* thread_id = nullptr) {
+        return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
+                                                            m.pyobj(),
+                                                            other_agents_actions.pyobj(),
+                                                            agent.pyobj()));
     }
 
-    static Observation reset(py::object& domain,
-                             const std::size_t* thread_id = nullptr) {
-        return Observation(launch(domain, thread_id, "reset"));
+    Observation reset(const std::size_t* thread_id = nullptr) {
+        return Observation(launch(thread_id, "reset"));
     }
 
-    static EnvironmentOutcome step(py::object& domain,
-                                   const Event& e,
-                                   const std::size_t* thread_id = nullptr) {
-        return EnvironmentOutcome(launch(domain, thread_id, "step", e.pyobj()));
+    EnvironmentOutcome step(const Event& e,
+                            const std::size_t* thread_id = nullptr) {
+        return EnvironmentOutcome(launch(thread_id, "step", e.pyobj()));
     }
 
-    static EnvironmentOutcome sample(py::object& domain,
-                                     const Memory& m,
-                                     const Event& e,
-                                     const std::size_t* thread_id = nullptr) {
-        return EnvironmentOutcome(launch(domain, thread_id, "sample", m.pyobj(), e.pyobj()));
+    EnvironmentOutcome sample(const Memory& m,
+                              const Event& e,
+                              const std::size_t* thread_id = nullptr) {
+        return EnvironmentOutcome(launch(thread_id, "sample", m.pyobj(), e.pyobj()));
     }
 
-    static State get_next_state(py::object& domain,
-                                const Memory& m,
-                                const Event& e,
-                                const std::size_t* thread_id = nullptr) {
-        return State(launch(domain, thread_id, "get_next_state", m.pyobj(), e.pyobj()));
+    State get_next_state(const Memory& m,
+                         const Event& e,
+                         const std::size_t* thread_id = nullptr) {
+        return State(launch(thread_id, "get_next_state", m.pyobj(), e.pyobj()));
     }
 
-    static NextStateDistribution get_next_state_distribution(py::object& domain,
-                                                             const Memory& m,
-                                                             const Event& e,
-                                                             const std::size_t* thread_id = nullptr) {
-        return NextStateDistribution(launch(domain, thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
+    NextStateDistribution get_next_state_distribution(const Memory& m,
+                                                      const Event& e,
+                                                      const std::size_t* thread_id = nullptr) {
+        return NextStateDistribution(launch(thread_id, "get_next_state_distribution", m.pyobj(), e.pyobj()));
     }
 
-    static Value get_transition_value(py::object& domain,
-                                      const Memory& m,
-                                      const Event& e,
-                                      const State& sp,
-                                      const std::size_t* thread_id = nullptr) {
-        return Value(launch(domain, thread_id, "get_transition_value", m.pyobj(), e.pyobj(), sp.pyobj()));
+    Value get_transition_value(const Memory& m,
+                               const Event& e,
+                               const State& sp,
+                               const std::size_t* thread_id = nullptr) {
+        return Value(launch(thread_id, "get_transition_value", m.pyobj(), e.pyobj(), sp.pyobj()));
     }
 
-    static bool is_goal(py::object& domain,
-                        const State& s,
-                        const std::size_t* thread_id = nullptr) {
-        std::unique_ptr<py::object> r = launch(domain, thread_id, "is_goal", s.pyobj());
+    bool is_goal(const State& s,
+                 const std::size_t* thread_id = nullptr) {
+        std::unique_ptr<py::object> r = launch(thread_id, "is_goal", s.pyobj());
         typename GilControl<Texecution>::Acquire acquire;
         try {
             bool rr = py::cast<bool>(*r);
@@ -1038,10 +1023,9 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
         }
     }
 
-    static bool is_terminal(py::object& domain,
-                            const State& s,
-                            const std::size_t* thread_id = nullptr) {
-        std::unique_ptr<py::object> r = launch(domain, thread_id, "is_terminal", s.pyobj());
+    bool is_terminal(const State& s,
+                     const std::size_t* thread_id = nullptr) {
+        std::unique_ptr<py::object> r = launch(thread_id, "is_terminal", s.pyobj());
         typename GilControl<Texecution>::Acquire acquire;
         try {
             bool rr = py::cast<bool>(*r);
@@ -1056,11 +1040,10 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     }
 
     template <typename Tfunction, typename ... Types>
-    static std::unique_ptr<py::object> call(py::object& domain,
-                                            const std::size_t* thread_id,
-                                            const Tfunction& func,
-                                            const Types& ... args) {
-        return do_launch(domain, thread_id, func, args...);
+    std::unique_ptr<py::object> call(const std::size_t* thread_id,
+                                     const Tfunction& func,
+                                     const Types& ... args) {
+        return do_launch(thread_id, func, args...);
     }
 };
 
@@ -1077,24 +1060,24 @@ typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability,
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_CLASS::PythonDomainProxy(const py::object& domain) {
-    TypeProxy<Texecution>::construct(_domain, domain);
+    _implementation = std::make_unique<Implementation<Texecution>>(domain);
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_CLASS::~PythonDomainProxy() {
-    TypeProxy<Texecution>::destroy(_domain);
+    _implementation.reset();
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 std::size_t SK_PY_DOMAIN_PROXY_CLASS::get_parallel_capacity() {
-    return TypeProxy<Texecution>::get_parallel_capacity(*_domain);
+    return _implementation->get_parallel_capacity();
 }
     
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 typename SK_PY_DOMAIN_PROXY_CLASS::ApplicableActionSpace
 SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::get_applicable_actions(*_domain, m, thread_id);
+        return _implementation->get_applicable_actions(m, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
@@ -1105,16 +1088,17 @@ SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::siz
 }
 
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
-template <typename TTagent = Tagent,
-          typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
-          typename TagentApplicableActions = typename SK_PY_DOMAIN_PROXY_CLASS::ApplicableActionSpace::AgentData>
+template <typename TTagent,
+          typename TTaction,
+          typename TactionAgent,
+          typename TagentApplicableActions>
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
-                                                       const Action& other_agents_actions,
+                                                       const TTaction& other_agents_actions,
                                                        const TactionAgent& agent,
-                                                       const std::size_t* thread_id = nullptr) {
+                                                       const std::size_t* thread_id) {
     try {
-        return TypeProxy<Texecution>::get_agent_applicable_actions(*_domain, m, other_agents_actions, agent, thread_id);
+        return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
@@ -1127,7 +1111,7 @@ SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_TYPE::Observation SK_PY_DOMAIN_PROXY_CLASS::reset(const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::reset(*_domain, thread_id);
+        return _implementation->reset(thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + std::string(e.what()));
@@ -1139,7 +1123,7 @@ SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::step(const Event& e,
                                                                            const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::step(*_domain, e, thread_id);
+        return _implementation->step(e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
@@ -1153,7 +1137,7 @@ SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::sample(con
                                                                              const Event& e,
                                                                              const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::sample(*_domain, m, e, thread_id);
+        return _implementation->sample(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when sampling from ") +
@@ -1168,7 +1152,7 @@ SK_PY_DOMAIN_PROXY_TYPE::State SK_PY_DOMAIN_PROXY_CLASS::get_next_state(const Me
                                                                         const Event& e,
                                                                         const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_next_state(*_domain, m, e, thread_id);
+        return _implementation->get_next_state(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
@@ -1184,7 +1168,7 @@ SK_PY_DOMAIN_PROXY_TYPE::NextStateDistribution SK_PY_DOMAIN_PROXY_CLASS::get_nex
                                                                                                      const Event& e,
                                                                                                      const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_next_state_distribution(*_domain, m, e, thread_id);
+        return _implementation->get_next_state_distribution(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
@@ -1200,7 +1184,7 @@ SK_PY_DOMAIN_PROXY_TYPE::Value SK_PY_DOMAIN_PROXY_CLASS::get_transition_value(co
                                                                               const State& sp,
                                                                               const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::get_transition_value(*_domain, m, e, sp, thread_id);
+        return _implementation->get_transition_value(m, e, sp, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
@@ -1212,7 +1196,7 @@ SK_PY_DOMAIN_PROXY_TYPE::Value SK_PY_DOMAIN_PROXY_CLASS::get_transition_value(co
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::is_goal(*_domain, s, thread_id);
+        return _implementation->is_goal(s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
@@ -1224,7 +1208,7 @@ bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 bool SK_PY_DOMAIN_PROXY_CLASS::is_terminal(const State& s, const std::size_t* thread_id) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::is_terminal(*_domain, s, thread_id);
+        return _implementation->is_terminal(s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
         spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
@@ -1237,7 +1221,7 @@ SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 template <typename Tfunction, typename ... Types>
 std::unique_ptr<py::object> SK_PY_DOMAIN_PROXY_CLASS::call(const std::size_t* thread_id, const Tfunction& func, const Types& ... args) {
     try {
-        return SK_PY_DOMAIN_PROXY_CLASS::template TypeProxy<Texecution>::call(*_domain, thread_id, func, args...);
+        return _implementation->call(thread_id, func, args...);
     } catch(const std::exception& e) {
         spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + std::string(e.what()));
         throw;

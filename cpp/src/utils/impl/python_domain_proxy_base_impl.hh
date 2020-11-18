@@ -16,7 +16,7 @@ namespace skdecide {
 
 template <typename Texecution>
 template <typename Derived, typename Tpyobj>
-struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::TypeProxy {
+struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::Implementation {
     
     typedef typename PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj> PyObj;
 
@@ -131,21 +131,21 @@ typename PythonDomainProxyBase<Texecution>::template PyObj<Derived, Tpyobj>
 
 SK_PYOBJ_TEMPLATE_DECL
 SK_PY_OBJ_CLASS::PyObj() {
-    TypeProxy::construct(_pyobj);
+    Implementation::construct(_pyobj);
 }
 
 SK_PYOBJ_TEMPLATE_DECL
 template <typename TTpyobj,
           std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int>>
 SK_PY_OBJ_CLASS::PyObj(std::unique_ptr<TTpyobj>&& o, bool check) {
-    TypeProxy::construct(_pyobj, std::move(o), check);
+    Implementation::construct(_pyobj, std::move(o), check);
 }
 
 SK_PYOBJ_TEMPLATE_DECL
 template <typename TTpyobj,
-          std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int>>
+          std::enable_if_t<!std::is_base_of<SK_PY_OBJ_CLASS, TTpyobj>::value, int>>
 SK_PY_OBJ_CLASS::PyObj(const TTpyobj& o, bool check) {
-    TypeProxy::construct(_pyobj, o, check);
+    Implementation::construct(_pyobj, o, check);
 }
 
 SK_PYOBJ_TEMPLATE_DECL
@@ -204,7 +204,7 @@ bool SK_PY_OBJ_CLASS::Equal::operator()(const PyObj<Derived, Tpyobj>& o1, const 
 
 template <typename Texecution>
 template<typename T, typename Titerator>
-struct PythonDomainProxyBase<Texecution>::PyIter<T, Titerator>::TypeProxy {
+struct PythonDomainProxyBase<Texecution>::PyIter<T, Titerator>::Implementation {
     template <typename TTiterator = Titerator,
               std::enable_if_t<!std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
     static T dereference_object(Titerator& pit) {
@@ -279,12 +279,12 @@ SK_PY_ITER_TYPE SK_PY_ITER_CLASS::operator++(int) {
 
 SK_PY_ITER_TEMPLATE_DECL
 T SK_PY_ITER_CLASS::operator*() const {
-    return SK_PY_ITER_TYPE::TypeProxy::dereference_object(*(this->_pyobj));
+    return SK_PY_ITER_TYPE::Implementation::dereference_object(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL
 std::unique_ptr<T> SK_PY_ITER_CLASS::operator->() const {
-    return SK_PY_ITER_TYPE::TypeProxy::dereference_pointer(*(this->_pyobj));
+    return SK_PY_ITER_TYPE::Implementation::dereference_pointer(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL
@@ -896,7 +896,7 @@ std::size_t SK_PY_OUTCOME_INFO_CLASS::get_depth() const {
 // === Agent implementation ===
 
 template <typename Texecution>
-struct PythonDomainProxyBase<Texecution>::AgentDataAccess::Agent::TypeProxy {
+struct PythonDomainProxyBase<Texecution>::AgentDataAccess::Agent::Implementation {
     template <typename Tother,
               std::enable_if_t<std::is_same<py::object, Tother>::value, int> = 0>
     static const py::object& agent(const Tother& other) {
@@ -933,7 +933,7 @@ SK_PY_AGENT_DATA_AGENT_CLASS::Agent(std::unique_ptr<py::object>&& a)
 SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
 template <typename Tother>
 SK_PY_AGENT_DATA_AGENT_CLASS::Agent(const Tother& other)
-: Agent(TypeProxy::agent(other.pyobj())) {}
+: Agent(Implementation::agent(other.pyobj())) {}
 
 SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
 typename SK_PY_AGENT_DATA_AGENT_CLASS& SK_PY_AGENT_DATA_AGENT_CLASS::operator=(const Agent& other) {

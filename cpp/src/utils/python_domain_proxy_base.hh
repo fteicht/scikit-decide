@@ -25,7 +25,7 @@ public :
         PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true);
 
         template <typename TTpyobj,
-                  std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int> = 0>
+                  std::enable_if_t<!std::is_base_of<PyObj<Derived, Tpyobj>, TTpyobj>::value, int> = 0>
         PyObj(const TTpyobj& o, bool check = true);
 
         PyObj(const PyObj& other);
@@ -49,7 +49,7 @@ public :
 
     private :
     
-        struct TypeProxy;
+        struct Implementation;
     };
 
     template<typename T, typename Titerator = py::iterator>
@@ -72,7 +72,7 @@ public :
         bool operator!=(const PyIter<T, Titerator>& other) const;
     
     private :
-        struct TypeProxy;
+        struct Implementation;
     };
 
     class State : public PyObj<State> {
@@ -236,7 +236,7 @@ public :
             virtual ~Agent();
 
         private :
-            struct TypeProxy;
+            struct Implementation;
         };
 
         // Dict items

@@ -53,7 +53,7 @@ public :
 
     template <typename DData, typename TTagent>
     class AgentDataAccess<DData, TTagent,
-                          typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : PyObj<DData, py::dict> {
+                          typename std::enable_if<std::is_same<TTagent, MultiAgent>::value>::type> : public PyObj<DData, py::dict> {
     public :
         // AgentDataAccess inherits from pyObj<> to manage its python object but DData is passed to
         // PyObj as template parameter to print DData::class_name when managing AgentDataAccess objects
@@ -94,7 +94,7 @@ public :
                                                                  >::type
                                      >::type Observation;
     
-    class MemoryState : PyObj<MemoryState, py::list> {
+    class MemoryState : public PyObj<MemoryState, py::list> {
     public :
         typedef State State;
         typedef typename State::AgentData AgentData;
@@ -275,11 +275,12 @@ public :
     ApplicableActionSpace get_applicable_actions(const Memory& m, const std::size_t* thread_id = nullptr);
 
     template <typename TTagent = Tagent,
+              typename TTaction = Action,
               typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
-              typename TagentApplicableActions = typename ApplicableActionSpace::AgentData>
+              typename TagentApplicableActions = typename PythonDomainProxyBase<Texecution>::ApplicableActionSpace>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
-                                 const Action& other_agents_actions,
+                                 const TTaction& other_agents_actions,
                                  const TactionAgent& agent,
                                  const std::size_t* thread_id = nullptr);
 
@@ -298,9 +299,9 @@ public :
 protected :
 
     template <typename TexecutionPolicy, typename Enable = void>
-    struct TypeProxy {};
+    struct Implementation {};
 
-    std::unique_ptr<py::object> _domain;
+    std::unique_ptr<Implementation<Texecution>> _implementation;
 };
 
 } // namespace skdecide
