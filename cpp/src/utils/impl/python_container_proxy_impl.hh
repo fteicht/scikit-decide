@@ -272,7 +272,7 @@ PythonContainerProxy<Texecution>::SequenceImplementation<Tsequence>::SequenceImp
 
 template <typename Texecution>
 template <typename Tsequence>
-typename PythonContainerProxy<Texecution>::SequenceImplementation<Tsequence>&
+typename PythonContainerProxy<Texecution>::template SequenceImplementation<Tsequence>&
 PythonContainerProxy<Texecution>::SequenceImplementation<Tsequence>::operator=(const SequenceImplementation& other) {
     typename GilControl<Texecution>::Acquire acquire;
     this->_vector = std::make_unique<Tsequence>(*other._vector);

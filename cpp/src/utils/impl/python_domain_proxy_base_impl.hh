@@ -143,7 +143,7 @@ SK_PY_OBJ_CLASS::PyObj(std::unique_ptr<TTpyobj>&& o, bool check) {
 
 SK_PYOBJ_TEMPLATE_DECL
 template <typename TTpyobj,
-          std::enable_if_t<!std::is_base_of<SK_PY_OBJ_CLASS, TTpyobj>::value, int>>
+          std::enable_if_t<!std::is_base_of<SK_PY_OBJ_TYPE, TTpyobj>::value, int>>
 SK_PY_OBJ_CLASS::PyObj(const TTpyobj& o, bool check) {
     Implementation::construct(_pyobj, o, check);
 }
