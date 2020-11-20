@@ -21,13 +21,53 @@ namespace py = pybind11;
 
 namespace skdecide {
 
-inline std::size_t hash_value(const PythonHash<SequentialExecution>::ItemHasher& ih) {
-    return ih.hash();
+template <typename Texecution>
+bool PythonEqual<Texecution>::operator()(const py::object& o1, const py::object& o2) const {
+    typename GilControl<Texecution>::Acquire acquire;
+    try {
+        std::function<bool (const py::object&, const py::object&, bool&)> compute_equal = [](const py::object& eo1, const py::object& eo2, bool& eq_test) {
+            py::object res = eo1.attr("__eq__")(eo2);
+            if (!res.is(skdecide::Globals::not_implemented_object())) {
+                eq_test = res.template cast<bool>();
+                return true;
+            } else {
+                return false;
+            }
+        };
+        if (py::isinstance<py::array>(o1) && py::isinstance<py::array>(o2)) {
+            return py::module::import("numpy").attr("array_equal")(o1, o2).template cast<bool>();
+        } else {
+            bool eq_test = false;
+            if (!py::hasattr(o1, "__eq__") || o1.attr("__eq__").is_none() ||
+                !py::hasattr(o2, "__eq__") || o2.attr("__eq__").is_none() ||
+                !compute_equal(o1, o2, eq_test)) {
+                // Try to equalize using __repr__
+                py::object r1 = o1.attr("__repr__")();
+                py::object r2 = o2.attr("__repr__")();
+                if (!py::hasattr(r1, "__eq__") || r1.attr("__eq__").is_none() ||
+                    !py::hasattr(r2, "__eq__") || r2.attr("__eq__").is_none() ||
+                    !compute_equal(r1, r2, eq_test)) {
+                    // Try to equalize using __str__
+                    py::object s1 = o1.attr("__str__")();
+                    py::object s2 = o2.attr("__str__")();
+                    if (!py::hasattr(s1, "__eq__") || s1.attr("__eq__").is_none() ||
+                        !py::hasattr(s2, "__eq__") || s2.attr("__eq__").is_none() ||
+                        !compute_equal(s1, s2, eq_test)) {
+                        // Desperate case...
+                        throw std::invalid_argument("SKDECIDE exception: python objects do not provide usable __eq__ nor equal tests using __repr__ or __str__");
+                    }
+                }
+            }
+            return eq_test;
+        }
+    } catch(const py::error_already_set* e) {
+        spdlog::error(std::string("SKDECIDE exception when testing equality of python objects: ") + e->what());
+        std::runtime_error err(e->what());
+        delete e;
+        throw err;
+    }
 }
 
-inline std::size_t hash_value(const PythonHash<ParallelExecution>::ItemHasher& ih) {
-    return ih.hash();
-}
 
 template <typename Texecution>
 std::size_t PythonHash<Texecution>::operator()(const py::object& o) const {
@@ -101,52 +141,12 @@ std::size_t PythonHash<Texecution>::ItemHasher::hash() const {
     return PythonHash<Texecution>()(_pyobj);
 }
 
+inline std::size_t hash_value(const PythonHash<SequentialExecution>::ItemHasher& ih) {
+    return ih.hash();
+}
 
-template <typename Texecution>
-bool PythonEqual<Texecution>::operator()(const py::object& o1, const py::object& o2) const {
-    typename GilControl<Texecution>::Acquire acquire;
-    try {
-        std::function<bool (const py::object&, const py::object&, bool&)> compute_equal = [](const py::object& eo1, const py::object& eo2, bool& eq_test) {
-            py::object res = eo1.attr("__eq__")(eo2);
-            if (!res.is(skdecide::Globals::not_implemented_object())) {
-                eq_test = res.template cast<bool>();
-                return true;
-            } else {
-                return false;
-            }
-        };
-        if (py::isinstance<py::array>(o1) && py::isinstance<py::array>(o2)) {
-            return py::module::import("numpy").attr("array_equal")(o1, o2).template cast<bool>();
-        } else {
-            bool eq_test = false;
-            if (!py::hasattr(o1, "__eq__") || o1.attr("__eq__").is_none() ||
-                !py::hasattr(o2, "__eq__") || o2.attr("__eq__").is_none() ||
-                !compute_equal(o1, o2, eq_test)) {
-                // Try to equalize using __repr__
-                py::object r1 = o1.attr("__repr__")();
-                py::object r2 = o2.attr("__repr__")();
-                if (!py::hasattr(r1, "__eq__") || r1.attr("__eq__").is_none() ||
-                    !py::hasattr(r2, "__eq__") || r2.attr("__eq__").is_none() ||
-                    !compute_equal(r1, r2, eq_test)) {
-                    // Try to equalize using __str__
-                    py::object s1 = o1.attr("__str__")();
-                    py::object s2 = o2.attr("__str__")();
-                    if (!py::hasattr(s1, "__eq__") || s1.attr("__eq__").is_none() ||
-                        !py::hasattr(s2, "__eq__") || s2.attr("__eq__").is_none() ||
-                        !compute_equal(s1, s2, eq_test)) {
-                        // Desperate case...
-                        throw std::invalid_argument("SKDECIDE exception: python objects do not provide usable __eq__ nor equal tests using __repr__ or __str__");
-                    }
-                }
-            }
-            return eq_test;
-        }
-    } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when testing equality of python objects: ") + e->what());
-        std::runtime_error err(e->what());
-        delete e;
-        throw err;
-    }
+inline std::size_t hash_value(const PythonHash<ParallelExecution>::ItemHasher& ih) {
+    return ih.hash();
 }
 
 } // namespace skdecide

@@ -25,7 +25,8 @@ public :
         PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true);
 
         template <typename TTpyobj,
-                  std::enable_if_t<!std::is_base_of<PyObj<Derived, Tpyobj>, TTpyobj>::value, int> = 0>
+                  std::enable_if_t<!std::is_base_of<typename PythonDomainProxyBase<Texecution>::template PyObj<Derived, Tpyobj>,
+                                                    TTpyobj>::value, int> = 0>
         PyObj(const TTpyobj& o, bool check = true);
 
         PyObj(const PyObj& other);

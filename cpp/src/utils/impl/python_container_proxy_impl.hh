@@ -21,14 +21,6 @@ namespace py = pybind11;
 
 namespace skdecide {
 
-inline std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o) {
-    return o.hash();
-}
-
-inline std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o) {
-    return o.hash();
-}
-
 // === PythonContainerProxy::value_type implementation ===
 
 template <typename Texecution>
@@ -59,6 +51,14 @@ std::size_t PythonContainerProxy<Texecution>::value_type::hash() const {
 template <typename Texecution>
 bool PythonContainerProxy<Texecution>::value_type::operator== (const value_type& other) const {
     return _value->equal(*(other._value));
+}
+
+inline std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o) {
+    return o.hash();
+}
+
+inline std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o) {
+    return o.hash();
 }
 
 // === PythonContainerProxy::value_type::PrimitiveType implementation ===

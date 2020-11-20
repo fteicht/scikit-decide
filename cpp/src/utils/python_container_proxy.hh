@@ -127,6 +127,11 @@ private :
     std::unique_ptr<BaseImplementation> _implementation;
 };
 
+struct SequentialExecution;
+struct ParallelExecution;
+std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o);
+std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o);
+
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY

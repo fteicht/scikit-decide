@@ -11,6 +11,13 @@ namespace py = pybind11;
 
 namespace skdecide {
 
+
+template <typename Texecution>
+struct PythonEqual {
+    bool operator()(const py::object& o1, const py::object& o2) const;
+};
+
+
 template <typename Texecution>
 struct PythonHash {
     std::size_t operator()(const py::object& o) const;
@@ -23,11 +30,10 @@ struct PythonHash {
     };
 };
 
-
-template <typename Texecution>
-struct PythonEqual {
-    bool operator()(const py::object& o1, const py::object& o2) const;
-};
+struct SequentialExecution;
+struct ParallelExecution;
+std::size_t hash_value(const PythonHash<SequentialExecution>::ItemHasher& ih);
+std::size_t hash_value(const PythonHash<ParallelExecution>::ItemHasher& ih);
 
 } // namespace skdecide
 

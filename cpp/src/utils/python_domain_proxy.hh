@@ -298,7 +298,7 @@ public :
 
 protected :
 
-    template <typename TexecutionPolicy, typename Enable = void>
+    template <typename TexecutionPolicy = Texecution, typename Enable = void>
     struct Implementation {};
 
     std::unique_ptr<Implementation<Texecution>> _implementation;
@@ -306,6 +306,7 @@ protected :
 
 } // namespace skdecide
 
+#include "impl/python_domain_proxy_call_impl.hh"
 #ifdef SKDECIDE_HEADERS_ONLY
 #include "impl/python_domain_proxy_impl.hh"
 #endif
