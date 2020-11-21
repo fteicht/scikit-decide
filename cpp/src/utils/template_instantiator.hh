@@ -61,39 +61,66 @@ namespace skdecide {
  * TemplateInstantiator<Instantiator, FirstSelector, SecondSelector>()(instantiation_args);
  */
 
-template <template <typename ... Instantiations> struct FinalInstantiator,
-          typename ... IntermediateInstantiators>
 struct TemplateInstantiator {
 
-    template <typename ... RemainingInstantiators>
-    struct Impl {};
+    template <typename ... Instantiators>
+    struct Implementation {};
 
-    template <template <typename ... AArgs> struct CurrentInstantiator,
+    template <typename FirstInstantiator,
+              typename SecondInstantiator,
               typename ... RemainingInstantiators>
-    struct Impl {
+    struct Implementation {
+        FirstInstantiator _current_instantiator;
+        Implementation<SecondInstantiator, RemainingInstantiators...> remaining_instantiators;
+
+        Implementation(FirstInstantiator&& first_instantiator,
+                       SecondInstantiator&& second_instantiator,
+                       RemainingInstantiators... remaining_instantiators)
+            : _current_instantiator(std::move(first_instantiator)),
+              _remaining_instantiators(second_instantiator, remaining_instantiators) {}
+        
         template <typename ... CurrentInstantiations>
-        struct Recursion {
+        struct InstantiationPropagator {
+            template <typename NewInstantiation>
+            using Push = TemplateInstantiator::InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
+
             template <typename ... Args>
-            void operator(Args ... args) {
-                CurrentInstantiator<Impl<RemainingInstantiators>, CurrentInstantiations>()(args);
+            static void propagate(Implementation& impl, Args... args) {
+                FirstInstantiator::Propagate<
+                    typename Implementation<SecondInstantiator, RemainingInstantiators...>::template InstantiationPropagator<CurrentInstantiations...>>(
+                        impl._current_instantiator,
+                        args);
+            }
+        };
+
+        template <typename ... Args>
+        void instantiate(Args ... args) {
+            InstantiationPropagator<>::propagate(*this, args);
+        }
+    };
+
+    template <typename FinalInstantiator>
+    struct Implementation {
+        FinalInstantiator _final_instantiator;
+
+        Implementation(FinalInstantiator&& final_instantiator,)
+            : _final_instantiator(std::move(final_instantiator)) {}
+        
+        template <typename ... CurrentInstantiations>
+        struct InstantiationPropagator {
+            template <typename NewInstantiation>
+            using Push = TemplateInstantiator::InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
+
+            template <typename ... Args>
+            static void propagate(Implementation& impl, Args... args) {
+               FinalInstantiator::Instantiate<CurrentInstantiations>(impl._final_instantiator, args);
             }
         };
     };
 
-    template <>
-    struct Impl {
-        template <typename ... CurrentInstantiations>
-        struct Recursion {
-            template <typename ... Args>
-            void operator(Args ... args) {
-                FinalInstantiator<CurrentInstantiations>()(args);
-            }
-        };
-    };
-
-    template <typename ... FinalInstantiatorArgs>
-    void operator(FinalInstantiator ... args) {
-        Impl<IntermediateInstantiators>::Recursion<>()(args);
+    template <typename ... Instantiators>
+    static Implementation<Instantiators...> select(Instantiators ... instantiators) {
+       return Implementation<Instantiators...>(instantiators);
     }
 };
 
