@@ -63,64 +63,82 @@ namespace skdecide {
 
 struct TemplateInstantiator {
 
-    template <typename ... Instantiators>
+    template <typename... Instantiators>
     struct Implementation {};
 
     template <typename FirstInstantiator,
               typename SecondInstantiator,
-              typename ... RemainingInstantiators>
-    struct Implementation {
+              typename... RemainingInstantiators>
+    struct Implementation<FirstInstantiator, SecondInstantiator, RemainingInstantiators...> {
         FirstInstantiator _current_instantiator;
-        Implementation<SecondInstantiator, RemainingInstantiators...> remaining_instantiators;
+        Implementation<SecondInstantiator, RemainingInstantiators...> _remaining_instantiators;
 
         Implementation(FirstInstantiator&& first_instantiator,
                        SecondInstantiator&& second_instantiator,
-                       RemainingInstantiators... remaining_instantiators)
-            : _current_instantiator(std::move(first_instantiator)),
-              _remaining_instantiators(second_instantiator, remaining_instantiators) {}
+                       RemainingInstantiators&&... remaining_instantiators)
+            : _current_instantiator(first_instantiator),
+              _remaining_instantiators(std::forward<SecondInstantiator>(second_instantiator),
+                                       std::forward<RemainingInstantiators>(remaining_instantiators)...) {}
         
-        template <typename ... CurrentInstantiations>
+        template <typename... CurrentInstantiations>
         struct InstantiationPropagator {
             template <typename NewInstantiation>
-            using Push = TemplateInstantiator::InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
+            using Push = InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
 
-            template <typename ... Args>
+            template <typename... Args>
             static void propagate(Implementation& impl, Args... args) {
                 FirstInstantiator::Propagate<
-                    typename Implementation<SecondInstantiator, RemainingInstantiators...>::template InstantiationPropagator<CurrentInstantiations...>>(
+                    Implementation<SecondInstantiator, RemainingInstantiators...>::InstantiationPropagator<CurrentInstantiations...>>(
                         impl._current_instantiator,
-                        args);
+                        impl._remaining_instantiators,
+                        args...);
             }
         };
 
-        template <typename ... Args>
-        void instantiate(Args ... args) {
-            InstantiationPropagator<>::propagate(*this, args);
+        template <template <typename...> class... CurrentInstantiations>
+        struct TemplateInstantiationPropagator {
+            template <template <typename...> class NewInstantiation>
+            using Push = TemplateInstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
+
+            template <typename... Args>
+            static void propagate(Implementation& impl, Args... args) {
+                FirstInstantiator::Propagate<
+                    Implementation<SecondInstantiator, RemainingInstantiators...>::TemplateInstantiationPropagator<
+                            CurrentInstantiations..., CurrentTemplateInstantiations...>>(
+                        impl._current_instantiator,
+                        impl._remaining_instantiators,
+                        args...);
+            }
+        };
+
+        template <typename... Args>
+        void instantiate(Args... args) {
+            InstantiationPropagator<>::propagate(*this, args...);
         }
     };
 
     template <typename FinalInstantiator>
-    struct Implementation {
+    struct Implementation<FinalInstantiator> {
         FinalInstantiator _final_instantiator;
 
-        Implementation(FinalInstantiator&& final_instantiator,)
-            : _final_instantiator(std::move(final_instantiator)) {}
+        Implementation(FinalInstantiator&& final_instantiator)
+            : _final_instantiator(final_instantiator) {}
         
-        template <typename ... CurrentInstantiations>
+        template <typename... CurrentInstantiations>
         struct InstantiationPropagator {
             template <typename NewInstantiation>
-            using Push = TemplateInstantiator::InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
+            using Push = InstantiationPropagator<CurrentInstantiations..., NewInstantiation>;
 
-            template <typename ... Args>
+            template <typename... Args>
             static void propagate(Implementation& impl, Args... args) {
-               FinalInstantiator::Instantiate<CurrentInstantiations>(impl._final_instantiator, args);
+               FinalInstantiator::Instantiate<CurrentInstantiations...>(impl._final_instantiator, args);
             }
         };
     };
 
-    template <typename ... Instantiators>
-    static Implementation<Instantiators...> select(Instantiators ... instantiators) {
-       return Implementation<Instantiators...>(instantiators);
+    template <typename... Instantiators>
+    static Implementation<Instantiators...> select(Instantiators&&... instantiators) {
+       return Implementation<Instantiators...>(std::forward<Instantiators>(instantiators)...);
     }
 };
 
