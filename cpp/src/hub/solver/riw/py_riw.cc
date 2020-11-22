@@ -186,17 +186,14 @@ private :
         
         ExecutionInstantiator(bool parallel) : _parallel(parallel) {}
 
-        template <typename Propagator>
-        struct Propagate {
-            template <typename ... Args>
-            Propagate(ExecutionInstantiator& instantiator, Args... args) {
-                if (instantiator._parallel) {
-                    Propagator::PushType<skdecide::ParallelExecution>::propagate(args...);
-                } else {
-                    Propagator::PushType<skdecide::SequentialExecution>::propagate(args...);
-                }
+        template <typename Instantiator, typename ... Args>
+        void operator()(Args... args) {
+            if (_parallel) {
+                Instantiator::PushType<skdecide::ParallelExecution>(args...);
+            } else {
+                Instantiator::PushType<skdecide::SequentialExecution>(args...);
             }
-        };
+        }
     };
 
     struct HashingPolicyInstantiator {
@@ -205,17 +202,14 @@ private :
         HashingPolicyInstantiator(bool use_state_feature_hash)
         : _use_state_feature_hash(use_state_feature_hash) {}
 
-        template <typename Propagator>
-        struct Propagate {
-            template <typename ... Args>
-            Propagate(HashingPolicyInstantiator& instantiator, Args... args) {
-                if (instantiator._use_state_feature_hash) {
-                    Propagator::PushTemplate<skdecide::StateFeatureHash>::propagate(args...);
-                } else {
-                    Propagator::PushTemplate<skdecide::DomainStateHash>::propagate(args...);
-                }
+        template <typename Instantiator, typename ... Args>
+        void operator()(Args... args) {
+            if (_use_state_feature_hash) {
+                Instantiator::PushTemplate<skdecide::StateFeatureHash>(args...);
+            } else {
+                Instantiator::PushTemplate<skdecide::DomainStateHash>(args...);
             }
-        };
+        }
     };
 
     struct RolloutPolicyInstantiator {
@@ -224,17 +218,14 @@ private :
         RolloutPolicyInstantiator(bool use_simulation_domain)
         : _use_simulation_domain(use_simulation_domain) {}
 
-        template <typename Propagator>
-        struct Propagate {
-            template <typename ... Args>
-            Propagate(RolloutPolicyInstantiator& instantiator, Args... args) {
-                if (instantiator._use_simulation_domain) {
-                    Propagator::PushTemplate<skdecide::SimulationRollout>::propagate(args...);
-                } else {
-                    Propagator::PushTemplate<skdecide::EnvironmentRollout>::propagate(args...);
-                }
+        template <typename Instantiator, typename ... Args>
+        void operator()(Args... args) {
+            if (_use_simulation_domain) {
+                Instantiator::PushTemplate<skdecide::SimulationRollout>(args...);
+            } else {
+                Instantiator::PushTemplate<skdecide::EnvironmentRollout>(args...);
             }
-        };
+        }
     };
 
     struct SolverInstantiator {

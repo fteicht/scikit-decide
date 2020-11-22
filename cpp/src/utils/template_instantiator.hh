@@ -93,11 +93,12 @@ struct TemplateInstantiator {
                         template TemplateInstantiationPropagator<CurrentTemplateInstantiations..., NewInstantiation>;
 
                 template <typename... Args>
-                static void propagate(Implementation& impl, Args... args) {
-                    FirstInstantiator::Propagate<
+                TemplateInstantiationPropagator(Implementation& impl, Args... args) {
+                    impl._current_instantiator.operator()<
                         typename Implementation<SecondInstantiator, RemainingInstantiators...>::template TypeInstantiationPropagator<
-                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>>(
-                            impl._current_instantiator,
+                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>,
+                        Implementation<SecondInstantiator, RemainingInstantiators...>,
+                        Args...>(
                             impl._remaining_instantiators,
                             args...);
                 }
@@ -106,7 +107,7 @@ struct TemplateInstantiator {
 
         template <typename... Args>
         void instantiate(Args... args) {
-            TypeInstantiationPropagator<>::TemplateInstantiationPropagator<>::propagate(*this, args...);
+            TypeInstantiationPropagator<>::TemplateInstantiationPropagator<>(*this, args...);
         }
     };
 
@@ -130,7 +131,7 @@ struct TemplateInstantiator {
                         template TemplateInstantiationPropagator<CurrentTemplateInstantiations..., NewInstantiation>;
 
                 template <typename... Args>
-                static void propagate(Implementation& impl, Args... args) {
+                TemplateInstantiationPropagator(Implementation& impl, Args... args) {
                 FinalInstantiator::TypeList<CurrentTypeInstantiations...>
                                  ::TemplateList<CurrentTemplateInstantiations...>::Instantiate(
                                      impl._final_instantiator, args...);
@@ -148,7 +149,7 @@ struct TemplateInstantiator {
                         template TemplateInstantiationPropagator<NewInstantiation>;
 
                 template <typename... Args>
-                static void propagate(Implementation& impl, Args... args) {
+                TemplateInstantiationPropagator(Implementation& impl, Args... args) {
                 FinalInstantiator::Instantiate<CurrentTypeInstantiations...>(
                                      impl._final_instantiator, args...);
                 }
@@ -168,7 +169,7 @@ struct TemplateInstantiator {
                         template TemplateInstantiationPropagator<CurrentTemplateInstantiations..., NewInstantiation>;
 
                 template <typename... Args>
-                static void propagate(Implementation& impl, Args... args) {
+                TemplateInstantiationPropagator(Implementation& impl, Args... args) {
                 FinalInstantiator::Instantiate<CurrentTemplateInstantiations...>(
                                      impl._final_instantiator, args...);
                 }
