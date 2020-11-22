@@ -8,8 +8,13 @@
 #include <pybind11/iostream.h>
 
 #include "riw.hh"
+#include "riw_impl.hh"
 
+#include "utils/execution.hh"
+#include "utils/python_gil_control.hh"
 #include "utils/python_domain_proxy.hh"
+#include "utils/python_container_proxy.hh"
+#include "utils/template_instantiator.hh"
 
 namespace py = pybind11;
 
@@ -42,106 +47,6 @@ using PyRIWFeatureVector = skdecide::PythonContainerProxy<Texecution>;
 
 
 class PyRIWSolver {
-public :
-
-    PyRIWSolver(py::object& domain,
-                const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
-                bool use_state_feature_hash = false,
-                bool use_simulation_domain = false,
-                std::size_t time_budget = 3600000,
-                std::size_t rollout_budget = 100000,
-                std::size_t max_depth = 1000,
-                double exploration = 0.25,
-                double discount = 1.0,
-                bool online_node_garbage = false,
-                bool parallel = false,
-                bool debug_logs = false) {
-
-        if (parallel) {
-            if (use_state_feature_hash) {
-                if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash, skdecide::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
-                } else {
-                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash, skdecide::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth, exploration, discount, online_node_garbage, debug_logs);
-                }
-            } else {
-                if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash, skdecide::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                } else {
-                    _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash, skdecide::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                }
-            }
-        } else {
-            if (use_state_feature_hash) {
-                if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash, skdecide::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                } else {
-                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash, skdecide::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                }
-            } else {
-                if (use_simulation_domain) {
-                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash, skdecide::SimulationRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                } else {
-                    _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash, skdecide::EnvironmentRollout>>(
-                        domain, state_features, time_budget, rollout_budget, max_depth,
-                        exploration, discount, online_node_garbage, debug_logs);
-                }
-            }
-        }
-    }
-
-    void clear() {
-        _implementation->clear();
-    }
-
-    void solve(const py::object& s) {
-        _implementation->solve(s);
-    }
-
-    py::bool_ is_solution_defined_for(const py::object& s) {
-        return _implementation->is_solution_defined_for(s);
-    }
-
-    py::object get_next_action(const py::object& s) {
-        return _implementation->get_next_action(s);
-    }
-
-    py::float_ get_utility(const py::object& s) {
-        return _implementation->get_utility(s);
-    }
-
-    py::int_ get_nb_of_explored_states() {
-        return _implementation->get_nb_of_explored_states();
-    }
-
-    py::int_ get_nb_of_pruned_states() {
-        return _implementation->get_nb_of_pruned_states();
-    }
-
-    py::int_ get_nb_rollouts() {
-        return _implementation->get_nb_rollouts();
-    }
-
-    py::dict get_policy() {
-        return _implementation->get_policy();
-    }
-
-    py::list get_action_prefix() {
-        return _implementation->get_action_prefix();
-    }
-
 private :
 
     class BaseImplementation {
@@ -276,7 +181,147 @@ private :
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
     };
 
+    struct ExecutionInstantiator {
+        bool _parallel;
+        
+        ExecutionInstantiator(bool parallel) : _parallel(parallel) {}
+
+        template <typename Propagator>
+        struct Propagate {
+            template <typename ... Args>
+            Propagate(ExecutionInstantiator& instantiator, Args... args) {
+                if (instantiator._parallel) {
+                    Propagator::PushType<skdecide::ParallelExecution>::propagate(args...);
+                } else {
+                    Propagator::PushType<skdecide::SequentialExecution>::propagate(args...);
+                }
+            }
+        };
+    };
+
+    struct HashingPolicyInstantiator {
+        bool _use_state_feature_hash;
+        
+        HashingPolicyInstantiator(bool use_state_feature_hash)
+        : _use_state_feature_hash(use_state_feature_hash) {}
+
+        template <typename Propagator>
+        struct Propagate {
+            template <typename ... Args>
+            Propagate(HashingPolicyInstantiator& instantiator, Args... args) {
+                if (instantiator._use_state_feature_hash) {
+                    Propagator::PushTemplate<skdecide::StateFeatureHash>::propagate(args...);
+                } else {
+                    Propagator::PushTemplate<skdecide::DomainStateHash>::propagate(args...);
+                }
+            }
+        };
+    };
+
+    struct RolloutPolicyInstantiator {
+        bool _use_simulation_domain;
+        
+        RolloutPolicyInstantiator(bool use_simulation_domain)
+        : _use_simulation_domain(use_simulation_domain) {}
+
+        template <typename Propagator>
+        struct Propagate {
+            template <typename ... Args>
+            Propagate(RolloutPolicyInstantiator& instantiator, Args... args) {
+                if (instantiator._use_simulation_domain) {
+                    Propagator::PushTemplate<skdecide::SimulationRollout>::propagate(args...);
+                } else {
+                    Propagator::PushTemplate<skdecide::EnvironmentRollout>::propagate(args...);
+                }
+            }
+        };
+    };
+
+    struct SolverInstantiator {
+        std::unique_ptr<BaseImplementation>& _implementation;
+
+        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
+        : _implementation(implementation) {}
+
+        template <typename ... TypeInstantiations>
+        struct TypeList {
+            template<template <typename...> class... TemplateInstantiations>
+            struct TemplateList {
+                struct Instantiate {
+                    template <typename ... Args>
+                    Instantiate(SolverInstantiator& instantiator, Args... args) {
+                        instantiator._implementation = std::make_unique<Implementation<TypeInstantiations..., TemplateInstantiations...>>(args...);
+                    }
+                };
+            };
+        };
+    };
+
     std::unique_ptr<BaseImplementation> _implementation;
+
+public :
+
+    PyRIWSolver(py::object& domain,
+                const std::function<py::object (py::object&, const py::object&, const py::object&)>& state_features,  // last arg used for optional thread_id
+                bool use_state_feature_hash = false,
+                bool use_simulation_domain = false,
+                std::size_t time_budget = 3600000,
+                std::size_t rollout_budget = 100000,
+                std::size_t max_depth = 1000,
+                double exploration = 0.25,
+                double discount = 1.0,
+                bool online_node_garbage = false,
+                bool parallel = false,
+                bool debug_logs = false) {
+        
+        skdecide::TemplateInstantiator::select(
+            ExecutionInstantiator(parallel),
+            HashingPolicyInstantiator(use_state_feature_hash),
+            RolloutPolicyInstantiator(use_simulation_domain),
+            SolverInstantiator(_implementation)).instantiate(
+                domain, state_features, time_budget, rollout_budget, max_depth,
+                exploration, discount, online_node_garbage, debug_logs);
+    }
+
+    void clear() {
+        _implementation->clear();
+    }
+
+    void solve(const py::object& s) {
+        _implementation->solve(s);
+    }
+
+    py::bool_ is_solution_defined_for(const py::object& s) {
+        return _implementation->is_solution_defined_for(s);
+    }
+
+    py::object get_next_action(const py::object& s) {
+        return _implementation->get_next_action(s);
+    }
+
+    py::float_ get_utility(const py::object& s) {
+        return _implementation->get_utility(s);
+    }
+
+    py::int_ get_nb_of_explored_states() {
+        return _implementation->get_nb_of_explored_states();
+    }
+
+    py::int_ get_nb_of_pruned_states() {
+        return _implementation->get_nb_of_pruned_states();
+    }
+
+    py::int_ get_nb_rollouts() {
+        return _implementation->get_nb_rollouts();
+    }
+
+    py::dict get_policy() {
+        return _implementation->get_policy();
+    }
+
+    py::list get_action_prefix() {
+        return _implementation->get_action_prefix();
+    }
 };
 
 
