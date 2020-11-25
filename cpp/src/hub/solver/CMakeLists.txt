@@ -1,3 +1,7 @@
+# Copyright (c) AIRBUS and its affiliates.
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         # TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
         #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_astar.cc
