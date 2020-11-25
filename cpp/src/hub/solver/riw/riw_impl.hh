@@ -826,7 +826,7 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::fill_child_node(Node*& node, std::size_t 
         _execution_policy.protect([this, &node_child, &thread_id, &new_node, &outcome](){
             auto i = _graph.emplace(Node(outcome->observation(), _domain, _state_features, thread_id));
             new_node = i.second;
-            node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
+            node_child = &const_cast<Node&>(*(i.first)); // we won't change the real key (Node::state) so we are safe
         });
         Node& next_node = *node_child;
         double reward = outcome->transition_value().reward();
