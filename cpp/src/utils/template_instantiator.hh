@@ -8,8 +8,8 @@
 namespace skdecide {
 
 /**
- * This is a recursive template instantiation helper that enables to
- * selectively instantiate templates from a list of template selection
+ * TemplateInstantiator is a recursive template instantiation helper class that
+ * enables to selectively instantiate templates from a list of template selection
  * functors. The typical use case is when we want to instantiate a template
  * class object whose each template instantiation depends on a runtime test
  * of some variables. Without this template instantiation helper class,
@@ -17,48 +17,102 @@ namespace skdecide {
  * grows with the number of test cases (i.e. templates to selectively instantiate).
  * Below is an example use with two selection functors FirstSelector and
  * SecondSelector and a final template class instantiator Instantiator that
- * takes two template parameters whose actual instantiations result from
- * internal tests in FirstSelector and SecondSelector.
+ * takes two template parameters (one non-templated type and one template class as
+ * template parameters) whose actual instantiations result from internal tests in
+ * FirstSelector and SecondSelector.
  * 
- * template <template <typename ... Instantiations> struct Instantiator,
- *           typename ... CurrentInstantiations>
  * struct FirstSelector {
- *     template <typename ... Args>
- *     void operator(Args... args) {
- *         if (first_case) {
- *             Instantiator::Recursion<CurrentInstantiations..., FirstTemplateFirstCase>()(args);
- *         } else {
- *             Instantiator::Recursion<CurrentInstantiations..., FirstTemplateSecondCase>()(args);
+ *     bool _test;
+ *     struct FirstCaseType {};
+ *     struct SecondCaseType {};
+ * 
+ *     FirstSelector(bool test)
+ *     : _test(first_selector_test) {}
+ * 
+ *     template <typename Propagator>
+ *     struct Select {
+ *         template <typename... Args>
+ *         Select(FirstSelector& This, Args... args) {
+ *             if (This._test) {
+ *                 Propagator::PushType<FirstCaseType>(args...);
+ *             } else {
+ *                 Propagator::PushType<SecondCaseType>(args...);
+ *             }
  *         }
- *     }
+ *     };
  * };
  *
- * template <template <typename ... Instantiations> struct Instantiator,
- *           typename ... CurrentInstantiations>
  * struct SecondSelector {
- *     template <typename ... Args>
- *     void operator(Args... args) {
- *         switch (cases) {
- *             case case1:
- *                 Instantiator::Recursion<CurrentInstantiations..., SecondTemplateCase1>()(args);
- *                 break;
- *
- *             case case 2:
- *                 Instantiator::Recursion<CurrentInstantiations..., SecondTemplateCase2>()(args);
- *                 break;
+ *     typedef enum {
+ *         CASE_1,
+ *         CASE_2,
+ *         CASE_3
+ *     } Cases;
+ *     Cases _cases;
+ * 
+ *     template <typename T> struct Case1TemplateClass {};
+ *     template <typename T> struct Case2TemplateClass {};
+ *     template <typename T> struct Case3TemplateClass {};
+ * 
+ *     SecondSelector(Cases cases)
+ *     : _cases(cases) {}
+ * 
+ *     template <typename Propagator>
+ *     struct Select {
+ *         template <typename... Args>
+ *         Select(SecondSelector& This, Args... args) {
+ *             switch (This._cases) {
+ *                 case CASE_1 :
+ *                     Propagator::PushTemplate<Case1TemplateClass>(args...);
+ *                     break;
+ *                 case CASE_2 :
+ *                     Propagator::PushTemplate<Case2TemplateClass>(args...);
+ *                     break;
+ *                 case CASE_3 :
+ *                     Propagator::PushTemplate<Case3TemplateClass>(args...);
+ *                     break;
+ *             }
  *         }
- *     }
+ *     };
+ * };
+ * 
+ * struct BaseClass {};
+ * template <typename T, template <typename...> class C> struct TemplateClass : public BaseClass {
+ *     C<T> my_object;  // just an example (not mandatory to use template template parameters)
+ *     TemplateClass(int param1, double param2, bool param3) {}  // do something with those parameters and my_object
  * };
  *
- * template <typename ... Instantiations>
  * struct Instantiator {
- *     template <typename ... Args>
- *     void operator(Args ... args) {
- *         _myobject = MyClass<Instantiations>(args);
- *     }
+ *     std::unique_ptr<BaseClass>& _template_object;
+ * 
+ *     Instantiator(std::unique_ptr<BaseClass>& template_object)
+ *     : _template_object(template_object) {}
+ * 
+ *     template <typename... TypeInstantiations>
+ *       struct TypeList {
+ *          template<template <typename...> class... TemplateInstantiations>
+ *          struct TemplateList {
+ *              struct Instantiate {
+ *                  template <typename... Args>
+ *                  Instantiate(Instantiator& This, Args... args) {
+ *                      This._template_object = std::make_unique<TemplateClass<TypeInstantiations..., TemplateInstantiations...>>(args...);
+ *                  }
+ *              };
+ *          };
+ *     };
  * };
  *
- * TemplateInstantiator<Instantiator, FirstSelector, SecondSelector>()(instantiation_args);
+ * std::unique_ptr<BaseClass> template_object;
+ * bool first_selector_test = true;
+ * SecondSelector::Cases second_selector_case = CASE_3;
+ * TemplateInstantiator::select(FirstSelector(first_selector_test),           // static call to TemplateInstantiator::select(...)
+ *                              SecondSelector(second_selector_case),
+ *                              Instantiator(template_object)).instantiate(   // object call to <InternalObject>.instantiate(...)
+ *                                 // here we have the parameters of Instantiator::Instantiate(...) constructor
+ *                                 // which are forwarded to TemplateClass' constructor
+ *                                 2, -1.3, false
+ *                              );
+ * // Now the actual type of template_object's pointer is TemplateClass<FirstSelector::FirstCaseType, SecondSelector::Case3TemplateClass>
  */
 
 struct TemplateInstantiator {
@@ -94,11 +148,10 @@ struct TemplateInstantiator {
 
                 template <typename... Args>
                 TemplateInstantiationPropagator(Implementation& impl, Args... args) {
-                    impl._current_instantiator.operator()<
+                    FirstInstantiator::Select<
                         typename Implementation<SecondInstantiator, RemainingInstantiators...>::template TypeInstantiationPropagator<
-                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>,
-                        Implementation<SecondInstantiator, RemainingInstantiators...>,
-                        Args...>(
+                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>>(
+                            impl._current_instantiator,
                             impl._remaining_instantiators,
                             args...);
                 }
