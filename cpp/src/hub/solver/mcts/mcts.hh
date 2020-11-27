@@ -131,7 +131,7 @@ private :
                                                typename Tsolver::StateNode& state,
                                                typename Tsolver::ActionNode& action) const;
     template <typename Ttransition_mode = typename Tsolver::TransitionMode, typename Enable = void> struct ExpandActionImplementation {};
-    std::unique_ptr<ExpandActionImplementation> _action_expander;
+    std::unique_ptr<ExpandActionImplementation<>> _action_expander;
 };
 
 

@@ -119,17 +119,19 @@ void SK_MCTS_DISTRIBUTION_TRANSITION_MODE_CLASS::init_rollout(Tsolver& solver,
                                                               const std::size_t* thread_id) const {}
 
 SK_MCTS_DISTRIBUTION_TRANSITION_MODE_TEMPLATE_DECL
-typename Tsolver::Domain::EnvironmentOutcome random_next_outcome(Tsolver& solver,
-                                                                 const std::size_t* thread_id,
-                                                                 const typename Tsolver::Domain::State& state,
-                                                                 const typename Tsolver::Domain::Action& action) const {
+typename Tsolver::Domain::EnvironmentOutcome
+SK_MCTS_DISTRIBUTION_TRANSITION_MODE_CLASS::random_next_outcome(Tsolver& solver,
+                                                                const std::size_t* thread_id,
+                                                                const typename Tsolver::Domain::State& state,
+                                                                const typename Tsolver::Domain::Action& action) const {
     return solver.domain().sample(state, action, thread_id);
 }
 
 SK_MCTS_DISTRIBUTION_TRANSITION_MODE_TEMPLATE_DECL
-typename Tsolver::StateNode* random_next_node(Tsolver& solver,
-                                              const std::size_t* thread_id,
-                                              typename Tsolver::ActionNode& action) const {
+typename Tsolver::StateNode*
+SK_MCTS_DISTRIBUTION_TRANSITION_MODE_CLASS::random_next_node(Tsolver& solver,
+                                                             const std::size_t* thread_id,
+                                                             typename Tsolver::ActionNode& action) const {
     typename Tsolver::StateNode* n = nullptr;
 
     solver.execution_policy().protect([&n, &action, &solver](){
@@ -367,7 +369,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
 
                 if (i.second) { // new node
                     next_node.terminal = to.termination();
-                    std::pair<typename Tsolver::Domain::Value, std::size_t> h = expander._heuristic(solver.domain(), next_node.state, thread_id);
+                    std::pair<typename Tsolver::Domain::Value, std::size_t> h = _heuristic(solver.domain(), next_node.state, thread_id);
                     next_node.value = h.first.reward();
                     next_node.visits_count = h.second;
                 }
@@ -405,13 +407,13 @@ FullExpand<Tsolver>
 SK_MCTS_FULL_EXPAND_TEMPLATE_DECL
 SK_MCTS_FULL_EXPAND_CLASS::FullExpand(const HeuristicFunctor& heuristic)
     : _heuristic(heuristic) {
-    _action_expander = std::make_unique<ExpandActionImplementation>(_heuristic);
+    _action_expander = std::make_unique<ExpandActionImplementation<>>(_heuristic);
 }
 
 SK_MCTS_FULL_EXPAND_TEMPLATE_DECL
 SK_MCTS_FULL_EXPAND_CLASS::FullExpand(const FullExpand& other)
     : _heuristic(other._heuristic) {
-    _action_expander = std::make_unique<ExpandActionImplementation>(_heuristic);
+    _action_expander = std::make_unique<ExpandActionImplementation<>>(_heuristic);
 }
 
 SK_MCTS_FULL_EXPAND_TEMPLATE_DECL
@@ -924,7 +926,7 @@ void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(Tsolver& solver,
         std::unordered_set<typename Tsolver::StateNode*> new_frontier;
         
         for (auto& f : frontier) {
-            update_frontier(solver, new_frontier, f, &solver.execution_policy());
+            update_frontier(solver, new_frontier, f);
         }
 
         frontier = new_frontier;
@@ -933,9 +935,9 @@ void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(Tsolver& solver,
 
 SK_MCTS_GRAPH_BACKUP_TEMPLATE_DECL
 void SK_MCTS_GRAPH_BACKUP_CLASS::update_frontier(Tsolver& solver,
-                                std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
-                                typename Tsolver::StateNode* f) {
-    UpdateFrontierImplementation::update_frontier(solver, new_frontier, f);
+                                                 std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
+                                                 typename Tsolver::StateNode* f) {
+    UpdateFrontierImplementation<>::update_frontier(solver, new_frontier, f);
 }
 
 // === MCTSSolver implementation ===

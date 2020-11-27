@@ -1,0 +1,18 @@
+/* Copyright (c) AIRBUS and its affiliates.
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ */
+
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/py_mcts.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/mcts.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/mcts_impl.hh"
+
+template class skdecide::MCTSSolver<skdecide::PyMCTSDomain<${Texecution}>,
+                                    ${Texecution},
+                                    ${TtransitionMode},
+                                    ${TtreePolicy},
+                                    ${Texpander},
+                                    ${TactionSelectorOptimization},
+                                    ${TactionSelectorExecution},
+                                    ${TrolloutPolicy},
+                                    ${TbackPropagator}>;
