@@ -8,6 +8,8 @@
 #include <nngpp/nngpp.h>
 #include <nngpp/protocol/pull0.h>
 
+#include <pybind11/pybind11.h>
+
 #include "utils/python_gil_control.hh"
 #include "utils/python_globals.hh"
 #include "utils/execution.hh"

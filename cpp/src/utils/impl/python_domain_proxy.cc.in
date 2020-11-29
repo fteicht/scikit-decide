@@ -1,6 +1,7 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_impl.hh"
-#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_base_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_obj_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_call_impl.hh"
 
 template class skdecide::PythonDomainProxy<${Texecution},
                                            ${Tagent},

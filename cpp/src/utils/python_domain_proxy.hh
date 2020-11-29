@@ -5,9 +5,19 @@
 #ifndef SKDECIDE_PYTHON_DOMAIN_PROXY_HH
 #define SKDECIDE_PYTHON_DOMAIN_PROXY_HH
 
-#include <pybind11/pybind11.h>
-
 #include "python_domain_proxy_base.hh"
+
+namespace pybind11 {
+    class dict;
+    class list;
+    template <typename Policy> class generic_iterator;
+    namespace iterator_policies{
+        class dict_readonly;
+    }
+    namespace detail {
+        using dict_iterator = generic_iterator<iterator_policies::dict_readonly>;
+    }
+}
 
 namespace py = pybind11;
 
@@ -306,8 +316,9 @@ protected :
 
 } // namespace skdecide
 
-#include "impl/python_domain_proxy_call_impl.hh"
 #ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/python_domain_proxy_obj_impl.hh"
+#include "impl/python_domain_proxy_call_impl.hh"
 #include "impl/python_domain_proxy_impl.hh"
 #endif
 

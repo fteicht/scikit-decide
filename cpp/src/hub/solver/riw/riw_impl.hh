@@ -6,6 +6,7 @@
 #define SKDECIDE_RIW_IMPL_HH
 
 #include <boost/range/irange.hpp>
+#include <iostream>
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

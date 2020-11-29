@@ -3,16 +3,73 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/py_mcts.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/mcts.hh"
-#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/mcts_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
-template class skdecide::MCTSSolver<skdecide::PyMCTSDomain<${Texecution}>,
-                                    ${Texecution},
-                                    ${TtransitionMode},
-                                    ${TtreePolicy},
-                                    ${Texpander},
-                                    ${TactionSelectorOptimization},
-                                    ${TactionSelectorExecution},
-                                    ${TrolloutPolicy},
-                                    ${TbackPropagator}>;
+#define D_${Texecution}
+
+#define D_${TtransitionMode}
+#ifdef D_StepTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_step_transition_mode_impl.hh"
+#else
+#ifdef D_SampleTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_sample_transition_mode_impl.hh"
+#else
+#ifdef D_DistributionTransitionMode
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_distribution_transition_mode_impl.hh"
+#endif
+#endif
+#endif
+
+#define D_${TtreePolicy}
+#ifdef D_DefaultTreePolicy
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_tree_policy_impl.hh"
+#endif
+
+#define D_${Texpander}
+#ifdef D_FullExpand
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_full_expand_impl.hh"
+#else
+#ifdef D_PartialExpand
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_partial_expand_impl.hh"
+#endif
+#endif
+
+#define DOPT_${TactionSelectorOptimization}
+#ifdef DOPT_UCB1ActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_ucb1_action_selector_impl.hh"
+#else
+#ifdef DOPT_BestQValueActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_best_qvalue_action_selector_impl.hh"
+#endif
+#endif
+
+#define DEXE_${TactionSelectorExecution}
+#ifdef DEXE_UCB1ActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_ucb1_action_selector_impl.hh"
+#else
+#ifdef DEXE_BestQValueActionSelector
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_best_qvalue_action_selector_impl.hh"
+#endif
+#endif
+
+#define D_${TrolloutPolicy}
+#ifdef D_DefaultRolloutPolicy
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_rollout_policy_impl.hh"
+#endif
+
+#define D_${TbackPropagator}
+#ifdef D_GraphBackup
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_graph_backup_impl.hh"
+#endif
+
+template class skdecide::MCTSSolver<skdecide::PythonDomainProxy<skdecide::${Texecution}>,
+                                    skdecide::${Texecution},
+                                    skdecide::${TtransitionMode},
+                                    skdecide::${TtreePolicy},
+                                    skdecide::${Texpander},
+                                    skdecide::${TactionSelectorOptimization},
+                                    skdecide::${TactionSelectorExecution},
+                                    skdecide::${TrolloutPolicy},
+                                    skdecide::${TbackPropagator}>;

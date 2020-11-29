@@ -416,7 +416,17 @@ using UCTSolver = MCTSSolver<Tdomain, Texecution_policy, TtransitionMode, T...>;
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "mcts_impl.hh"
+#include "impl/mcts_impl.hh"
+#include "impl/mcts_step_transition_mode_impl.hh"
+#include "impl/mcts_sample_transition_mode_impl.hh"
+#include "impl/mcts_distribution_transition_mode_impl.hh"
+#include "impl/mcts_default_tree_policy_impl.hh"
+#include "impl/mcts_full_expand_impl.hh"
+#include "impl/mcts_partial_expand_impl.hh"
+#include "impl/mcts_ucb1_action_selector_impl.hh"
+#include "impl/mcts_best_qvalue_action_selector_impl.hh"
+#include "impl/mcts_default_rollout_policy_impl.hh"
+#include "impl/mcts_graph_backup_impl.hh"
 #endif
 
 #endif // SKDECIDE_MCTS_HH

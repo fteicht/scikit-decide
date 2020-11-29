@@ -3,12 +3,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/py_riw.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/riw.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/riw_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/python_container_proxy.hh"
 
-template class skdecide::RIWSolver<skdecide::PyRIWDomain<${Texecution}>,
-                                   skdecide::PyRIWFeatureVector<${Texecution}>,
+template class skdecide::RIWSolver<skdecide::PythonDomainProxy<${Texecution}>,
+                                   skdecide::PythonContainerProxy<${Texecution}>,
                                    ${Thashing_policy},
                                    ${Trollout_policy},
                                    ${Texecution}>;

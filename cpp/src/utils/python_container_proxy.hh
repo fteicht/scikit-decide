@@ -5,8 +5,11 @@
 #ifndef SKDECIDE_PYTHON_CONTAINER_PROXY_HH
 #define SKDECIDE_PYTHON_CONTAINER_PROXY_HH
 
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
+namespace pybind11 {
+    class object;
+    class buffer_info;
+    template <typename T> class array_t;
+}
 
 namespace py = pybind11;
 

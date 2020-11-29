@@ -13,6 +13,7 @@
 #include "utils/python_gil_control.hh"
 #include "utils/python_domain_proxy.hh"
 #include "utils/template_instantiator.hh"
+#include "utils/impl/python_domain_proxy_call_impl.hh"
 
 #include "mcts.hh"
 
@@ -53,55 +54,7 @@ struct PyMCTSOptions {
 
 
 template <typename Texecution>
-class PyMCTSDomain : public skdecide::PythonDomainProxy<Texecution> {
-public :
-
-    PyMCTSDomain(const py::object& domain)
-    : skdecide::PythonDomainProxy<Texecution>(domain) {}
-
-    template <PyMCTSOptions::TransitionMode transition_mode,
-              std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Step, int> = 0>
-    static void check(const py::object& domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "step")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with step transition mode needs python domain for implementing step()");
-        }
-    }
-
-    template <PyMCTSOptions::TransitionMode transition_mode,
-              std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Sample, int> = 0>
-    static void check(const py::object& domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
-        }
-    }
-
-    template <PyMCTSOptions::TransitionMode transition_mode,
-              std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Distribution, int> = 0>
-    static void check(const py::object& domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "sample")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
-        }
-        if (!py::hasattr(domain, "get_next_state_distribution")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_next_state_distribution()");
-        }
-        if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_transition_value()");
-        }
-        if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing is_terminal()");
-        }
-    }
-
-};
+using PyMCTSDomain = PythonDomainProxy<Texecution>;
 
 
 class PyMCTSSolver {
@@ -379,15 +332,15 @@ private :
             Select(TransitionModeSelector& This, Args... args) {
                 switch (This._transition_mode) {
                     case PyMCTSOptions::TransitionMode::Step:
-                        PyMCTSDomain<SequentialExecution>::check<PyMCTSOptions::TransitionMode::Step>(This._domain);
+                        This.check_domain<PyMCTSOptions::TransitionMode::Step>();
                         Propagator::PushTemplate<StepTransitionMode>(args...);
                         break;
                     case PyMCTSOptions::TransitionMode::Sample:
-                        PyMCTSDomain<SequentialExecution>::check<PyMCTSOptions::TransitionMode::Sample>(This._domain);
+                        This.check_domain<PyMCTSOptions::TransitionMode::Sample>();
                         Propagator::PushTemplate<SampleTransitionMode>(args...);
                         break;
                     case PyMCTSOptions::TransitionMode::Distribution:
-                        PyMCTSDomain<SequentialExecution>::check<PyMCTSOptions::TransitionMode::Distribution>(This._domain);
+                        This.check_domain<PyMCTSOptions::TransitionMode::Distribution>();
                         Propagator::PushTemplate<DistributionTransitionMode>(args...);
                         break;
                     default:
@@ -396,6 +349,48 @@ private :
                 }
             }
         };
+
+        template <PyMCTSOptions::TransitionMode transition_mode,
+                  std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Step, int> = 0>
+        void check_domain() {
+            if (!py::hasattr(_domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(_domain, "step")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with step transition mode needs python domain for implementing step()");
+            }
+        }
+
+        template <PyMCTSOptions::TransitionMode transition_mode,
+                  std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Sample, int> = 0>
+        void check_domain() {
+            if (!py::hasattr(_domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(_domain, "sample")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+            }
+        }
+
+        template <PyMCTSOptions::TransitionMode transition_mode,
+                  std::enable_if_t<transition_mode == PyMCTSOptions::TransitionMode::Distribution, int> = 0>
+        void check_domain() {
+            if (!py::hasattr(_domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(_domain, "sample")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with sample or distribution transition mode needs python domain for implementing sample()");
+            }
+            if (!py::hasattr(_domain, "get_next_state_distribution")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_next_state_distribution()");
+            }
+            if (!py::hasattr(_domain, "get_transition_value")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing get_transition_value()");
+            }
+            if (!py::hasattr(_domain, "is_terminal")) {
+                throw std::invalid_argument("SKDECIDE exception: MCTS algorithm with distribution transition mode needs python domain for implementing is_terminal()");
+            }
+        }
     };
 
     struct TreePolicySelector {
