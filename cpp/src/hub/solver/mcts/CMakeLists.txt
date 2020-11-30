@@ -7,15 +7,19 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         PYTHON_MCTS_SOLVER_TEMPLATE_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/py_mcts_solver.cc.in"
         "${CMAKE_CURRENT_BINARY_DIR}"
-        "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par"
-        "TtransitionMode" "skdecide::StepTransitionMode!Stp;skdecide::SampleTransitionMode!Sam;skdecide::DistributionTransitionMode!Dis"
-        "TtreePolicy" "skdecide::DefaultTreePolicy!Dtp"
-        "Texpander" "skdecide::FullExpand!Fex;skdecide::PartialExpand!Pex"
-        "TactionSelectorOptimization" "skdecide::UCB1ActionSelector!Oua;skdecide::BestQValueActionSelector!Oqa"
-        "TactionSelectorExecution" "skdecide::UCB1ActionSelector!Eua;skdecide::BestQValueActionSelector!Eqa"
-        "TrolloutPolicy" "skdecide::DefaultRolloutPolicy!Drp"
-        "TbackPropagator" "skdecide::GraphBackup!Gbk")
+        "Texecution" "SequentialExecution!Seq;ParallelExecution!Par"
+        "TtransitionMode" "StepTransitionMode!Stp;SampleTransitionMode!Sam;DistributionTransitionMode!Dis"
+        "TtreePolicy" "DefaultTreePolicy!Dtp"
+        "Texpander" "FullExpand!Fex;PartialExpand!Pex"
+        "TactionSelectorOptimization" "UCB1ActionSelector!Oua;BestQValueActionSelector!Oqa"
+        "TactionSelectorExecution" "UCB1ActionSelector!Eua;BestQValueActionSelector!Eqa"
+        "TrolloutPolicy" "DefaultRolloutPolicy!Drp"
+        "TbackPropagator" "GraphBackup!Gbk")
 
+    # ADD_LIBRARY(py_mcts OBJECT
+    #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
+    #                 ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})
+    # TARGET_INCLUDE_DIRECTORIES(py_mcts PRIVATE ${INCLUDE_DIRS})
     TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
                     ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
                     ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})

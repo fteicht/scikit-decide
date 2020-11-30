@@ -5,10 +5,13 @@
 #ifndef SKDECIDE_PYTHON_CONTAINER_PROXY_HH
 #define SKDECIDE_PYTHON_CONTAINER_PROXY_HH
 
+#include <type_traits>
+#include <memory>
+
 namespace pybind11 {
     class object;
-    class buffer_info;
-    template <typename T> class array_t;
+    struct buffer_info;
+    class array;
 }
 
 namespace py = pybind11;
@@ -123,7 +126,7 @@ private :
         virtual bool same_type(const BaseImplementation& other) const;
     
     private :
-        std::unique_ptr<py::array_t<T>> _vector;
+        std::unique_ptr<py::array> _vector;
         std::unique_ptr<py::buffer_info> _buffer;
     };
 

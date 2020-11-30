@@ -5,6 +5,8 @@
 #ifndef SKDECIDE_PYTHON_HASH_EQ_HH
 #define SKDECIDE_PYTHON_HASH_EQ_HH
 
+#include <cstddef>
+
 namespace pybind11 {
     class object;
 }

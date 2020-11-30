@@ -66,8 +66,7 @@ private :
             : _state_features(state_features) {
             
             check_domain(domain);
-            _domain = std::make_unique<PyRIWDomain<Texecution>>(domain,
-                std::is_same<Trollout_policy<PyRIWDomain<Texecution>>, SimulationRollout<PyRIWDomain<Texecution>>>::value);
+            _domain = std::make_unique<PyRIWDomain<Texecution>>(domain);
             _solver = std::make_unique<RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>>(
                 *_domain,
                 [this](PyRIWDomain<Texecution>& d, const typename PyRIWDomain<Texecution>::State& s, const std::size_t* thread_id)->std::unique_ptr<PyRIWFeatureVector<Texecution>> {
@@ -97,18 +96,28 @@ private :
 
         virtual ~Implementation() {}
 
+        template <typename TTrollout_policy = Trollout_policy<PyRIWDomain<Texecution>>,
+                  std::enable_if_t<std::is_same<TTrollout_policy, SimulationRollout<PyRIWDomain<Texecution>>>::value, int> = 0>
         void check_domain(py::object& domain) {
             if (!py::hasattr(domain, "get_applicable_actions")) {
                 throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing get_applicable_actions()");
             }
-            if (!use_simulation_domain && !py::hasattr(domain, "reset")) {
+            if (!py::hasattr(domain, "sample")) {
+                throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing sample() in simulation mode");
+            }
+        }
+
+        template <typename TTrollout_policy = Trollout_policy<PyRIWDomain<Texecution>>,
+                  std::enable_if_t<std::is_same<TTrollout_policy, EnvironmentRollout<PyRIWDomain<Texecution>>>::value, int> = 0>
+        void check_domain(py::object& domain) {
+            if (!py::hasattr(domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(domain, "reset")) {
                 throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing reset() in environment mode");
             }
-            if (!use_simulation_domain && !py::hasattr(domain, "step")) {
+            if (!py::hasattr(domain, "step")) {
                 throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing step() in environment mode");
-            }
-            if (use_simulation_domain && !py::hasattr(domain, "sample")) {
-                throw std::invalid_argument("SKDECIDE exception: RIW algorithm needs python domain for implementing sample() in simulation mode");
             }
         }
 

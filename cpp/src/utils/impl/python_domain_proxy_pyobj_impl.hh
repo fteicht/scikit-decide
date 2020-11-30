@@ -2,8 +2,10 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef SKDECIDE_PYTHON_DOMAIN_PROXY_BASE_IMPL_HH
-#define SKDECIDE_PYTHON_DOMAIN_PROXY_BASE_IMPL_HH
+#ifndef SKDECIDE_PYTHON_DOMAIN_PROXY_PYOBJ_IMPL_HH
+#define SKDECIDE_PYTHON_DOMAIN_PROXY_PYOBJ_IMPL_HH
+
+#include <pybind11/pybind11.h>
 
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
@@ -200,3 +202,5 @@ bool SK_PY_OBJ_CLASS::Equal::operator()(const PyObj<Derived, Tpyobj>& o1, const 
 }
 
 } // namespace skdecide
+
+#endif // PYTHON_DOMAIN_PROXY_PYOBJ_IMPL_HH

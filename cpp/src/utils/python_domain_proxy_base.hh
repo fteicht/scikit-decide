@@ -5,16 +5,20 @@
 #ifndef SKDECIDE_PYTHON_DOMAIN_PROXY_BASE_HH
 #define SKDECIDE_PYTHON_DOMAIN_PROXY_BASE_HH
 
+#include <type_traits>
+#include <memory>
+#include <string>
+
 namespace pybind11 {
     class object;
     class iterator;
     class bool_;
     class tuple;
-    template <typename Policy> class accessor;
-    namespace accessor_policies {
-        struct generic_item;
-    }
     namespace detail {
+        template <typename Policy> class accessor;
+        namespace accessor_policies {
+            struct generic_item;
+        }
         using item_accessor = accessor<accessor_policies::generic_item>;
     }
 }
@@ -296,7 +300,7 @@ public :
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "impl/python_domain_proxy_obj_impl.hh"
+#include "impl/python_domain_proxy_pyobj_impl.hh"
 #include "impl/python_domain_proxy_base_impl.hh"
 #endif
 

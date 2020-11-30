@@ -2,7 +2,14 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+ADD_SUBDIRECTORY(mcts)
+ADD_SUBDIRECTORY(riw)
+
 IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
+        CMAKE_POLICY(SET CMP0079 NEW)
+        # TARGET_LINK_LIBRARIES(__skdecide_hub_cpp PRIVATE
+        #                         $<TARGET_OBJECTS:py_mcts>
+        #                         $<TARGET_OBJECTS:py_riw>)
         # TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
         #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_astar.cc
         #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_aostar.cc
@@ -14,6 +21,3 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_ilaostar.cc
         #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_martdp.cc)
 ENDIF ()
-
-ADD_SUBDIRECTORY(mcts)
-ADD_SUBDIRECTORY(riw)

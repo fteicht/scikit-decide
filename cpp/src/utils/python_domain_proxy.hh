@@ -10,11 +10,11 @@
 namespace pybind11 {
     class dict;
     class list;
-    template <typename Policy> class generic_iterator;
-    namespace iterator_policies{
-        class dict_readonly;
-    }
     namespace detail {
+        template <typename Policy> class generic_iterator;
+        namespace iterator_policies{
+            class dict_readonly;
+        }
         using dict_iterator = generic_iterator<iterator_policies::dict_readonly>;
     }
 }
@@ -317,7 +317,7 @@ protected :
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "impl/python_domain_proxy_obj_impl.hh"
+#include "impl/python_domain_proxy_pyobj_impl.hh"
 #include "impl/python_domain_proxy_call_impl.hh"
 #include "impl/python_domain_proxy_impl.hh"
 #endif
