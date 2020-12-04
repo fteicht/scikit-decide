@@ -13,14 +13,6 @@ namespace pybind11 {
     class object;
     class iterator;
     class bool_;
-    class tuple;
-    namespace detail {
-        template <typename Policy> class accessor;
-        namespace accessor_policies {
-            struct generic_item;
-        }
-        using item_accessor = accessor<accessor_policies::generic_item>;
-    }
 }
 
 namespace py = pybind11;
@@ -236,71 +228,12 @@ public :
 
         std::size_t get_depth() const;
     };
-
-    class AgentDataAccess {
-    public :
-        // Agents are dict keys
-        class Agent : public PyObj<Agent> {
-        public :
-            static constexpr char class_name[] = "agent";
-            Agent();
-            Agent(std::unique_ptr<py::object>&& a);
-
-            template <typename Tother>
-            Agent(const Tother& other);
-            
-            Agent& operator=(const Agent& other);
-            virtual ~Agent();
-
-        private :
-            struct Implementation;
-        };
-
-        // Dict items
-        template <typename TagentData>
-        class Item : public PyObj<Item<TagentData>, py::tuple> {
-        public :
-            static constexpr char class_name[] = "dictionary item";
-
-            Item();
-            Item(std::unique_ptr<py::object>&& a);
-            Item(const py::object& a);
-            Item(const Item& other);
-            Item& operator=(const Item& other);
-            virtual ~Item();
-
-            Agent agent();
-            TagentData data();
-        };
-
-        // To access elements with dict operator []
-        // Objective #1: access TagentData's methods
-        // Objective #2: modify internal Python object with operator =
-        template <typename TagentData>
-        class AgentDataAccessor : public PyObj<AgentDataAccessor<TagentData>, py::detail::item_accessor>,
-                                  public TagentData {
-        public :
-            explicit AgentDataAccessor(const py::detail::item_accessor& a);
-            
-            // We shall not assign data accessor lvalues because statements like
-            // 'auto d = my_data[my_key]; d = other_data;' would assign 'other_data'
-            // to 'my_data[my_key]', which is generally not the expected behaviour
-            // (since one thinks to reason about the actual data but not the
-            // dictionary accessor...).
-            AgentDataAccessor& operator=(AgentDataAccessor&& other) & = delete;
-            void operator=(const TagentData& other) & = delete;
-
-            AgentDataAccessor& operator=(AgentDataAccessor&& other) &&;
-            void operator=(const TagentData& other) &&;
-            virtual ~AgentDataAccessor();
-        };
-    };
 };
 
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "impl/python_domain_proxy_pyobj_impl.hh"
+#include "impl/python_domain_proxy_common_impl.hh"
 #include "impl/python_domain_proxy_base_impl.hh"
 #endif
 

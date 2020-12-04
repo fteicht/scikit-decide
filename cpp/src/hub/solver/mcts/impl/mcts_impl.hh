@@ -104,6 +104,8 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(Domain& domain,
       _online_node_garbage(online_node_garbage),
       _debug_logs(debug_logs),
       _watchdog(watchdog),
+      _execution_policy(std::make_unique<ExecutionPolicy>()),
+      _transition_mode(std::make_unique<TransitionMode>()),
       _tree_policy(std::move(tree_policy)),
       _expander(std::move(expander)),
       _action_selector_optimization(std::move(action_selector_optimization)),
@@ -275,11 +277,11 @@ double SK_MCTS_SOLVER_CLASS::discount() const { return _discount; }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 typename SK_MCTS_SOLVER_CLASS::ExecutionPolicy&
-SK_MCTS_SOLVER_CLASS::execution_policy() { return _execution_policy; }
+SK_MCTS_SOLVER_CLASS::execution_policy() { return *_execution_policy; }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-typename SK_MCTS_SOLVER_CLASS::TransitionMode&
-SK_MCTS_SOLVER_CLASS::transition_mode() { return _transition_mode; }
+const typename SK_MCTS_SOLVER_CLASS::TransitionMode&
+SK_MCTS_SOLVER_CLASS::transition_mode() { return *_transition_mode; }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 const typename SK_MCTS_SOLVER_CLASS::TreePolicy&
@@ -372,7 +374,7 @@ SK_MCTS_SOLVER_TEMPLATE_DECL
 void SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
     if (_epsilon_moving_average_window > 0) {
         double current_epsilon = std::fabs(node_record_value - node.value);
-        _execution_policy.protect([this, &current_epsilon](){
+        _execution_policy->protect([this, &current_epsilon](){
             if (_epsilons.size() < _epsilon_moving_average_window) {
                 _epsilon_moving_average = ((double) _epsilon_moving_average) +
                                             (current_epsilon / ((double) _epsilon_moving_average_window));
@@ -389,7 +391,7 @@ void SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, 
 SK_MCTS_SOLVER_TEMPLATE_DECL
 std::size_t SK_MCTS_SOLVER_CLASS::elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time) {
     std::size_t milliseconds_duration;
-    _execution_policy.protect([&milliseconds_duration, &start_time](){
+    _execution_policy->protect([&milliseconds_duration, &start_time](){
         milliseconds_duration = static_cast<std::size_t>(
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::high_resolution_clock::now() - start_time

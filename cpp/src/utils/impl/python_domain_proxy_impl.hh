@@ -122,6 +122,140 @@ SK_PY_AGENT_DATA_ACCESS_TYPE::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::end() const 
     return PyIter(this->_pyobj->end());
 }
 
+// === AgentDataAccess::Agent implementation ===
+
+SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
+struct SK_PY_AGENT_DATA_ACCESS_CLASS::Agent::Implementation {
+    template <typename Tother,
+              std::enable_if_t<std::is_same<py::object, Tother>::value, int> = 0>
+    static const py::object& agent(const Tother& other) {
+        return other;
+    }
+
+    template <typename Tother,
+              std::enable_if_t<std::is_same<Agent, Tother>::value, int> = 0>
+    static const Agent& agent(const Tother& other) {
+        return other;
+    }
+
+    template <typename Tother,
+              std::enable_if_t<!std::is_base_of<py::object, Tother>::value &&
+                               !std::is_base_of<Agent, Tother>::value, int> = 0>
+    static const py::object& agent(const Tother& other) {
+        return other.pyobj();
+    }
+};
+
+#define SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL \
+SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
+
+#define SK_PY_AGENT_DATA_AGENT_CLASS \
+SK_PY_AGENT_DATA_ACCESS_CLASS::Agent
+
+#define SK_PY_AGENT_DATA_AGENT_TYPE \
+SK_PY_AGENT_DATA_ACCESS_TYPE::Agent
+
+SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_DATA_AGENT_CLASS::Agent() : PyObj<Agent>() {}
+
+SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_DATA_AGENT_CLASS::Agent(std::unique_ptr<py::object>&& a)
+: PyObj<Agent>(std::move(a)) {}
+
+SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
+template <typename Tother>
+SK_PY_AGENT_DATA_AGENT_CLASS::Agent(const Tother& other)
+: PyObj<Agent>(Implementation::agent(other)) {}
+
+SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_DATA_AGENT_TYPE& SK_PY_AGENT_DATA_AGENT_CLASS::operator=(const Agent& other) {
+    static_cast<PyObj<Agent>&>(*this) = other;
+    return *this;
+}
+
+SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_DATA_AGENT_CLASS::~Agent() {}
+
+// === AgentDataAccess::Item implementation ===
+
+#define SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL \
+SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
+
+#define SK_PY_AGENT_DATA_ITEM_CLASS \
+SK_PY_AGENT_DATA_ACCESS_CLASS::Item
+
+#define SK_PY_AGENT_DATA_ITEM_TYPE \
+SK_PY_AGENT_DATA_ACCESS_TYPE::Item
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_CLASS::Item()
+: PyObj<Item, py::tuple>() {}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_CLASS::Item(std::unique_ptr<py::object>&& a)
+: PyObj<Item, py::tuple>(std::move(a)) {}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_CLASS::Item(const py::object& a)
+: PyObj<Item, py::tuple>(a) {}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_CLASS::Item(const Item& other)
+: PyObj<Item, py::tuple>(other) {}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_TYPE& SK_PY_AGENT_DATA_ITEM_CLASS::operator=(const Item& other) {
+    static_cast<PyObj<Item, py::tuple>&>(*this) = other;
+    return *this;
+}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ITEM_CLASS::~Item() {}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_AGENT_TYPE SK_PY_AGENT_DATA_ITEM_CLASS::agent() {
+    typename GilControl<Texecution>::Acquire acquire;
+    return Agent(py::cast<py::object>((*(this->_pyobj))[0]));
+}
+
+SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ACCESS_TYPE::AgentData SK_PY_AGENT_DATA_ITEM_CLASS::data() {
+    typename GilControl<Texecution>::Acquire acquire;
+    return AgentData(py::cast<py::object>((*(this->_pyobj))[1]));
+}
+
+// === AgentDataAccess::AgentDataAccessor implementation ===
+
+#define SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL \
+SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
+
+#define SK_PY_AGENT_DATA_ACCESSOR_CLASS \
+SK_PY_AGENT_DATA_ACCESS_CLASS::AgentDataAccessor
+
+#define SK_PY_AGENT_DATA_ACCESSOR_TYPE \
+SK_PY_AGENT_DATA_ACCESS_TYPE::AgentDataAccessor
+
+SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ACCESSOR_CLASS::AgentDataAccessor(const py::detail::item_accessor& a)
+: PyObj<AgentDataAccessor, py::detail::item_accessor>(a), AgentData(a) {}
+
+SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ACCESSOR_TYPE& SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(AgentDataAccessor&& other) && {
+    std::forward<AgentDataAccessor&&>(*this) = static_cast<const AgentData&>(other);
+    return *this;
+}
+
+SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
+void SK_PY_AGENT_DATA_ACCESSOR_CLASS::operator=(const AgentData& other) && {
+    typename GilControl<Texecution>::Acquire acquire;
+        std::forward<py::detail::item_accessor&&>(
+            *PyObj<AgentDataAccessor, py::detail::item_accessor>::_pyobj) = other.pyobj();
+    *AgentData::_pyobj = other.pyobj();
+}
+
+SK_PY_AGENT_DATA_ACCESSOR_TEMPLATE_DECL
+SK_PY_AGENT_DATA_ACCESSOR_CLASS::~AgentDataAccessor() {}
+
 // === MemoryState implementation ===
 
 #define SK_PY_MEMORY_STATE_TEMPLATE_DECL \

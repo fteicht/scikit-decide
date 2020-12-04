@@ -10,11 +10,13 @@
 namespace pybind11 {
     class dict;
     class list;
+    class tuple;
     namespace detail {
+        template <typename Policy> class accessor;
+        namespace accessor_policies { struct generic_item; }
+        using item_accessor = accessor<accessor_policies::generic_item>;
         template <typename Policy> class generic_iterator;
-        namespace iterator_policies{
-            class dict_readonly;
-        }
+        namespace iterator_policies{ class dict_readonly; }
         using dict_iterator = generic_iterator<iterator_policies::dict_readonly>;
     }
 }
@@ -82,9 +84,61 @@ public :
 
         std::size_t size() const;
 
-        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::Agent Agent;
-        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::template Item<AgentData> Item;
-        typedef typename PythonDomainProxyBase<Texecution>::AgentDataAccess::template AgentDataAccessor<AgentData> AgentDataAccessor;
+        // Agents are dict keys
+        class Agent : public PyObj<Agent> {
+        public :
+            static constexpr char class_name[] = "agent";
+            
+            Agent();
+            Agent(std::unique_ptr<py::object>&& a);
+
+            template <typename Tother>
+            Agent(const Tother& other);
+            
+            Agent& operator=(const Agent& other);
+            virtual ~Agent();
+
+        private :
+            struct Implementation;
+        };
+
+        // Dict items
+        class Item : public PyObj<Item, py::tuple> {
+        public :
+            static constexpr char class_name[] = "dictionary item";
+
+            Item();
+            Item(std::unique_ptr<py::object>&& a);
+            Item(const py::object& a);
+            Item(const Item& other);
+            Item& operator=(const Item& other);
+            virtual ~Item();
+
+            Agent agent();
+            AgentData data();
+        };
+
+        // To access elements with dict operator []
+        // Objective #1: access TagentData's methods
+        // Objective #2: modify internal Python object with operator =
+        class AgentDataAccessor : public PyObj<AgentDataAccessor, py::detail::item_accessor>,
+                                  public AgentData {
+        public :
+            AgentDataAccessor(const py::detail::item_accessor& a);
+            
+            // We shall not assign data accessor lvalues because statements like
+            // 'auto d = my_data[my_key]; d = other_data;' would assign 'other_data'
+            // to 'my_data[my_key]', which is generally not the expected behaviour
+            // (since one thinks to reason about the actual data but not the
+            // dictionary accessor...).
+            AgentDataAccessor& operator=(AgentDataAccessor&& other) & = delete;
+            void operator=(const AgentData& other) & = delete;
+
+            AgentDataAccessor& operator=(AgentDataAccessor&& other) &&;
+            void operator=(const AgentData& other) &&;
+            virtual ~AgentDataAccessor();
+        };
+
         typedef PyIter<Item, py::detail::dict_iterator> PyIter;
 
         AgentDataAccessor operator[](const Agent& a);
@@ -258,6 +312,7 @@ public :
 
         class NextStateDistributionValues : public PyObj<NextStateDistributionValues> {
         public :
+            // typedef PyIter<DistributionValue> PyIter;
             typedef PyIter<DistributionValue> PyIter;
             static constexpr char class_name[] = "next state distribution values";
 
@@ -317,7 +372,7 @@ protected :
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "impl/python_domain_proxy_pyobj_impl.hh"
+#include "impl/python_domain_proxy_common_impl.hh"
 #include "impl/python_domain_proxy_call_impl.hh"
 #include "impl/python_domain_proxy_impl.hh"
 #endif

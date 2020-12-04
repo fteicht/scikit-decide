@@ -1,5 +1,5 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
-#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_pyobj_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_common_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_call_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_impl.hh"
 
@@ -8,3 +8,10 @@ template class skdecide::PythonDomainProxy<${Texecution},
                                            ${Tobservability},
                                            ${Tcontrollability},
                                            ${Tmemory}>;
+
+template class skdecide::PythonDomainProxyBase<${Texecution}>::PyIter<
+                    skdecide::PythonDomainProxy<${Texecution},
+                                                ${Tagent},
+                                                ${Tobservability},
+                                                ${Tcontrollability},
+                                                ${Tmemory}>::NextStateDistribution::DistributionValue>;

@@ -201,6 +201,105 @@ bool SK_PY_OBJ_CLASS::Equal::operator()(const PyObj<Derived, Tpyobj>& o1, const 
     }
 }
 
+// === PyIter implementation ===
+
+template <typename Texecution>
+template<typename T, typename Titerator>
+struct PythonDomainProxyBase<Texecution>::PyIter<T, Titerator>::Implementation {
+    template <typename TTiterator = Titerator,
+              std::enable_if_t<!std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+    static T dereference_object(Titerator& pit) {
+        typename GilControl<Texecution>::Acquire acquire;
+        return T(py::reinterpret_borrow<py::object>(*pit));
+    }
+
+    template <typename TTiterator = Titerator,
+              std::enable_if_t<std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+    static T dereference_object(Titerator& pit) {
+        typename GilControl<Texecution>::Acquire acquire;
+        return T(py::make_tuple(py::reinterpret_borrow<py::object>(pit->first),
+                                py::reinterpret_borrow<py::object>(pit->second)));
+    }
+
+    template <typename TTiterator = Titerator,
+              std::enable_if_t<!std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+    static std::unique_ptr<T> dereference_pointer(Titerator& pit) {
+        typename GilControl<Texecution>::Acquire acquire;
+        return std::make_unique<T>(py::reinterpret_borrow<py::object>(*pit));
+    }
+
+    template <typename TTiterator = Titerator,
+              std::enable_if_t<std::is_same<TTiterator, py::detail::dict_iterator>::value, int> = 0>
+    static std::unique_ptr<T> dereference_pointer(Titerator& pit) {
+        typename GilControl<Texecution>::Acquire acquire;
+        return std::make_unique<T>(py::make_tuple(py::reinterpret_borrow<py::object>(pit->first),
+                                                  py::reinterpret_borrow<py::object>(pit->second)));
+    }
+};
+
+#define SK_PY_ITER_TEMPLATE_DECL \
+template <typename Texecution> \
+template <typename T, typename Titerator>
+
+#define SK_PY_ITER_CLASS \
+PythonDomainProxyBase<Texecution>::PyIter<T, Titerator>
+
+#define SK_PY_ITER_TYPE \
+typename PythonDomainProxyBase<Texecution>::template PyIter<T, Titerator>
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_CLASS::PyIter(const Titerator& iterator)
+: PyObj<PyIter<T, Titerator>, Titerator>(iterator, false) {}
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_CLASS::PyIter(const PyIter<T, Titerator>& other)
+: PyObj<PyIter<T, Titerator>, Titerator>(other) {}
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_TYPE& SK_PY_ITER_CLASS::operator=(const PyIter<T, Titerator>& other) {
+    static_cast<PyObj<PyIter<T, Titerator>, Titerator>&>(*this) = other;
+    return *this;
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_CLASS::~PyIter() {}
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_TYPE& SK_PY_ITER_CLASS::operator++() {
+    typename GilControl<Texecution>::Acquire acquire;
+    ++(*(this->_pyobj));
+    return *this;
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+SK_PY_ITER_TYPE SK_PY_ITER_CLASS::operator++(int) {
+    typename GilControl<Texecution>::Acquire acquire;
+    Titerator rv = (*(this->_pyobj))++;
+    return PyIter<T, Titerator>(rv);
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+T SK_PY_ITER_CLASS::operator*() const {
+    return SK_PY_ITER_TYPE::Implementation::dereference_object(*(this->_pyobj));
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+std::unique_ptr<T> SK_PY_ITER_CLASS::operator->() const {
+    return SK_PY_ITER_TYPE::Implementation::dereference_pointer(*(this->_pyobj));
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+bool SK_PY_ITER_CLASS::operator==(const PyIter<T, Titerator>& other) const {
+    typename GilControl<Texecution>::Acquire acquire;
+    return *(this->_pyobj) == *(other._pyobj);
+}
+
+SK_PY_ITER_TEMPLATE_DECL
+bool SK_PY_ITER_CLASS::operator!=(const PyIter<T, Titerator>& other) const {
+    typename GilControl<Texecution>::Acquire acquire;
+    return *(this->_pyobj) != *(other._pyobj);
+}
+
 } // namespace skdecide
 
 #endif // PYTHON_DOMAIN_PROXY_PYOBJ_IMPL_HH

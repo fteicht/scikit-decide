@@ -350,7 +350,7 @@ public :
     double discount() const;
 
     ExecutionPolicy& execution_policy();
-    TransitionMode& transition_mode();
+    const TransitionMode& transition_mode();
     const TreePolicy& tree_policy();
     const Expander& expander();
     const ActionSelectorOptimization& action_selector_optimization();
@@ -378,8 +378,8 @@ private :
     atomic_bool _debug_logs;
     WatchdogFunctor _watchdog;
 
-    ExecutionPolicy _execution_policy;
-    TransitionMode _transition_mode;
+    std::unique_ptr<ExecutionPolicy> _execution_policy;
+    std::unique_ptr<TransitionMode> _transition_mode;
 
     std::unique_ptr<TreePolicy> _tree_policy;
     std::unique_ptr<Expander> _expander;
