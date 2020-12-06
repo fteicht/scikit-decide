@@ -15,11 +15,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "TactionSelectorExecution" "UCB1ActionSelector!Eua;BestQValueActionSelector!Eqa"
         "TrolloutPolicy" "DefaultRolloutPolicy!Drp"
         "TbackPropagator" "GraphBackup!Gbk")
-
-    # ADD_LIBRARY(py_mcts OBJECT
-    #                 ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
-    #                 ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})
-    # TARGET_INCLUDE_DIRECTORIES(py_mcts PRIVATE ${INCLUDE_DIRS})
+    
     TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
                     ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
                     ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})
