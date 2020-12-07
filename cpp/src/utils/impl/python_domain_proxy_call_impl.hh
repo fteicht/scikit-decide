@@ -11,6 +11,7 @@
 #include "utils/python_gil_control.hh"
 #include "utils/python_globals.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -118,7 +119,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
                     conn = _connections[(std::size_t) did].get();
                 }
             } catch(const py::error_already_set* e) {
-                spdlog::error("SKDECIDE exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
+                Logger::error("SKDECIDE exception when asynchronously calling anonymous domain method: " + std::string(e->what()));
                 std::runtime_error err(e->what());
                 id.reset();
                 delete e;
@@ -137,14 +138,14 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
             } catch (const nng::exception& e) {
                 std::string err_msg("SKDECIDE exception when waiting for a response from the python parallel domain: ");
                 err_msg += e.who() + std::string(": ") + std::string(e.what());
-                spdlog::error(err_msg);
+                Logger::error(err_msg);
                 typename GilControl<Texecution>::Acquire acquire;
                 id.reset();
                 throw std::runtime_error(err_msg);
             }
         } else {
             std::string err_msg("Unable to establish a connection with the Python parallel domain");
-            spdlog::error(err_msg);
+            Logger::error(err_msg);
             throw std::runtime_error(std::string("SKDECIDE exception: ") + err_msg);
         }
         typename GilControl<Texecution>::Acquire acquire;
@@ -153,7 +154,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
             id.reset();
             return r;
         } catch(const py::error_already_set* e) {
-            spdlog::error("SKDECIDE exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
+            Logger::error("SKDECIDE exception when asynchronously calling the domain's get_result() method: " + std::string(e->what()));
             std::runtime_error err(e->what());
             id.reset();
             delete e;
@@ -191,7 +192,7 @@ std::unique_ptr<py::object> PythonDomainProxy<Texecution, Tagent, Tobservability
     try {
         return _implementation->call(thread_id, func, args...);
     } catch(const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + std::string(e.what()));
+        Logger::error(std::string("SKDECIDE exception when calling anonymous domain method: ") + std::string(e.what()));
         throw;
     }
 }

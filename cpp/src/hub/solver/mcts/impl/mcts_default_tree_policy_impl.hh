@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_DEFAULT_TREE_POLICY_IMPL_HH
 #define SKDECIDE_MCTS_DEFAULT_TREE_POLICY_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -32,7 +30,7 @@ SK_MCTS_DEFAULT_TREE_POLICY_CLASS::operator()(Tsolver& solver,
     try {
         if (solver.debug_logs()) {
             solver.execution_policy().protect([&n](){
-                spdlog::debug("Launching default tree policy from state " + n.state.print() +
+                Logger::debug("Launching default tree policy from state " + n.state.print() +
                               Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
         }
@@ -72,7 +70,7 @@ SK_MCTS_DEFAULT_TREE_POLICY_CLASS::operator()(Tsolver& solver,
         return current_node;
     } catch (const std::exception& e) {
         solver.execution_policy().protect([&n, &e](){
-            spdlog::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what() +
+            Logger::error("SKDECIDE exception in MCTS when simulating the tree policy from state " + n.state.print() + ": " + e.what() +
                           Tsolver::ExecutionPolicy::print_thread());
         }, n.mutex);
         throw;

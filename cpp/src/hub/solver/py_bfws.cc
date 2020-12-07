@@ -128,7 +128,7 @@ private :
                                                                                     r.reset();
                                                                                     return rr;
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
@@ -139,7 +139,7 @@ private :
                                                                                     };
                                                                                     return typename PyBFWSDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
@@ -154,7 +154,7 @@ private :
                                                                                     r.reset();
                                                                                     return  rr;
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling termination checker: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },

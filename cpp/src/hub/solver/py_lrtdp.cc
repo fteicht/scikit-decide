@@ -139,7 +139,7 @@ private :
                                                                                     r.reset();
                                                                                     return  rr;
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
@@ -147,7 +147,7 @@ private :
                                                                                 try {
                                                                                     return typename PyLRTDPDomain<Texecution>::Value(d.call(thread_id, _heuristic, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling heuristic: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },

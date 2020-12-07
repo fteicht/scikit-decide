@@ -11,6 +11,7 @@
 #include "utils/python_globals.hh"
 #include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -221,7 +222,7 @@ bool SK_PY_APPLICABLE_ACTION_SPACE_ELEMENTS_CLASS::empty() const {
             throw std::runtime_error("SKDECIDE exception: applicable action space elements must be iterable.");
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when checking emptiness of applicable action space's elements: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when checking emptiness of applicable action space's elements: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -287,12 +288,12 @@ typename SK_PY_APPLICABLE_ACTION_SPACE_ELEMENTS_CLASS SK_PY_APPLICABLE_ACTION_SP
         }
         return Elements(this->_pyobj->attr("get_elements")());
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e.what()));
+        Logger::error(std::string("SKDECIDE exception when getting applicable action space's elements: ") + std::string(e.what()));
         throw;
     }
 }
@@ -304,7 +305,7 @@ bool SK_PY_APPLICABLE_ACTION_SPACE_CLASS::empty() const {
         return py::isinstance(*(this->_pyobj), skdecide::Globals::skdecide().attr("EmptySpace")) ||
             this->get_elements().empty();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when checking emptyness of applicable action space's elements: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when checking emptyness of applicable action space's elements: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -321,12 +322,12 @@ SK_PY_ACTION_TYPE SK_PY_APPLICABLE_ACTION_SPACE_CLASS::sample() const {
             return Action(this->_pyobj->attr("sample")());
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e.what()));
+        Logger::error(std::string("SKDECIDE exception when sampling action data: ") + std::string(e.what()));
         throw;
     }
 }
@@ -341,7 +342,7 @@ bool SK_PY_APPLICABLE_ACTION_SPACE_CLASS::contains(const Action& action) {
             return this->_pyobj->attr("contains")(action.pyobj()).template cast<bool>();
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when checking inclusion of action data: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when checking inclusion of action data: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -416,7 +417,7 @@ void SK_PY_VALUE_CLASS::construct(const double& value, const bool& reward_or_cos
             }
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when importing value data: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when importing value data: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -429,7 +430,7 @@ double SK_PY_VALUE_CLASS::cost() const {
     try {
         return py::cast<double>(this->_pyobj->attr("cost"));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting value's cost: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when getting value's cost: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -444,7 +445,7 @@ void SK_PY_VALUE_CLASS::cost(const double& c) {
         this->_pyobj->attr("cost") = py::float_(c);
         this->_pyobj->attr("reward") = py::float_(-c);
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting value's cost: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when setting value's cost: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -457,7 +458,7 @@ double SK_PY_VALUE_CLASS::reward() const {
     try {
         return this->_pyobj->attr("reward").template cast<double>();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting value's reward: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when getting value's reward: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -471,7 +472,7 @@ void SK_PY_VALUE_CLASS::reward(const double& r) {
         this->_pyobj->attr("reward") = py::float_(r);
         this->_pyobj->attr("cost") = py::float_(-r);
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting value's reward: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when setting value's reward: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -601,7 +602,7 @@ std::size_t SK_PY_OUTCOME_INFO_CLASS::get_depth() const {
             return 0;
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting outcome's depth info: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when getting outcome's depth info: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;

@@ -18,12 +18,10 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -111,7 +109,7 @@ public :
               if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
                   std::string msg = "Debug logs requested for algorithm BFWS but global log level is higher than debug";
                   if (spdlog::get_level() <= spdlog::level::warn) {
-                      spdlog::warn(msg);
+                      Logger::warn(msg);
                   } else {
                       msg = "\033[1;33mbold " + msg + "\033[0m";
                       std::cerr << msg << std::endl;
@@ -128,7 +126,7 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " BFWS solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " BFWS solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             // Map from heuristic values to set of state features with that given heuristic value
@@ -164,12 +162,12 @@ public :
                     continue;
                 }
 
-                if (_debug_logs) spdlog::debug("Current best tip node (h=" + StringConverter::from(best_tip_node->heuristic) +
+                if (_debug_logs) Logger::debug("Current best tip node (h=" + StringConverter::from(best_tip_node->heuristic) +
                                                                        ", n=" + StringConverter::from(best_tip_node->novelty) +
                                                                        "): " + best_tip_node->state.print());
 
                 if (_termination_checker(_domain, best_tip_node->state) || best_tip_node->solved) {
-                    if (_debug_logs) spdlog::debug("Found a terminal state: " + best_tip_node->state.print());
+                    if (_debug_logs) Logger::debug("Found a terminal state: " + best_tip_node->state.print());
                     auto current_node = best_tip_node;
                     if (!(best_tip_node->solved)) { current_node->fscore = 0; } // goal state
 
@@ -183,7 +181,7 @@ public :
 
                     auto end_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-                    spdlog::info("BFWS finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+                    Logger::info("BFWS finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return;
                 }
 
@@ -192,9 +190,9 @@ public :
                 // Expand best tip node
                 auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
                 std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &closed_set, &heuristic_features_map](auto a) {
-                    if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
+                    if (_debug_logs) Logger::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                     auto next_state = _domain.get_next_state(best_tip_node->state, a);
-                    if (_debug_logs) spdlog::debug("Exploring next state " + next_state.print() + ExecutionPolicy::print_thread());
+                    if (_debug_logs) Logger::debug("Exploring next state " + next_state.print() + ExecutionPolicy::print_thread());
                     std::pair<typename Graph::iterator, bool> i;
                     _execution_policy.protect([this, &i, &next_state]{
                         i = _graph.emplace(Node(next_state, _domain, _state_features));
@@ -210,7 +208,7 @@ public :
                     double tentative_gscore = best_tip_node->gscore + transition_cost;
 
                     if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-                        if (_debug_logs) spdlog::debug("New gscore: " +
+                        if (_debug_logs) Logger::debug("New gscore: " +
                                                        StringConverter::from(best_tip_node->gscore) + "+" +
                                                        StringConverter::from(transition_cost) + "=" +
                                                        StringConverter::from(tentative_gscore) +
@@ -220,20 +218,20 @@ public :
                     }
 
                     neighbor.heuristic = _heuristic(_domain, neighbor.state).cost();
-                    if (_debug_logs) spdlog::debug("Heuristic: " + StringConverter::from(neighbor.heuristic) +
+                    if (_debug_logs) Logger::debug("Heuristic: " + StringConverter::from(neighbor.heuristic) +
                                                    ExecutionPolicy::print_thread());
                     _execution_policy.protect([this, &heuristic_features_map, &open_queue, &neighbor]{
                         neighbor.novelty = this->novelty(heuristic_features_map, neighbor.heuristic, neighbor);
                         open_queue.push(&neighbor);
-                        if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(neighbor.novelty) +
+                        if (_debug_logs) Logger::debug("Novelty: " + StringConverter::from(neighbor.novelty) +
                                                        ExecutionPolicy::print_thread());
                     });
                 });
             }
 
-            spdlog::info("BFWS could not find a solution from state " + s.print());
+            Logger::info("BFWS could not find a solution from state " + s.print());
         } catch (const std::exception& e) {
-            spdlog::error("BFWS failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("BFWS failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }

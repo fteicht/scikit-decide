@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_PARTIAL_EXPAND_IMPL_HH
 #define SKDECIDE_MCTS_PARTIAL_EXPAND_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -43,7 +41,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver& solver,
     try {
         if (solver.debug_logs()) {
             solver.execution_policy().protect([&n](){
-                spdlog::debug("Testing expansion of state " + n.state.print() +
+                Logger::debug("Testing expansion of state " + n.state.print() +
                               Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
         }
@@ -68,7 +66,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver& solver,
                     action_node->parent = &n;
                 }
 
-                if (solver.debug_logs()) { spdlog::debug("Sampled a new action: " + action_node->action.print() +
+                if (solver.debug_logs()) { Logger::debug("Sampled a new action: " + action_node->action.print() +
                                                          Tsolver::ExecutionPolicy::print_thread()); }
             }, n.mutex);
         } else {
@@ -90,7 +88,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver& solver,
             action_node = actions[action_id];
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&action_node](){
-                    spdlog::debug("Sampled among known actions: " + action_node->action.print() +
+                    Logger::debug("Sampled among known actions: " + action_node->action.print() +
                                   Tsolver::ExecutionPolicy::print_thread());
                 }, action_node->parent->mutex);
             }
@@ -164,12 +162,12 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver& solver,
         if (solver.debug_logs()) {
             if (ns) {
                 solver.execution_policy().protect([&ns](){
-                        spdlog::debug("Sampled a new outcome: " + ns->state.print() +
+                        Logger::debug("Sampled a new outcome: " + ns->state.print() +
                                       Tsolver::ExecutionPolicy::print_thread());
                 }, ns->mutex);
             } else {
                 solver.execution_policy().protect([&n](){
-                    spdlog::debug("Not expanding state: " + n.state.print() +
+                    Logger::debug("Not expanding state: " + n.state.print() +
                                   Tsolver::ExecutionPolicy::print_thread());
                 }, n.mutex);
             }
@@ -178,7 +176,7 @@ SK_MCTS_PARTIAL_EXPAND_CLASS::operator()(Tsolver& solver,
         return ns;
     } catch (const std::exception& e) {
         solver.execution_policy().protect([&n, &e](){
-            spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
+            Logger::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
                           Tsolver::ExecutionPolicy::print_thread());
         }, n.mutex);
         throw;

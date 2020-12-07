@@ -8,11 +8,9 @@
 #include <boost/range/irange.hpp>
 #include <iostream>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -114,14 +112,9 @@ SK_MCTS_SOLVER_CLASS::MCTSSolver(Domain& domain,
       _back_propagator(std::move(back_propagator)),
       _current_state(nullptr),
       _epsilon_moving_average(0) {
-    if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
-        std::string msg = "Debug logs requested for algorithm MCTS but global log level is higher than debug";
-        if (spdlog::get_level() <= spdlog::level::warn) {
-            spdlog::warn(msg);
-        } else {
-            msg = "\033[1;33mbold " + msg + "\033[0m";
-            std::cerr << msg << std::endl;
-        }
+
+    if (debug_logs) {
+        Logger::check_level(logging::debug, "algorithm MCTS");
     }
 
     std::random_device rd;
@@ -136,7 +129,7 @@ void SK_MCTS_SOLVER_CLASS::clear() {
 SK_MCTS_SOLVER_TEMPLATE_DECL
 void SK_MCTS_SOLVER_CLASS::solve(const State& s) {
     try {
-        spdlog::info("Running " + ExecutionPolicy::print_type() + " MCTS solver from state " + s.print());
+        Logger::info("Running " + ExecutionPolicy::print_type() + " MCTS solver from state " + s.print());
         auto start_time = std::chrono::high_resolution_clock::now();
         _nb_rollouts = 0;
         _epsilon_moving_average = 0.0;
@@ -171,11 +164,11 @@ void SK_MCTS_SOLVER_CLASS::solve(const State& s) {
 
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-        spdlog::info("MCTS finished to solve from state " + s.print() +
+        Logger::info("MCTS finished to solve from state " + s.print() +
                      " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
                      StringConverter::from(_nb_rollouts) + " rollouts.");
     } catch (const std::exception& e) {
-        spdlog::error("MCTS failed solving from state " + s.print() + ". Reason: " + e.what());
+        Logger::error("MCTS failed solving from state " + s.print() + ". Reason: " + e.what());
         throw;
     }
 }
@@ -199,7 +192,7 @@ SK_MCTS_SOLVER_CLASS::get_best_action(const State& s) {
         action = (*_action_selector_execution)(*this, nullptr, *si);
     }
     if (action == nullptr) {
-        spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+        Logger::error("SKDECIDE exception: no best action found in state " + s.print());
         throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
     } else {
         if (_debug_logs) {
@@ -208,7 +201,7 @@ SK_MCTS_SOLVER_CLASS::get_best_action(const State& s) {
                 str += "\n    " + o.first->state.print();
             }
             str += "\n)";
-            spdlog::debug("Best action's known outcomes:\n" + str);
+            Logger::debug("Best action's known outcomes:\n" + str);
         }
         if (_online_node_garbage && _current_state) {
             std::unordered_set<StateNode*> root_subgraph, child_subgraph;
@@ -230,7 +223,7 @@ double SK_MCTS_SOLVER_CLASS::get_best_value(const State& s) {
         action = (*_action_selector_execution)(*this, nullptr, *si);
     }
     if (action == nullptr) {
-        spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+        Logger::error("SKDECIDE exception: no best action found in state " + s.print());
         throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
     } else {
         return action->value;

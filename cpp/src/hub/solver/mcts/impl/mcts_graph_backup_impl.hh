@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_GRAPH_BACKUP_IMPL_HH
 #define SKDECIDE_MCTS_GRAPH_BACKUP_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -32,7 +30,7 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation<
             parent_node->value = (((parent_node->visits_count) * (parent_node->value))  + (a->value)) / ((double) (parent_node->visits_count + 1));
             parent_node->visits_count += 1;
             new_frontier.insert(parent_node);
-            if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
+            if (solver.debug_logs()) { Logger::debug("Updating state " + parent_node->state.print() +
                                                     ": value=" + StringConverter::from(parent_node->value) +
                                                     ", visits=" + StringConverter::from(parent_node->visits_count) +
                                                     Tsolver::ExecutionPolicy::print_thread()); }
@@ -62,7 +60,7 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation<
                 parent_node->value = (((parent_node->visits_count) * (parent_node->value))  + (a->value)) / ((double) (parent_node->visits_count + 1));
                 parent_node->visits_count += 1;
                 new_frontier.insert(parent_node);
-                if (solver.debug_logs()) { spdlog::debug("Updating state " + parent_node->state.print() +
+                if (solver.debug_logs()) { Logger::debug("Updating state " + parent_node->state.print() +
                                                         ": value=" + StringConverter::from(parent_node->value) +
                                                         ", visits=" + StringConverter::from(parent_node->visits_count) +
                                                         Tsolver::ExecutionPolicy::print_thread()); }
@@ -83,7 +81,7 @@ void SK_MCTS_GRAPH_BACKUP_CLASS::operator()(Tsolver& solver,
                                             typename Tsolver::StateNode& n) const {
     if (solver.debug_logs()) {
         solver.execution_policy().protect([&n](){
-            spdlog::debug("Back-propagating values from state " + n.state.print() +
+            Logger::debug("Back-propagating values from state " + n.state.print() +
                           Tsolver::ExecutionPolicy::print_thread());
         }, n.mutex);
     }

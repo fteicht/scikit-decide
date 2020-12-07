@@ -77,7 +77,7 @@ private :
                         r.reset();
                         return rr;
                     } catch (const std::exception& e) {
-                        spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                        Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                         throw;
                     }
                 },

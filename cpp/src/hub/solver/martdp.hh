@@ -17,12 +17,10 @@
 
 #include <boost/range/irange.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -71,7 +69,7 @@ public :
               if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
                   std::string msg = "Debug logs requested for algorithm MARTDP but global log level is higher than debug";
                   if (spdlog::get_level() <= spdlog::level::warn) {
-                      spdlog::warn(msg);
+                      Logger::warn(msg);
                   } else {
                       msg = "\033[1;33mbold " + msg + "\033[0m";
                       std::cerr << msg << std::endl;
@@ -92,7 +90,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " MARTDP solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " MARTDP solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             if (_nb_agents != s.size()) {
@@ -127,16 +125,8 @@ public :
             auto si = _graph.emplace(s);
             StateNode& root_node = const_cast<StateNode&>(*(si.first)); // we won't change the real key (StateNode::state) so we are safe
 
-            if (si.second) {
-                Predicate termination;
-                for (auto a: _agents) {
-                    termination[a] = false;
-                }
-                initialize_node(root_node, termination);
-            }
-
             if (root_node.all_goal) { // problem already solved from this state (was present in _graph and already solved)
-                spdlog::info("MARTDP finished to solve from state " + s.print() + " [goal state]");
+                Logger::info("MARTDP finished to solve from state " + s.print() + " [goal state]");
                 return;
             }
 
@@ -146,7 +136,7 @@ public :
             std::size_t etime = 0;
                 
             do {
-                if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
+                if (_debug_logs) Logger::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
 
                 _nb_rollouts++;
                 double root_node_record_value = root_node.all_value;
@@ -163,12 +153,12 @@ public :
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("MARTDP finished to solve from state " + s.print() +
+            Logger::info("MARTDP finished to solve from state " + s.print() +
                          " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
                          StringConverter::from(_nb_rollouts) + " rollouts and visited " +
                          StringConverter::from(_graph.size()) + " states. ");
         } catch (const std::exception& e) {
-            spdlog::error("MARTDP failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("MARTDP failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }
@@ -193,7 +183,7 @@ public :
                         str += "\n    " + o.first->state.print();
                     }
                     str += "\n)";
-                    spdlog::debug("Best action's outcomes:\n" + str);
+                    Logger::debug("Best action's outcomes:\n" + str);
                 }
             if (_online_node_garbage && _current_state) {
                 std::unordered_set<StateNode*> root_subgraph, child_subgraph;
@@ -342,7 +332,7 @@ private :
     }
 
     void expand_state(StateNode* s) {
-        if (_debug_logs) spdlog::debug("Trying to expand state " + s->state.print());
+        if (_debug_logs) Logger::debug("Trying to expand state " + s->state.print());
         
         if (s->actions.empty()) {
             Predicate termination;
@@ -350,9 +340,6 @@ private :
                 termination[a] = false;
             }
             initialize_node(*s, termination);
-        }
-
-        if (s->actions.empty()) {
             s->expansions_count += generate_more_actions(s);
         } else {
             std::bernoulli_distribution dist_state_expansion(std::exp(- _graph_expansion_rate * (s->expansions_count)));
@@ -363,7 +350,7 @@ private :
     }
 
     StateNode* expand_action(ActionNode* a) {
-        if (_debug_logs) spdlog::debug("Trying to expand action " + a->action.print());
+        if (_debug_logs) Logger::debug("Trying to expand action " + a->action.print());
         EnvironmentOutcome outcome = _domain.sample(a->parent->state, a->action);
         auto i = _graph.emplace(outcome.observation());
         StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
@@ -381,12 +368,12 @@ private :
 
         // Update the outcome's reward and visits count
         if (ins.second) { // new outcome
-            if (_debug_logs) spdlog::debug("Discovered new outcome " + next_node.state.print());
+            if (_debug_logs) Logger::debug("Discovered new outcome " + next_node.state.print());
             a->dist_to_outcome.push_back(ins.first);
             a->expansions_count += 1;
             next_node.parents.insert(a);
         } else { // known outcome
-            if (_debug_logs) spdlog::debug("Discovered known outcome " + next_node.state.print());
+            if (_debug_logs) Logger::debug("Discovered known outcome " + next_node.state.print());
             std::pair<double, std::size_t>& mp = ins.first->second;
             mp.first = ((double) (mp.second * mp.first) + transition_cost) / ((double) (mp.second + 1));
             mp.second += 1;
@@ -403,19 +390,19 @@ private :
     }
 
     bool generate_more_actions(StateNode* s) {
-        if (_debug_logs) spdlog::debug("Generating (more) actions for state " + s->state.print());
+        if (_debug_logs) Logger::debug("Generating (more) actions for state " + s->state.print());
         bool new_actions = false;
 
         for (std::size_t agent = 0 ; agent < _nb_agents ; agent++) {
-            if (_debug_logs) spdlog::debug("Trying agent " + _agents[agent].print() + " actions");
+            if (_debug_logs) Logger::debug("Trying agent " + _agents[agent].print() + " actions");
             auto agent_applicable_actions = _domain.get_agent_applicable_actions(s->state, Action(), _agents[agent]).get_elements();
 
             if (agent_applicable_actions.empty()) {
-                if (_debug_logs) spdlog::debug("No agent applicable actions");
+                if (_debug_logs) Logger::debug("No agent applicable actions");
                 continue;
             } else {
                 for (auto action : agent_applicable_actions) {
-                    if (_debug_logs) spdlog::debug("Trying agent action " + action.print());
+                    if (_debug_logs) Logger::debug("Trying agent action " + action.print());
                     Action agent_actions;
                     agent_actions[_agents[agent]] = action;
 
@@ -461,7 +448,7 @@ private :
                             // add one sampled outcome
                             expand_action(action_node);
                         }
-                    } else if (_debug_logs) spdlog::debug("Failed finding a joint applicable action");
+                    } else if (_debug_logs) Logger::debug("Failed finding a joint applicable action");
                 }
             }
         }
@@ -470,13 +457,13 @@ private :
     }
 
     ActionNode* greedy_action(StateNode* s) {
-        if (_debug_logs) spdlog::debug("Updating state " + s->state.print());
+        if (_debug_logs) Logger::debug("Updating state " + s->state.print());
         
         double best_value = std::numeric_limits<double>::infinity();
         ActionNode* best_action = nullptr;
 
         for (const ActionNode& act : s->actions) {
-            if (_debug_logs) spdlog::debug("Computing Q-value of (" + s->state.print() + ", " + act.action.print() + ")");
+            if (_debug_logs) Logger::debug("Computing Q-value of (" + s->state.print() + ", " + act.action.print() + ")");
 
             ActionNode& action = const_cast<ActionNode&>(act); // we won't change the real key (ActionNode::action) so we are safe
             action.all_value = 0.0;
@@ -496,23 +483,25 @@ private :
                 best_action = &action;
             }
 
-            if (_debug_logs) spdlog::debug("Updated Q-value of action " + action.action.print() +
+            if (_debug_logs) Logger::debug("Updated Q-value of action " + action.action.print() +
                                            " with value " + StringConverter::from(action.all_value));
         }
 
         if (_debug_logs) {
             if (best_action) {
-                spdlog::debug("Greedy action of state " + s->state.print() + ": " +
+                Logger::debug("Greedy action of state " + s->state.print() + ": " +
                               best_action->action.print() +
                               " with value " + StringConverter::from(best_value));
             } else {
-                spdlog::debug("State " + s->state.print() +
+                Logger::debug("State " + s->state.print() +
                               " is a dead-end or a goal (no feasible actions found)");
             }
         }
 
+        if (best_action) {
+            s->best_action = std::make_unique<Action>(best_action->action);
+        }
         s->action = best_action;
-        s->best_action = std::make_unique<Action>(best_action->action);
         s->all_value = best_value;
         return s->action; // action is nullptr if state is a dead-end or a goal
     }
@@ -522,18 +511,19 @@ private :
     // }
 
     StateNode* pick_next_state(ActionNode* a) {
-        if (_debug_logs) spdlog::debug("Picking next state from State " + a->parent->state.print() +
+        if (_debug_logs) Logger::debug("Picking next state from State " + a->parent->state.print() +
                                        " with action " + a->action.print());
 
         StateNode* next_node = expand_action(a);
         
-        if (_debug_logs) spdlog::debug("Picked next state " + next_node->state.print() +
+        if (_debug_logs) Logger::debug("Picked next state " + next_node->state.print() +
                                        " from state " + a->parent->state.print() +
                                        " and action " + a->action.print());
         return next_node;
     }
 
     void backtrack_values(StateNode* s) {
+        if (_debug_logs) Logger::debug("Backtracking values from state " + s->state.print());
         std::unordered_set<StateNode*> frontier;
         std::unordered_set<StateNode*> visited;
         frontier.insert(s);
@@ -556,7 +546,7 @@ private :
 
     void initialize_node(StateNode& n, const Predicate& termination) {
         if (_debug_logs) {
-            spdlog::debug("Initializing new state node " + n.state.print());
+            Logger::debug("Initializing new state node " + n.state.print());
         }
 
         n.value.resize(_nb_agents, 0.0);
@@ -601,10 +591,10 @@ private :
             depth++;
 
             if (cs->all_goal) {
-                if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Found goal state " + cs->state.print());
                 break;
             } else if (cs->all_termination) {
-                if (_debug_logs) spdlog::debug("Found dead-end state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Found dead-end state " + cs->state.print());
                 break;
             }
             

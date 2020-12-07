@@ -10,9 +10,7 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
+#include "utils/logging.hh"
 #include "utils/python_globals.hh"
 #include "utils/python_gil_control.hh"
 #include "utils/python_container_proxy.hh"
@@ -61,7 +59,7 @@ bool PythonEqual<Texecution>::operator()(const py::object& o1, const py::object&
             return eq_test;
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when testing equality of python objects: ") + e->what());
+        Logger::error(std::string("SKDECIDE exception when testing equality of python objects: ") + e->what());
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -126,7 +124,7 @@ std::size_t PythonHash<Texecution>::operator()(const py::object& o) const {
             return hash_val;
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when hashing python object: ") + e->what());
+        Logger::error(std::string("SKDECIDE exception when hashing python object: ") + e->what());
         std::runtime_error err(e->what());
         delete e;
         throw err;

@@ -143,7 +143,7 @@ private :
                     try {
                         return _node_ordering(a_gscore, a_novelty, a_depth, b_gscore, b_novelty, b_depth);
                     } catch (const py::error_already_set* e) {
-                        spdlog::error("SKDECIDE exception when calling custom node ordering: " + std::string(e->what()));
+                        Logger::error("SKDECIDE exception when calling custom node ordering: " + std::string(e->what()));
                         std::runtime_error err(e->what());
                         delete e;
                         throw err;
@@ -165,7 +165,7 @@ private :
                                                                                     r.reset();
                                                                                     return rr;
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling state features: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },

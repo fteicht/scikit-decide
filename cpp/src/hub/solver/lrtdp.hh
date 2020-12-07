@@ -20,12 +20,10 @@
 
 #include <boost/range/irange.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -57,7 +55,7 @@ public :
               if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
                   std::string msg = "Debug logs requested for algorithm LRTDP but global log level is higher than debug";
                   if (spdlog::get_level() <= spdlog::level::warn) {
-                      spdlog::warn(msg);
+                      Logger::warn(msg);
                   } else {
                       msg = "\033[1;33mbold " + msg + "\033[0m";
                       std::cerr << msg << std::endl;
@@ -77,7 +75,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " LRTDP solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " LRTDP solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             
             auto si = _graph.emplace(s);
@@ -88,7 +86,7 @@ public :
             }
 
             if (root_node.solved || _goal_checker(_domain, s, nullptr)) { // problem already solved from this state (was present in _graph and already solved)
-                spdlog::info("LRTDP finished to solve from state " + s.print() +
+                Logger::info("LRTDP finished to solve from state " + s.print() +
                              " [" + ((root_node.solved && !root_node.goal)?("solved"):("goal")) + " state]");
                 return;
             }
@@ -102,7 +100,7 @@ public :
                 while ((!_use_labels || !root_node.solved) &&
                        (elapsed_time(start_time) < _time_budget) &&
                        (_nb_rollouts < _rollout_budget)) {
-                    if (_debug_logs) spdlog::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + ExecutionPolicy::print_thread());
+                    if (_debug_logs) Logger::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + ExecutionPolicy::print_thread());
                     _nb_rollouts++;
                     trial(&root_node, start_time, &thread_id);
                 }
@@ -110,12 +108,12 @@ public :
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("LRTDP finished to solve from state " + s.print() +
+            Logger::info("LRTDP finished to solve from state " + s.print() +
                          " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds with " +
                          StringConverter::from(_nb_rollouts) + " rollouts and visited " +
                          StringConverter::from(_graph.size()) + " states. ");
         } catch (const std::exception& e) {
-            spdlog::error("LRTDP failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("LRTDP failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }
@@ -141,7 +139,7 @@ public :
                         str += "\n    " + std::get<2>(o)->state.print();
                     }
                     str += "\n)";
-                    spdlog::debug("Best action's outcomes:\n" + str);
+                    Logger::debug("Best action's outcomes:\n" + str);
                 }
             if (_online_node_garbage && _current_state) {
                 std::unordered_set<StateNode*> root_subgraph, child_subgraph;
@@ -252,11 +250,11 @@ private :
     }
 
     void expand(StateNode* s, const std::size_t* thread_id) {
-        if (_debug_logs) spdlog::debug("Expanding state " + s->state.print() + ExecutionPolicy::print_thread());
+        if (_debug_logs) Logger::debug("Expanding state " + s->state.print() + ExecutionPolicy::print_thread());
         auto applicable_actions = _domain.get_applicable_actions(s->state, thread_id).get_elements();
 
         for (auto a : applicable_actions) {
-            if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
+            if (_debug_logs) Logger::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
             s->actions.push_back(std::make_unique<ActionNode>(a));
             ActionNode& an = *(s->actions.back());
             auto next_states = _domain.get_next_state_distribution(s->state, a, thread_id).get_values();
@@ -270,17 +268,17 @@ private :
                 StateNode& next_node = const_cast<StateNode&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
                 an.outcomes.push_back(std::make_tuple(ns.probability(), _domain.get_transition_value(s->state, a, next_node.state, thread_id).cost(), &next_node));
                 outcome_weights.push_back(std::get<0>(an.outcomes.back()));
-                if (_debug_logs) spdlog::debug("Current next state expansion: " + next_node.state.print() + ExecutionPolicy::print_thread());
+                if (_debug_logs) Logger::debug("Current next state expansion: " + next_node.state.print() + ExecutionPolicy::print_thread());
 
                 if (i.second) { // new node
                     if (_goal_checker(_domain, next_node.state, thread_id)) {
-                        if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
+                        if (_debug_logs) Logger::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                         next_node.goal = true;
                         next_node.solved = true;
                         next_node.best_value = 0.0;
                     } else {
                         next_node.best_value = _heuristic(_domain, next_node.state, thread_id).cost();
-                        if (_debug_logs) spdlog::debug("New state " + next_node.state.print() +
+                        if (_debug_logs) Logger::debug("New state " + next_node.state.print() +
                                                        " with heuristic value " + StringConverter::from(next_node.best_value) +
                                                        ExecutionPolicy::print_thread());
                     }
@@ -296,7 +294,7 @@ private :
         for (const auto& o : a->outcomes) {
             a->value = a->value + (std::get<0>(o) * (std::get<1>(o) + (_discount * std::get<2>(o)->best_value)));
         }
-        if (_debug_logs) spdlog::debug("Updated Q-value of action " + a->action.print() +
+        if (_debug_logs) Logger::debug("Updated Q-value of action " + a->action.print() +
                                         " with value " + StringConverter::from(a->value) +
                                         ExecutionPolicy::print_thread());
         return a->value;
@@ -318,7 +316,7 @@ private :
         }
 
         if (_debug_logs) {
-            spdlog::debug("Greedy action of state " + s->state.print() + ": " +
+            Logger::debug("Greedy action of state " + s->state.print() + ": " +
                             best_action->action.print() + " with value " + StringConverter::from(best_value) +
                             ExecutionPolicy::print_thread());
         }
@@ -327,7 +325,7 @@ private :
     }
 
     void update(StateNode* s, const std::size_t* thread_id) {
-        if (_debug_logs) spdlog::debug("Updating state " + s->state.print() +
+        if (_debug_logs) Logger::debug("Updating state " + s->state.print() +
                                        ExecutionPolicy::print_thread());
         s->best_action = greedy_action(s, thread_id);
         s->best_value = (double) s->best_action->value;
@@ -337,7 +335,7 @@ private :
         StateNode* s = nullptr;
         _execution_policy.protect([&a, &s, this](){
                 s = std::get<2>(a->outcomes[a->dist(*_gen)]);
-                if (_debug_logs) spdlog::debug("Picked next state " + s->state.print() +
+                if (_debug_logs) Logger::debug("Picked next state " + s->state.print() +
                                                " from action " + a->action.print() +
                                                ExecutionPolicy::print_thread());
         }, _gen_mutex);
@@ -347,7 +345,7 @@ private :
     double residual(StateNode* s, const std::size_t* thread_id) {
         s->best_action = greedy_action(s, thread_id);
         double res = std::fabs(s->best_value - s->best_action->value);
-        if (_debug_logs) spdlog::debug("State " + s->state.print() +
+        if (_debug_logs) Logger::debug("State " + s->state.print() +
                                        " has residual " + StringConverter::from(res) +
                                        ExecutionPolicy::print_thread());
         return res;
@@ -358,7 +356,7 @@ private :
                       const std::size_t* thread_id) {
         if (_debug_logs) {
             _execution_policy.protect([&s](){
-                spdlog::debug("Checking solved status of State " + s->state.print() +
+                Logger::debug("Checking solved status of State " + s->state.print() +
                               ExecutionPolicy::print_thread());
             }, s->mutex);
         }
@@ -419,7 +417,7 @@ private :
 
         if (_debug_logs) {
             _execution_policy.protect([&s, &rv](){
-                spdlog::debug("State " + s->state.print() + " is " + (rv?(""):("not")) + " solved." +
+                Logger::debug("State " + s->state.print() + " is " + (rv?(""):("not")) + " solved." +
                               ExecutionPolicy::print_thread());
             }, s->mutex);
         }
@@ -443,7 +441,7 @@ private :
             visited.push(cs);
             _execution_policy.protect([this, &cs, &found_goal, &thread_id](){
                 if (cs->goal) {
-                    if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print() +
+                    if (_debug_logs) Logger::debug("Found goal state " + cs->state.print() +
                                                    ExecutionPolicy::print_thread());
                     found_goal = true;
                 }

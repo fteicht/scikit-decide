@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_FULL_EXPAND_IMPL_HH
 #define SKDECIDE_MCTS_FULL_EXPAND_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -81,7 +79,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
                     }
 
                     if (next_node.actions.empty()) {
-                        if (solver.debug_logs()) spdlog::debug("Candidate next state: " + next_node.state.print() +
+                        if (solver.debug_logs()) Logger::debug("Candidate next state: " + next_node.state.print() +
                                                                Tsolver::ExecutionPolicy::print_thread());
                         untried_outcomes.push_back(&next_node);
                         weights.push_back(ns.probability());
@@ -123,7 +121,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
             }
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
+                Logger::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
                               Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
@@ -150,7 +148,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
                                                typename Tsolver::ActionNode& action) const {
         try {
             if (!_checked_transition_mode) {
-                spdlog::warn("Using MCTS full expansion mode with step() or sample() domain's transition mode assumes the domain is deterministic (unpredictable result otherwise).");
+                Logger::warn("Using MCTS full expansion mode with step() or sample() domain's transition mode assumes the domain is deterministic (unpredictable result otherwise).");
                 _checked_transition_mode = true;
             }
             // Generate the next state of this action
@@ -186,7 +184,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
 
             if (solver.debug_logs()) {
                 solver.execution_policy().protect([&next_node](){
-                    spdlog::debug("Candidate next state: " + next_node.state.print() +
+                    Logger::debug("Candidate next state: " + next_node.state.print() +
                                   Tsolver::ExecutionPolicy::print_thread());
                 }, next_node.mutex);
             }
@@ -194,7 +192,7 @@ struct FullExpand<Tsolver>::ExpandActionImplementation<
             return &next_node;
         } catch (const std::exception& e) {
             solver.execution_policy().protect([&action, &e](){
-                spdlog::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
+                Logger::error("SKDECIDE exception in MCTS when expanding action " + action.action.print() + ": " + e.what() +
                               Tsolver::ExecutionPolicy::print_thread());
             }, action.parent->mutex);
             throw;
@@ -228,13 +226,13 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
     try {
         if (solver.debug_logs()) {
             solver.execution_policy().protect([&n](){
-                spdlog::debug("Testing expansion of state " + n.state.print() +
+                Logger::debug("Testing expansion of state " + n.state.print() +
                               Tsolver::ExecutionPolicy::print_thread());
             }, n.mutex);
         }
 
         if (n.expanded) {
-            if (solver.debug_logs()) { spdlog::debug("State already fully expanded" +
+            if (solver.debug_logs()) { Logger::debug("State already fully expanded" +
                                                      Tsolver::ExecutionPolicy::print_thread()); }
             return nullptr;
         }
@@ -242,7 +240,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
         // Generate applicable actions if not already done
         solver.execution_policy().protect([&n, &solver, &thread_id](){
             if (n.actions.empty()) {
-                if (solver.debug_logs()) { spdlog::debug("State never expanded, generating all next actions" +
+                if (solver.debug_logs()) { Logger::debug("State never expanded, generating all next actions" +
                                                          Tsolver::ExecutionPolicy::print_thread()); }
                 auto applicable_actions = solver.domain().get_applicable_actions(n.state, thread_id).get_elements();
 
@@ -258,7 +256,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
         }, n.mutex);
 
         // Check for untried outcomes
-        if (solver.debug_logs()) { spdlog::debug("Checking for untried outcomes" +
+        if (solver.debug_logs()) { Logger::debug("Checking for untried outcomes" +
                                                  Tsolver::ExecutionPolicy::print_thread()); }
         std::vector<std::pair<typename Tsolver::ActionNode*, typename Tsolver::StateNode*>> untried_outcomes;
         std::vector<double> weights;
@@ -289,7 +287,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
         }, n.mutex);
 
         if (untried_outcomes.empty()) { // nothing to expand
-            if (solver.debug_logs()) { spdlog::debug("All outcomes already tried" +
+            if (solver.debug_logs()) { Logger::debug("All outcomes already tried" +
                                                      Tsolver::ExecutionPolicy::print_thread()); }
             n.expanded = true;
             return nullptr;
@@ -302,13 +300,13 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
             auto& uo = untried_outcomes[outcome_id];
 
             if (uo.second == nullptr) { // unexpanded action
-                if (solver.debug_logs()) { spdlog::debug("Found one unexpanded action: " + uo.first->action.print() +
+                if (solver.debug_logs()) { Logger::debug("Found one unexpanded action: " + uo.first->action.print() +
                                                          Tsolver::ExecutionPolicy::print_thread()); }
                 return expand_action(solver, thread_id, n, *(uo.first));
             } else { // expanded action, just return the selected next state
                 if (solver.debug_logs()) {
                     solver.execution_policy().protect([&uo](){
-                        spdlog::debug("Found one untried outcome: action " + uo.first->action.print() +
+                        Logger::debug("Found one untried outcome: action " + uo.first->action.print() +
                                       " and next state " + uo.second->state.print() +
                                       Tsolver::ExecutionPolicy::print_thread());
                     }, uo.second->mutex);
@@ -318,7 +316,7 @@ SK_MCTS_FULL_EXPAND_CLASS::operator()(Tsolver& solver,
         }
     } catch (const std::exception& e) {
         solver.execution_policy().protect([&n, &e](){
-            spdlog::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
+            Logger::error("SKDECIDE exception in MCTS when expanding state " + n.state.print() + ": " + e.what() +
                           Tsolver::ExecutionPolicy::print_thread());
         }, n.mutex);
         throw;

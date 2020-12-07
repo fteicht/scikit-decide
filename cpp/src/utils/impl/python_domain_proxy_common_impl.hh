@@ -10,6 +10,7 @@
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -184,7 +185,7 @@ std::size_t SK_PY_OBJ_CLASS::Hash::operator()(const PyObj<Derived, Tpyobj>& o) c
     try {
         return skdecide::PythonHash<Texecution>()(*o._pyobj);
     } catch(const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when hashing ") +
+        Logger::error(std::string("SKDECIDE exception when hashing ") +
                       Derived::class_name + "s: " + std::string(e.what()));
         throw;
     }
@@ -195,7 +196,7 @@ bool SK_PY_OBJ_CLASS::Equal::operator()(const PyObj<Derived, Tpyobj>& o1, const 
     try {
         return skdecide::PythonEqual<Texecution>()(*o1._pyobj, *o2._pyobj);
     } catch(const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when testing ") +
+        Logger::error(std::string("SKDECIDE exception when testing ") +
                       Derived::class_name + "s equality: " + std::string(e.what()));
         throw;
     }

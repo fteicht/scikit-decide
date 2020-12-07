@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_UCB1_ACTION_SELECTOR_IMPL_HH
 #define SKDECIDE_MCTS_UCB1_ACTION_SELECTOR_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -49,7 +47,7 @@ SK_MCTS_UCB1_ACTION_SELECTOR_CLASS::operator()(Tsolver& solver,
             }
         }
 
-        if (solver.debug_logs()) { spdlog::debug("UCB1 selection from state " + n.state.print() +
+        if (solver.debug_logs()) { Logger::debug("UCB1 selection from state " + n.state.print() +
                                                  ": value=" + StringConverter::from(best_value) +
                                                  ", action=" + ((best_action != nullptr)?(best_action->action.print()):("nullptr")) +
                                                  Tsolver::ExecutionPolicy::print_thread()); }

@@ -174,7 +174,7 @@ private :
                     r.reset();
                     return  rr;
                 } catch (const std::exception& e) {
-                    spdlog::error(std::string("SKDECIDE exception when calling the custom heuristic: ") + e.what());
+                    Logger::error(std::string("SKDECIDE exception when calling the custom heuristic: ") + e.what());
                     throw;
                 }
             };
@@ -230,7 +230,7 @@ private :
                     try {
                         return typename PyMCTSDomain<Texecution>::Action(d.call(thread_id, custom_policy, s.pyobj()));
                     } catch (const std::exception& e) {
-                        spdlog::error(std::string("SKDECIDE exception when calling the custom rollout policy: ") + e.what());
+                        Logger::error(std::string("SKDECIDE exception when calling the custom rollout policy: ") + e.what());
                         throw;
                     }
                 });
@@ -344,7 +344,7 @@ private :
                         Propagator::PushTemplate<DistributionTransitionMode>(args...);
                         break;
                     default:
-                        spdlog::error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
+                        Logger::error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
                         throw std::runtime_error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
                 }
             }
@@ -408,7 +408,7 @@ private :
                         Propagator::PushTemplate<DefaultTreePolicy>(args...);
                         break;
                     default:
-                        spdlog::error("Available tree policies: TreePolicy.Default");
+                        Logger::error("Available tree policies: TreePolicy.Default");
                         throw std::runtime_error("Available tree policies: TreePolicy.Default");
                 }
             }
@@ -433,7 +433,7 @@ private :
                         Propagator::PushTemplate<PartialExpand>(args...);
                         break;
                     default:
-                        spdlog::error("Available expanders: Expander.Full, Expander.Partial");
+                        Logger::error("Available expanders: Expander.Full, Expander.Partial");
                         throw std::runtime_error("Available expanders: Expander.Full, Expander.Partial");
                 }
             }
@@ -458,7 +458,7 @@ private :
                         Propagator::PushTemplate<BestQValueActionSelector>(args...);
                         break;
                     default:
-                        spdlog::error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
+                        Logger::error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
                         throw std::runtime_error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
                 }
             }
@@ -481,19 +481,19 @@ private :
                     case PyMCTSOptions::RolloutPolicy::Random:
                         Propagator::PushTemplate<DefaultRolloutPolicy>(args...);
                         if (!This._custom_policy_functor) {
-                            spdlog::warn("Requesting MCTS random rollout policy but providing custom policy functor (will be ignored)");
+                            Logger::warn("Requesting MCTS random rollout policy but providing custom policy functor (will be ignored)");
                         }
                         This._custom_policy_functor = nullptr;
                         break;
                     case PyMCTSOptions::RolloutPolicy::Custom:
                         Propagator::PushTemplate<DefaultRolloutPolicy>(args...);
                         if (!This._custom_policy_functor) {
-                            spdlog::error("Requesting MCTS custom rollout policy but giving null rollout policy functor");
+                            Logger::error("Requesting MCTS custom rollout policy but giving null rollout policy functor");
                             throw std::runtime_error("Requesting MCTS custom rollout policy but providing null rollout policy functor");
                         }
                         break;
                     default:
-                        spdlog::error("Available default policies: RolloutPolicy.Random, RolloutPolicy.Custom");
+                        Logger::error("Available default policies: RolloutPolicy.Random, RolloutPolicy.Custom");
                         throw std::runtime_error("Available default policies: RolloutPolicy.Random, RolloutPolicy.Custom");
                 }
             }
@@ -515,7 +515,7 @@ private :
                         Propagator::PushTemplate<GraphBackup>(args...);
                         break;
                     default:
-                        spdlog::error("Available back propagators: BackPropagator.Graph");
+                        Logger::error("Available back propagators: BackPropagator.Graph");
                        throw std::runtime_error("Available back propagators: BackPropagator.Graph");
                 }
             }

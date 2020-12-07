@@ -12,12 +12,10 @@
 #include <list>
 #include <chrono>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -44,7 +42,7 @@ public :
               if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
                   std::string msg = "Debug logs requested for algorithm AO* but global log level is higher than debug";
                   if (spdlog::get_level() <= spdlog::level::warn) {
-                      spdlog::warn(msg);
+                      Logger::warn(msg);
                   } else {
                       msg = "\033[1;33mbold " + msg + "\033[0m";
                       std::cerr << msg << std::endl;
@@ -61,7 +59,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " AO* solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " AO* solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             auto si = _graph.emplace(s);
@@ -74,8 +72,8 @@ public :
 
             while (!q.empty()) {
                 if (_debug_logs) {
-                    spdlog::debug("Current number of tip nodes: " + StringConverter::from(q.size()));
-                    spdlog::debug("Current number of explored nodes: " + StringConverter::from(_graph.size()));
+                    Logger::debug("Current number of tip nodes: " + StringConverter::from(q.size()));
+                    Logger::debug("Current number of explored nodes: " + StringConverter::from(_graph.size()));
                 }
                 std::size_t nb_expansions = std::min(q.size(), _max_tip_expansions);
                 std::unordered_set<StateNode*> frontier;
@@ -84,12 +82,12 @@ public :
                     StateNode* best_tip_node = q.top();
                     q.pop();
                     frontier.insert(best_tip_node);
-                    if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print());
+                    if (_debug_logs) Logger::debug("Current best tip node: " + best_tip_node->state.print());
 
                     // Expand best tip node
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
                     std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node](auto a){
-                        if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
+                        if (_debug_logs) Logger::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                         _execution_policy.protect([&best_tip_node, &a]{
                             best_tip_node->actions.push_back(std::make_unique<ActionNode>(a));
                         });
@@ -97,7 +95,7 @@ public :
                         an.parent = best_tip_node;
                         auto next_states = _domain.get_next_state_distribution(best_tip_node->state, a).get_values();
                         for (auto ns : next_states) {
-                            if (_debug_logs) spdlog::debug("Current next state expansion: " + ns.state().print() + ExecutionPolicy::print_thread());
+                            if (_debug_logs) Logger::debug("Current next state expansion: " + ns.state().print() + ExecutionPolicy::print_thread());
                             std::pair<typename Graph::iterator, bool> i;
                             _execution_policy.protect([this, &i, &ns]{
                                 i = _graph.emplace(ns.state());
@@ -109,12 +107,12 @@ public :
                             });
                             if (i.second) { // new node
                                 if (_goal_checker(_domain, next_node.state)) {
-                                    if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
+                                    if (_debug_logs) Logger::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                                     next_node.solved = true;
                                     next_node.best_value = 0.0;
                                 } else {
                                     next_node.best_value = _heuristic(_domain, next_node.state).cost();
-                                    if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " +
+                                    if (_debug_logs) Logger::debug("New state " + next_node.state.print() + " with heuristic value " +
                                                                    StringConverter::from(next_node.best_value) + ExecutionPolicy::print_thread());
                                 }
                             }
@@ -187,9 +185,9 @@ public :
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("AO* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+            Logger::info("AO* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
-            spdlog::error("AO* failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("AO* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }

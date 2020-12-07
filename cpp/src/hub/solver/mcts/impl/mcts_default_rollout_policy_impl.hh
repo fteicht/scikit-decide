@@ -5,11 +5,9 @@
 #ifndef SKDECIDE_MCTS_DEFAULT_ROLLOUT_POLICY_IMPL_HH
 #define SKDECIDE_MCTS_DEFAULT_ROLLOUT_POLICY_IMPL_HH
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -34,7 +32,7 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(Tsolver& solver,
         typename Tsolver::Domain::State current_state;
 
         solver.execution_policy().protect([&solver, &n, &current_state](){
-            if (solver.debug_logs()) { spdlog::debug("Launching default rollout policy from state " + n.state.print() +
+            if (solver.debug_logs()) { Logger::debug("Launching default rollout policy from state " + n.state.print() +
                                                      Tsolver::ExecutionPolicy::print_thread()); }
             current_state = n.state;
         }, n.mutex);
@@ -52,7 +50,7 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(Tsolver& solver,
             current_state = o.observation();
             termination = o.termination();
             current_depth++;
-            if (solver.debug_logs()) { spdlog::debug("Sampled transition: action=" + action.print() +
+            if (solver.debug_logs()) { Logger::debug("Sampled transition: action=" + action.print() +
                                                      ", next state=" + current_state.print() +
                                                      ", reward=" + StringConverter::from(o.transition_value().reward()) +
                                                      Tsolver::ExecutionPolicy::print_thread()); }
@@ -66,7 +64,7 @@ void SK_MCTS_DEFAULT_ROLLOUT_POLICY_CLASS::operator()(Tsolver& solver,
         }, n.mutex);
     } catch (const std::exception& e) {
         solver.execution_policy().protect([&n, &e](){
-            spdlog::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what() +
+            Logger::error("SKDECIDE exception in MCTS when simulating the random default policy from state " + n.state.print() + ": " + e.what() +
                           Tsolver::ExecutionPolicy::print_thread());
         }, n.mutex);
         throw;

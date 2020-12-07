@@ -16,12 +16,10 @@
 #include <list>
 #include <chrono>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -46,7 +44,7 @@ public :
               if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
                   std::string msg = "Debug logs requested for algorithm ILAO* but global log level is higher than debug";
                   if (spdlog::get_level() <= spdlog::level::warn) {
-                      spdlog::warn(msg);
+                      Logger::warn(msg);
                   } else {
                       msg = "\033[1;33mbold " + msg + "\033[0m";
                       std::cerr << msg << std::endl;
@@ -63,7 +61,7 @@ public :
     // solves from state s using heuristic function h
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " ILAO* solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " ILAO* solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
 
             auto si = _graph.emplace(s);
@@ -74,7 +72,7 @@ public :
             }
 
             if (root_node.solved || _goal_checker(_domain, s)) { // problem already solved from this state (was present in _graph and already solved)
-                if (_debug_logs) spdlog::debug("Found goal state " + s.print());
+                if (_debug_logs) Logger::debug("Found goal state " + s.print());
                 return;
             }
 
@@ -106,15 +104,15 @@ public :
                         graph_str += " " + bs->state.print() + " ;";
                     }
                     graph_str.back() = '}';
-                    spdlog::debug("Current best solution graph is: " + graph_str);
+                    Logger::debug("Current best solution graph is: " + graph_str);
                 }
             }
 
             auto end_time = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();
-            spdlog::info("ILAO* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+            Logger::info("ILAO* finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
         } catch (const std::exception& e) {
-            spdlog::error("ILAO* failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("ILAO* failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }
@@ -215,11 +213,11 @@ private :
     std::unordered_set<StateNode*> _best_solution_graph;
 
     void expand(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Expanding state " + s.state.print());
+        if (_debug_logs) Logger::debug("Expanding state " + s.state.print());
         auto applicable_actions = _domain.get_applicable_actions(s.state).get_elements();
         
         std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &s](auto a){
-            if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
+            if (_debug_logs) Logger::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
             _execution_policy.protect([&s, &a]{
                 s.actions.push_back(std::make_unique<ActionNode>(a));
             });
@@ -227,7 +225,7 @@ private :
             auto next_states = _domain.get_next_state_distribution(s.state, a).get_values();
 
             for (auto ns : next_states) {
-                if (_debug_logs) spdlog::debug("Current next state expansion: " + ns.state().print() + ExecutionPolicy::print_thread());
+                if (_debug_logs) Logger::debug("Current next state expansion: " + ns.state().print() + ExecutionPolicy::print_thread());
                 std::pair<typename Graph::iterator, bool> i;
                 _execution_policy.protect([this, &i, &ns]{
                     i = _graph.emplace(ns.state());
@@ -237,13 +235,13 @@ private :
 
                 if (i.second) { // new node
                     if (_goal_checker(_domain, next_node.state)) {
-                        if (_debug_logs) spdlog::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
+                        if (_debug_logs) Logger::debug("Found goal state " + next_node.state.print() + ExecutionPolicy::print_thread());
                         next_node.goal = true;
                         next_node.solved = true;
                         next_node.best_value = 0.0;
                     } else {
                         next_node.best_value = _heuristic(_domain, next_node.state).cost();
-                        if (_debug_logs) spdlog::debug("New state " + next_node.state.print() + " with heuristic value " +
+                        if (_debug_logs) Logger::debug("New state " + next_node.state.print() + " with heuristic value " +
                                                        StringConverter::from(next_node.best_value) + ExecutionPolicy::print_thread());
                     }
                 }
@@ -252,7 +250,7 @@ private :
     }
 
     void depth_first_search(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Running post-order depth-first search from state " + s.state.print());
+        if (_debug_logs) Logger::debug("Running post-order depth-first search from state " + s.state.print());
         std::unordered_set<StateNode*> visited;
         std::stack<StateNode*> open;
         open.push(&s);
@@ -262,20 +260,20 @@ private :
             StateNode* cs = open.top();
 
             if (cs->solved) {
-                if (_debug_logs) spdlog::debug("Found solved state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Found solved state " + cs->state.print());
                 open.pop();
             } else if (cs->goal) {
-                if (_debug_logs) spdlog::debug("Found goal state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Found goal state " + cs->state.print());
                 cs->best_value = 0;
                 open.pop();
             } else if (cs->actions.empty()) {
-                if (_debug_logs) spdlog::debug("Found unexpanded tip node " + cs->state.print());
+                if (_debug_logs) Logger::debug("Found unexpanded tip node " + cs->state.print());
                 s.reach_tip_node = true;
                 expand(*cs);
                 update(*cs);
                 open.pop();
             } else if (visited.find(cs) == visited.end()) { // first visit, we push successor nodes
-                if (_debug_logs) spdlog::debug("Visiting successors of state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Visiting successors of state " + cs->state.print());
                 visited.insert(cs);
                 for (const auto& o : cs->best_action->outcomes) {
                     StateNode* ns = std::get<2>(o);
@@ -284,7 +282,7 @@ private :
                     }
                 }
             } else { // second visit, we update and pop the node
-                if (_debug_logs) spdlog::debug("Closing state " + cs->state.print());
+                if (_debug_logs) Logger::debug("Closing state " + cs->state.print());
                 update(*cs);
                 open.pop();
             }
@@ -292,7 +290,7 @@ private :
     }
 
     void compute_best_solution_graph(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Computing best solution graph from state " + s.state.print());
+        if (_debug_logs) Logger::debug("Computing best solution graph from state " + s.state.print());
         _best_solution_graph.clear();
         _best_solution_graph.insert(&s);
         std::unordered_set<StateNode*> frontier;
@@ -305,13 +303,13 @@ private :
                     for (const auto& ns : fs->best_action->outcomes) {
                         StateNode* nst = std::get<2>(ns);
                         if ((nst->goal) || (nst->solved)) {
-                            if (_debug_logs) spdlog::debug("Found terminal (either goal or solved) node " + nst->state.print());
+                            if (_debug_logs) Logger::debug("Found terminal (either goal or solved) node " + nst->state.print());
                             nst->reach_tip_node = false;
                         } else if (nst->actions.empty()) {
-                            if (_debug_logs) spdlog::debug("Found unexpanded tip node " + nst->state.print());
+                            if (_debug_logs) Logger::debug("Found unexpanded tip node " + nst->state.print());
                             nst->reach_tip_node = true;
                         } else if (_best_solution_graph.find(nst) == _best_solution_graph.end()) {
-                            if (_debug_logs) spdlog::debug("Inserting node " + nst->state.print());
+                            if (_debug_logs) Logger::debug("Inserting node " + nst->state.print());
                             nst->reach_tip_node = false;
                             _best_solution_graph.insert(nst);
                             new_frontier.insert(nst);
@@ -324,7 +322,7 @@ private :
     }
 
     double update(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Updating state " + s.state.print());
+        if (_debug_logs) Logger::debug("Updating state " + s.state.print());
         double record_value = s.best_value;
         double best_value = std::numeric_limits<double>::infinity();
         s.best_action = nullptr;
@@ -334,7 +332,7 @@ private :
             for (const auto& o : a->outcomes) {
                 a->value += std::get<0>(o) * (std::get<1>(o) + (_discount * std::get<2>(o)->best_value));
             }
-            if (_debug_logs) spdlog::debug("Computed Q-value of action " + a->action.print() +
+            if (_debug_logs) Logger::debug("Computed Q-value of action " + a->action.print() +
                                            " : " + StringConverter::from(a->value));
             if ((a->value) < best_value) {
                 best_value = a->value;
@@ -348,7 +346,7 @@ private :
     }
 
     void value_iteration() {
-        if (_debug_logs) spdlog::debug("Running value iteration");
+        if (_debug_logs) Logger::debug("Running value iteration");
         atomic_double residual = std::numeric_limits<double>::infinity();
 
         while (residual > _epsilon) {
@@ -358,12 +356,12 @@ private :
             });
         }
 
-        if (_debug_logs) spdlog::debug("Value iteration converged with residual " +
+        if (_debug_logs) Logger::debug("Value iteration converged with residual " +
                                        StringConverter::from(residual));
     }
 
     bool update_reachability(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Updating unexpanded tip node reachability of state " + s.state.print());
+        if (_debug_logs) Logger::debug("Updating unexpanded tip node reachability of state " + s.state.print());
         bool record = s.reach_tip_node;
         bool reach_tip_node = false;
 
@@ -371,14 +369,14 @@ private :
             reach_tip_node = reach_tip_node || (std::get<2>(o)->reach_tip_node);
         }
 
-        if (_debug_logs) spdlog::debug("Unexpanded tip node reachability : " +
+        if (_debug_logs) Logger::debug("Unexpanded tip node reachability : " +
                                        StringConverter::from(reach_tip_node));
         s.reach_tip_node = reach_tip_node;
         return record != reach_tip_node;
     }
 
     void compute_reachability() {
-        if (_debug_logs) spdlog::debug("Computing reachability of unexpanded tip nodes");
+        if (_debug_logs) Logger::debug("Computing reachability of unexpanded tip nodes");
         atomic_bool changes = true;
 
         while (changes) {
@@ -388,11 +386,11 @@ private :
             });
         }
 
-        if (_debug_logs) spdlog::debug("Unexpanded tip node reachability converged");
+        if (_debug_logs) Logger::debug("Unexpanded tip node reachability converged");
     }
 
     double update_mfpt(StateNode& s) {
-        if (_debug_logs) spdlog::debug("Updating mean first passage time of state " + s.state.print());
+        if (_debug_logs) Logger::debug("Updating mean first passage time of state " + s.state.print());
         double record_value = s.first_passage_time;
         double first_passage_time = 0;
 
@@ -400,7 +398,7 @@ private :
             first_passage_time += std::get<0>(o) * (1.0 + (std::get<2>(o)->first_passage_time));
         }
 
-        if (_debug_logs) spdlog::debug("Mean first passage time : " +
+        if (_debug_logs) Logger::debug("Mean first passage time : " +
                                        StringConverter::from(first_passage_time));
         s.first_passage_time = first_passage_time;
         return std::fabs(first_passage_time - record_value);
@@ -414,7 +412,7 @@ private :
         // first passage time by a dynamic programming scheme at _epsilon
         // precision should be acceptable.
 
-        if (_debug_logs) spdlog::debug("Computing mean first passage times");
+        if (_debug_logs) Logger::debug("Computing mean first passage times");
         atomic_double residual = std::numeric_limits<double>::infinity();
         while (residual > _epsilon) {
             residual = 0;
@@ -422,7 +420,7 @@ private :
                 residual = std::max((double) residual, update_mfpt(*s));
             });
         }
-        if (_debug_logs) spdlog::debug("Mean first passage time computation converged with residual " +
+        if (_debug_logs) Logger::debug("Mean first passage time computation converged with residual " +
                                        StringConverter::from(residual));
     }
 
@@ -434,11 +432,11 @@ private :
         //  passage time computed during the evaluatiopn of the error
         //  bound would be erroneous if the best solution graph can
         //  can reach an unexpanded tip node)
-        if (_debug_logs) spdlog::debug("Updating solved bits");
+        if (_debug_logs) Logger::debug("Updating solved bits");
         std::for_each(ExecutionPolicy::policy, _best_solution_graph.begin(), _best_solution_graph.end(), [this](auto& s){
             s->solved = !(s->reach_tip_node) &&
                         (((s->first_passage_time) * (s->residual)) < _epsilon);
-            if (_debug_logs) spdlog::debug("Unexpanded tip node reachability and error bound of state " +
+            if (_debug_logs) Logger::debug("Unexpanded tip node reachability and error bound of state " +
                                             s->state.print() + " : " + StringConverter::from(s->reach_tip_node) + " ; " +
                                             StringConverter::from(s->first_passage_time) + " * " +
                                             StringConverter::from(s->residual) + " = " +

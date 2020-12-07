@@ -10,12 +10,10 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/python_gil_control.hh"
 #include "utils/python_hash_eq.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace py = pybind11;
 
@@ -130,7 +128,7 @@ std::size_t PythonContainerProxy<Texecution>::value_type::ObjectType::hash() con
     try {
         return skdecide::PythonHash<Texecution>()(*_value);
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when hashing container item: ") + e->what());
+        Logger::error(std::string("SKDECIDE exception when hashing container item: ") + e->what());
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -144,7 +142,7 @@ bool PythonContainerProxy<Texecution>::value_type::ObjectType::equal(const BaseT
         const ObjectType* o = dynamic_cast<const ObjectType*>(&other);
         return  ((o != nullptr) && skdecide::PythonEqual<Texecution>()(*_value, *(o->_value)));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when testing container item equality: ") + e->what());
+        Logger::error(std::string("SKDECIDE exception when testing container item equality: ") + e->what());
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -196,12 +194,12 @@ PythonContainerProxy<Texecution>::PythonContainerProxy(const py::object& vector)
         } else if (dtype == "uint64") {
             _implementation = std::make_unique<NumpyImplementation<std::uint64_t>>(vector);
         } else {
-            spdlog::error("Unhandled array dtype '" + dtype + "' when parsing python sequence as numpy array");
+            Logger::error("Unhandled array dtype '" + dtype + "' when parsing python sequence as numpy array");
             throw std::invalid_argument("SKDECIDE exception: Unhandled array dtype '" + dtype +
                                         "' when parsing container as numpy array");
         }
     } else {
-        spdlog::error("Unhandled container type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
+        Logger::error("Unhandled container type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                         " (expecting list, tuple or numpy array)");
         throw std::invalid_argument("Unhandled container type '" + std::string(py::str(vector.attr("__class__").attr("__name__"))) +
                                     " (expecting list, tuple or numpy array)");

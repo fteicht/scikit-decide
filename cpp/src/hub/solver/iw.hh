@@ -15,12 +15,10 @@
 
 #include <boost/container_hash/hash.hpp>
 
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-
 #include "utils/associative_container_deducer.hh"
 #include "utils/string_converter.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -116,7 +114,7 @@ public :
         if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
             std::string msg = "Debug logs requested for algorithm IW but global log level is higher than debug";
             if (spdlog::get_level() <= spdlog::level::warn) {
-                spdlog::warn(msg);
+                Logger::warn(msg);
             } else {
                 msg = "\033[1;33mbold " + msg + "\033[0m";
                 std::cerr << msg << std::endl;
@@ -133,7 +131,7 @@ public :
     // solves from state s
     void solve(const State& s) {
         try {
-            spdlog::info("Running " + ExecutionPolicy::print_type() + " IW solver from state " + s.print());
+            Logger::info("Running " + ExecutionPolicy::print_type() + " IW solver from state " + s.print());
             auto start_time = std::chrono::high_resolution_clock::now();
             std::size_t nb_of_binary_features = _state_features(_domain, s)->size();
             bool found_goal = false;
@@ -148,25 +146,25 @@ public :
                     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now_time - start_time).count();
 
                     if (static_cast<std::size_t>(duration) < _time_budget) {
-                        if (_debug_logs) spdlog::debug("Remaining time budget, trying to improve the solution by augmenting the search width");
+                        if (_debug_logs) Logger::debug("Remaining time budget, trying to improve the solution by augmenting the search width");
                     } else {
                         auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - start_time).count();
-                        spdlog::info("IW finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+                        Logger::info("IW finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                         return;
                     }
                 } else if (found_goal) {
                     auto now_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - start_time).count();
-                    spdlog::info("IW finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+                    Logger::info("IW finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return;
                 } else if (!res.second) { // no states pruned => problem is unsolvable
                     break;
                 }
             }
 
-            spdlog::info("IW could not find a solution from state " + s.print());
+            Logger::info("IW could not find a solution from state " + s.print());
         } catch (const std::exception& e) {
-            spdlog::error("IW failed solving from state " + s.print() + ". Reason: " + e.what());
+            Logger::error("IW failed solving from state " + s.print() + ". Reason: " + e.what());
             throw;
         }
     }
@@ -183,7 +181,7 @@ public :
     const Action& get_best_action(const State& s) const {
         auto si = _graph.find(Node(s, _domain, _state_features));
         if ((si == _graph.end()) || (si->best_action == nullptr)) {
-            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            Logger::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return *(si->best_action);
@@ -192,7 +190,7 @@ public :
     const double& get_best_value(const State& s) const {
         auto si = _graph.find(Node(s, _domain, _state_features));
         if (si == _graph.end()) {
-            spdlog::error("SKDECIDE exception: no best action found in state " + s.print());
+            Logger::error("SKDECIDE exception: no best action found in state " + s.print());
             throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
         }
         return si->fscore;
@@ -287,7 +285,7 @@ private :
         // returned pair p: p.first==true iff solvable, p.second==true iff states have been pruned
         std::pair<bool, bool> solve(const State& s, const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time, bool& found_goal) {
             try {
-                spdlog::info("Running " + ExecutionPolicy::print_type() + " IW(" + StringConverter::from(_width) + ") solver from state " + s.print());
+                Logger::info("Running " + ExecutionPolicy::print_type() + " IW(" + StringConverter::from(_width) + ") solver from state " + s.print());
                 auto local_start_time = std::chrono::high_resolution_clock::now();
 
                 // Create the root node containing the given state s
@@ -329,7 +327,7 @@ private :
                         continue;
                     }
 
-                    if (_debug_logs) spdlog::debug("Current best tip node: " + best_tip_node->state.print() +
+                    if (_debug_logs) Logger::debug("Current best tip node: " + best_tip_node->state.print() +
                                                    ", gscore=" + StringConverter::from(best_tip_node->gscore) +
                                                    ", novelty=" + StringConverter::from(best_tip_node->novelty) +
                                                    ", depth=" + StringConverter::from(best_tip_node->depth));
@@ -360,7 +358,7 @@ private :
                             }
                         }
 
-                        spdlog::info("Found a goal state: " + best_tip_node->state.print() +
+                        Logger::info("Found a goal state: " + best_tip_node->state.print() +
                                      " (cost=" + StringConverter::from(tentative_fscore) +
                                      "; best=" + StringConverter::from(root_node.fscore) + ")");
                         found_goal = true;
@@ -369,31 +367,31 @@ private :
                         _intermediate_scores.push_back(std::make_tuple(static_cast<std::size_t>(duration), _width, root_node.fscore));
 
                         if (static_cast<std::size_t>(duration) < _time_budget) {
-                            if (_debug_logs) spdlog::debug("Remaining time budget, continuing searching for better plans with current width...");
+                            if (_debug_logs) Logger::debug("Remaining time budget, continuing searching for better plans with current width...");
                             continue;
                         } else {
                             auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - local_start_time).count();
-                            spdlog::info("IW(" + StringConverter::from(_width) + ") finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+                            Logger::info("IW(" + StringConverter::from(_width) + ") finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                             return std::make_pair(true, states_pruned);
                         }
                     }
 
                     if (_domain.is_terminal(best_tip_node->state)) { // dead-end state
-                        if (_debug_logs) spdlog::debug("Found a dead-end state: " + best_tip_node->state.print());
+                        if (_debug_logs) Logger::debug("Found a dead-end state: " + best_tip_node->state.print());
                         continue;
                     }
 
                     // Expand best tip node
                     auto applicable_actions = _domain.get_applicable_actions(best_tip_node->state).get_elements();
                     std::for_each(ExecutionPolicy::policy, applicable_actions.begin(), applicable_actions.end(), [this, &best_tip_node, &open_queue, &feature_tuples, &states_pruned](auto a){
-                        if (_debug_logs) spdlog::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
+                        if (_debug_logs) Logger::debug("Current expanded action: " + a.print() + ExecutionPolicy::print_thread());
                         auto next_state = _domain.get_next_state(best_tip_node->state, a);
                         std::pair<typename Graph::iterator, bool> i;
                         _execution_policy.protect([this, &i, &next_state]{
                             i = _graph.emplace(Node(next_state, _domain, _state_features));
                         });
                         Node& neighbor = const_cast<Node&>(*(i.first)); // we won't change the real key (StateNode::state) so we are safe
-                        if (_debug_logs) spdlog::debug("Exploring next state (among " +
+                        if (_debug_logs) Logger::debug("Exploring next state (among " +
                                                        StringConverter::from(_graph.size()) + ")" +
                                                        ExecutionPolicy::print_thread());
 
@@ -402,7 +400,7 @@ private :
                         std::size_t tentative_depth = best_tip_node->depth + 1;
 
                         if ((i.second) || (tentative_gscore < neighbor.gscore)) {
-                            if (_debug_logs) spdlog::debug("New gscore: " +
+                            if (_debug_logs) Logger::debug("New gscore: " +
                                                            StringConverter::from(best_tip_node->gscore) + "+" +
                                                            StringConverter::from(transition_cost) + "=" +
                                                            StringConverter::from(tentative_gscore) +
@@ -412,7 +410,7 @@ private :
                         }
 
                         if ((i.second) || (tentative_depth < neighbor.depth)) {
-                            if (_debug_logs) spdlog::debug("New depth: " +
+                            if (_debug_logs) Logger::debug("New depth: " +
                                                            StringConverter::from(best_tip_node->depth) + "+" +
                                                            StringConverter::from(1) + "=" +
                                                            StringConverter::from(tentative_depth) +
@@ -422,11 +420,11 @@ private :
 
                         _execution_policy.protect([this, &feature_tuples, &open_queue, &neighbor, &states_pruned]{
                             if (this->novelty(feature_tuples, neighbor) > _width) {
-                                if (_debug_logs) spdlog::debug("Pruning state " + neighbor.state.print() + ExecutionPolicy::print_thread());
+                                if (_debug_logs) Logger::debug("Pruning state " + neighbor.state.print() + ExecutionPolicy::print_thread());
                                 states_pruned = true;
                                 neighbor.pruned = true;
                             } else {
-                                if (_debug_logs) spdlog::debug("Adding state to open queue (among " +
+                                if (_debug_logs) Logger::debug("Adding state to open queue (among " +
                                                                StringConverter::from(open_queue.size()) + ")" +
                                                                ExecutionPolicy::print_thread());
                                 open_queue.push(&neighbor);
@@ -438,14 +436,14 @@ private :
                 if (found_goal) {
                     auto now_time = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(now_time - local_start_time).count();
-                    spdlog::info("IW(" + StringConverter::from(_width) + ") finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
+                    Logger::info("IW(" + StringConverter::from(_width) + ") finished to solve from state " + s.print() + " in " + StringConverter::from((double) duration / (double) 1e9) + " seconds.");
                     return std::make_pair(true, states_pruned);
                 } else {
-                    spdlog::info("IW(" + StringConverter::from(_width) + ") could not find a solution from state " + s.print());
+                    Logger::info("IW(" + StringConverter::from(_width) + ") could not find a solution from state " + s.print());
                     return std::make_pair(false, states_pruned);
                 }
             } catch (const std::exception& e) {
-                spdlog::error("IW(" + StringConverter::from(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
+                Logger::error("IW(" + StringConverter::from(_width) + ") failed solving from state " + s.print() + ". Reason: " + e.what());
                 throw;
             }
         }
@@ -483,7 +481,7 @@ private :
                     }
                 });
             }
-            if (_debug_logs) spdlog::debug("Novelty: " + StringConverter::from(nov));
+            if (_debug_logs) Logger::debug("Novelty: " + StringConverter::from(nov));
             n.novelty = nov;
             return nov;
         }

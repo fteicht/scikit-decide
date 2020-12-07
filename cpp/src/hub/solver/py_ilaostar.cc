@@ -124,7 +124,7 @@ private :
                                                                                     r.reset();
                                                                                     return  rr;
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling goal checker: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },
@@ -135,7 +135,7 @@ private :
                                                                                     };
                                                                                     return typename PyILAOStarDomain<Texecution>::Value(d.call(nullptr, fh, s.pyobj()));
                                                                                 } catch (const std::exception& e) {
-                                                                                    spdlog::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
+                                                                                    Logger::error(std::string("SKDECIDE exception when calling heuristic estimator: ") + e.what());
                                                                                     throw;
                                                                                 }
                                                                             },

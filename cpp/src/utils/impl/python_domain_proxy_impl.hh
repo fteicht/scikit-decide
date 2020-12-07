@@ -13,6 +13,7 @@
 #include "utils/python_gil_control.hh"
 #include "utils/python_globals.hh"
 #include "utils/execution.hh"
+#include "utils/logging.hh"
 
 namespace skdecide {
 
@@ -81,7 +82,7 @@ SK_PY_AGENT_DATA_ACCESS_TYPE::AgentDataAccessor SK_PY_AGENT_DATA_ACCESS_CLASS::o
         }
         return AgentDataAccessor((*(this->_pyobj))[a.pyobj()]);
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         AgentData::class_name + " of agent " + a.print() +
                         ": " + std::string(e->what()));
         std::runtime_error err(e->what());
@@ -101,7 +102,7 @@ const SK_PY_AGENT_DATA_ACCESS_TYPE::AgentData SK_PY_AGENT_DATA_ACCESS_CLASS::ope
         }
         return AgentData((*(this->_pyobj))[a.pyobj()]);
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         AgentData::class_name + " of agent " + a.print() +
                         ": " + std::string(e->what()));
         std::runtime_error err(e->what());
@@ -376,7 +377,7 @@ void SK_PY_OUTCOME_CLASS::construct(const Situation& situation,
             }
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when importing ") + Derived::class_name + " data: " + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when importing ") + Derived::class_name + " data: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -402,13 +403,13 @@ SK_PY_OUTCOME_TYPE::Situation SK_PY_OUTCOME_CLASS::situation() const {
     try {
         return Situation(this->_pyobj->attr(Derived::situation_name));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
+        Logger::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
                         Derived::situation_name + ": " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
+        Logger::error(std::string("SKDECIDE exception when getting ") + Derived::class_name + "'s " +
                         Derived::situation_name + ": " + std::string(e.what()));
         throw;
     }
@@ -420,7 +421,7 @@ void SK_PY_OUTCOME_CLASS::situation(const Situation& s) {
     try {
         this->_pyobj->attr(Derived::situation_name) = s.pyobj();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting ") + Derived::class_name + "'s " +
+        Logger::error(std::string("SKDECIDE exception when setting ") + Derived::class_name + "'s " +
                         Derived::situation_name + ": " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
@@ -434,13 +435,13 @@ SK_PY_OUTCOME_TYPE::Value SK_PY_OUTCOME_CLASS::transition_value() const {
     try {
         return Value(this->_pyobj->attr("value"));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s transition value: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s transition value: " + std::string(e.what()));
         throw;
     }
@@ -452,7 +453,7 @@ void SK_PY_OUTCOME_CLASS::transition_value(const Value& tv) {
     try {
         this->_pyobj->attr("value") = tv.pyobj();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting outcome's value: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when setting outcome's value: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -465,13 +466,13 @@ SK_PY_OUTCOME_TYPE::Predicate SK_PY_OUTCOME_CLASS::termination() const {
     try {
         return Predicate(this->_pyobj->attr("termination"));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s termination: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s termination: " + std::string(e.what()));
         throw;
     }
@@ -483,7 +484,7 @@ void SK_PY_OUTCOME_CLASS::termination(const Predicate& t) {
     try {
         this->_pyobj->attr("termination") = t.pyobj();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting ") +
+        Logger::error(std::string("SKDECIDE exception when setting ") +
                         Derived::class_name + "'s termination: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
@@ -497,13 +498,13 @@ SK_PY_OUTCOME_TYPE::Info SK_PY_OUTCOME_CLASS::info() const {
     try {
         return Info(this->_pyobj->attr("info"));
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s info: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting ") +
+        Logger::error(std::string("SKDECIDE exception when getting ") +
                         Derived::class_name + "'s info: " + std::string(e.what()));
         throw;
     }
@@ -515,7 +516,7 @@ void SK_PY_OUTCOME_CLASS::info(const Info& i) {
     try {
         this->_pyobj->attr("info") = i.pyobj();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when setting ") +
+        Logger::error(std::string("SKDECIDE exception when setting ") +
                         Derived::class_name + "'s info: " + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
@@ -655,7 +656,7 @@ SK_PY_DISTRIBUTION_VALUE_CLASS::DistributionValue(const py::object& o) {
         _state = State(t[0]);
         _probability = t[1].cast<double>();
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when importing distribution value data: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when importing distribution value data: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -773,7 +774,7 @@ void SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::construct() {
             this->_pyobj = std::make_unique<py::object>(skdecide::Globals::skdecide().attr("DiscreteDistribution")(py::list()));
         }
     } catch(const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when importing next state distribution data: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when importing next state distribution data: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
@@ -803,12 +804,12 @@ SK_PY_NEXT_STATE_DISTRIBUTION_VALUES_TYPE SK_PY_NEXT_STATE_DISTRIBUTION_CLASS::g
         }
         return NextStateDistributionValues(this->_pyobj->attr("get_values")());
     } catch (const py::error_already_set* e) {
-        spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e->what()));
+        Logger::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e->what()));
         std::runtime_error err(e->what());
         delete e;
         throw err;
     } catch (const std::exception& e) {
-        spdlog::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e.what()));
+        Logger::error(std::string("SKDECIDE exception when getting next state's distribution values: ") + std::string(e.what()));
         throw;
     }
 }
@@ -1005,7 +1006,7 @@ SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::Implementation(const py::object& domain) {
 
     if (!py::hasattr(*_domain, "get_ipc_connections")) {
         std::string err_msg = "SKDECIDE exception: the python domain object must provide the get_shm_files() method in parallel mode.";
-        spdlog::error(err_msg);
+        Logger::error(err_msg);
         throw std::runtime_error(err_msg);
     } else {
         try {
@@ -1017,7 +1018,7 @@ SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::Implementation(const py::object& domain) {
         } catch (const nng::exception& e) {
             std::string err_msg("SKDECIDE exception when trying to make pipeline connections with the python parallel domain: ");
             err_msg += e.who() + std::string(": ") + std::string(e.what());
-            spdlog::error(err_msg);
+            Logger::error(err_msg);
             throw std::runtime_error(err_msg);
         }
     }
@@ -1171,7 +1172,7 @@ SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::siz
         return _implementation->get_applicable_actions(m, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when getting applicable actions in ") +
+        Logger::error(std::string("SKDECIDE exception when getting applicable actions in ") +
                         Memory::AgentData::class_name + " " +
                         m.print() + ": " + std::string(e.what()));
         throw;
@@ -1192,7 +1193,7 @@ SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
         return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
+        Logger::error(std::string("SKDECIDE exception when getting agent applicable actions in ") +
                         Memory::AgentData::class_name + " " +
                         m.print() + ": " + std::string(e.what()));
         throw;
@@ -1205,7 +1206,7 @@ SK_PY_DOMAIN_PROXY_TYPE::Observation SK_PY_DOMAIN_PROXY_CLASS::reset(const std::
         return _implementation->reset(thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when resetting the domain: ") + std::string(e.what()));
+        Logger::error(std::string("SKDECIDE exception when resetting the domain: ") + std::string(e.what()));
         throw;
     }
 }
@@ -1217,7 +1218,7 @@ SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::step(const
         return _implementation->step(e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when stepping with action ") +
+        Logger::error(std::string("SKDECIDE exception when stepping with action ") +
                         e.print() + ": " + ex.what());
         throw;
     }
@@ -1231,7 +1232,7 @@ SK_PY_DOMAIN_PROXY_TYPE::EnvironmentOutcome SK_PY_DOMAIN_PROXY_CLASS::sample(con
         return _implementation->sample(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when sampling from ") +
+        Logger::error(std::string("SKDECIDE exception when sampling from ") +
                         Memory::AgentData::class_name +
                         m.print() + " " + " with action " + e.print() + ": " + ex.what());
         throw;
@@ -1246,7 +1247,7 @@ SK_PY_DOMAIN_PROXY_TYPE::State SK_PY_DOMAIN_PROXY_CLASS::get_next_state(const Me
         return _implementation->get_next_state(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when getting next state from ") +
+        Logger::error(std::string("SKDECIDE exception when getting next state from ") +
                         Memory::AgentData::class_name + " " +
                         m.print() + " and applying action " + e.print() + ": " + ex.what());
         throw;
@@ -1262,7 +1263,7 @@ SK_PY_DOMAIN_PROXY_TYPE::NextStateDistribution SK_PY_DOMAIN_PROXY_CLASS::get_nex
         return _implementation->get_next_state_distribution(m, e, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when getting next state distribution from ") +
+        Logger::error(std::string("SKDECIDE exception when getting next state distribution from ") +
                         Memory::AgentData::class_name + " " +
                         m.print() + " and applying action " + e.print() + ": " + ex.what());
         throw;
@@ -1278,7 +1279,7 @@ SK_PY_DOMAIN_PROXY_TYPE::Value SK_PY_DOMAIN_PROXY_CLASS::get_transition_value(co
         return _implementation->get_transition_value(m, e, sp, thread_id);
     } catch(const std::exception& ex) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when getting value of transition (") +
+        Logger::error(std::string("SKDECIDE exception when getting value of transition (") +
                         m.print() + ", " + e.print() + ") -> " + sp.print() + ": " + ex.what());
         throw;
     }
@@ -1290,7 +1291,7 @@ bool SK_PY_DOMAIN_PROXY_CLASS::is_goal(const State& s, const std::size_t* thread
         return _implementation->is_goal(s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when testing goal condition of state ") +
+        Logger::error(std::string("SKDECIDE exception when testing goal condition of state ") +
                         s.print() + ": " + std::string(e.what()));
         throw;
     }
@@ -1302,7 +1303,7 @@ bool SK_PY_DOMAIN_PROXY_CLASS::is_terminal(const State& s, const std::size_t* th
         return _implementation->is_terminal(s, thread_id);
     } catch(const std::exception& e) {
         typename GilControl<Texecution>::Acquire acquire;
-        spdlog::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
+        Logger::error(std::string("SKDECIDE exception when testing terminal condition of state ") +
                         s.print() + ": " + std::string(e.what()));
         throw;
     }

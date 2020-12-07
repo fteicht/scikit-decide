@@ -32,6 +32,7 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "Texecution" "skdecide::SequentialExecution!Seq;skdecide::ParallelExecution!Par")
     
     TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
+                    ${CMAKE_CURRENT_SOURCE_DIR}/impl/logging_impl.cc
                     ${PYTHON_DOMAIN_PROXY_BASE_TEMPLATE_FILES}
                     ${PYTHON_DOMAIN_PROXY_TEMPLATE_FILES}
                     ${PYTHON_CONTAINER_PROXY_TEMPLATE_FILES}
