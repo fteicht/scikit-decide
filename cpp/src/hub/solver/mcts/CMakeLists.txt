@@ -16,7 +16,15 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "TrolloutPolicy" "DefaultRolloutPolicy!Drp"
         "TbackPropagator" "GraphBackup!Gbk")
     
-    TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
-                    ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
-                    ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})
+    ADD_LIBRARY(py_mcts STATIC
+                ${CMAKE_CURRENT_SOURCE_DIR}/py_mcts.cc
+                ${PYTHON_MCTS_SOLVER_TEMPLATE_FILES})
+    TARGET_INCLUDE_DIRECTORIES(py_mcts PRIVATE ${INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES(py_mcts ${LIBS})
+    IF (MSVC)
+        TARGET_COMPILE_OPTIONS(py_mcts PRIVATE "/bigobj")
+    ENDIF()
+    
+    CMAKE_POLICY(SET CMP0079 NEW)
+    TARGET_LINK_LIBRARIES(__skdecide_hub_cpp PRIVATE py_mcts)
 ENDIF ()

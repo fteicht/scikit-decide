@@ -11,7 +11,12 @@ IF (BUILD_PYTHON_BINDING OR ONLY_PYTHON)
         "Thashing_policy" "skdecide::StateFeatureHash!Sfa;skdecide::DomainStateHash!Dsh"
         "Trollout_policy" "skdecide::SimulationRollout!Sim;skdecide::EnvironmentRollout!Env")
     
-    TARGET_SOURCES(__skdecide_hub_cpp PRIVATE
-                        ${CMAKE_CURRENT_SOURCE_DIR}/py_riw.cc
-                        ${PYTHON_RIW_SOLVER_TEMPLATE_FILES})
+    ADD_LIBRARY(py_riw STATIC
+                ${CMAKE_CURRENT_SOURCE_DIR}/py_riw.cc
+                ${PYTHON_RIW_SOLVER_TEMPLATE_FILES})
+    TARGET_INCLUDE_DIRECTORIES(py_riw PRIVATE ${INCLUDE_DIRS})
+    TARGET_LINK_LIBRARIES(py_riw ${LIBS})
+
+    CMAKE_POLICY(SET CMP0079 NEW)
+    TARGET_LINK_LIBRARIES(__skdecide_hub_cpp PRIVATE py_riw)
 ENDIF ()
