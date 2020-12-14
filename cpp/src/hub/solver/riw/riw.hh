@@ -18,6 +18,7 @@
 #include <boost/container_hash/hash.hpp>
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/execution.hh"
 
 namespace skdecide {
 

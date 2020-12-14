@@ -25,6 +25,7 @@
 #include <random>
 
 #include "utils/associative_container_deducer.hh"
+#include "utils/execution.hh"
 
 namespace skdecide {
 
@@ -118,6 +119,8 @@ public :
 
     FullExpand(const FullExpand& other);
 
+    virtual ~FullExpand(); // required to prevent implicit deletion of _action_expander before defining ExpandActionImplementation
+
     typename Tsolver::StateNode* operator()(Tsolver& solver,
                                             const std::size_t* thread_id,
                                             typename Tsolver::StateNode& n) const;
@@ -130,8 +133,8 @@ private :
                                                const std::size_t* thread_id,
                                                typename Tsolver::StateNode& state,
                                                typename Tsolver::ActionNode& action) const;
-    template <typename Ttransition_mode = typename Tsolver::TransitionMode, typename Enable = void> struct ExpandActionImplementation {};
-    std::unique_ptr<ExpandActionImplementation<>> _action_expander;
+    struct ExpandActionImplementation;
+    std::unique_ptr<ExpandActionImplementation> _action_expander;
 };
 
 
@@ -232,7 +235,7 @@ struct GraphBackup {
     static void update_frontier(Tsolver& solver,
                                 std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
                                 typename Tsolver::StateNode* f);
-    template <typename Texecution_policy = typename Tsolver::ExecutionPolicy, typename Enable = void> struct UpdateFrontierImplementation {};
+    struct UpdateFrontierImplementation;
 };
 
 

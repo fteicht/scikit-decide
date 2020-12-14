@@ -14,45 +14,18 @@ namespace skdecide {
 // === GraphBackup implementation ===
 
 template <typename Tsolver>
-template <typename Texecution_policy>
-struct GraphBackup<Tsolver>::UpdateFrontierImplementation<
-            Texecution_policy,
-            typename std::enable_if<std::is_same<Texecution_policy, SequentialExecution>::value>::type> {
+struct GraphBackup<Tsolver>::UpdateFrontierImplementation {
+    template <typename Texecution_policy = typename Tsolver::ExecutionPolicy, typename Enable = void>
+    struct Impl {};
 
-    static void update_frontier(Tsolver& solver,
-                                std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
-                                typename Tsolver::StateNode* f) {
-        for (auto& a : f->parents) {
-            double q_value = a->outcomes[f].first + (solver.discount() * (f->value));
-            a->value = (((a->visits_count) * (a->value))  + q_value) / ((double) (a->visits_count + 1));
-            a->visits_count += 1;
-            typename Tsolver::StateNode* parent_node = a->parent;
-            parent_node->value = (((parent_node->visits_count) * (parent_node->value))  + (a->value)) / ((double) (parent_node->visits_count + 1));
-            parent_node->visits_count += 1;
-            new_frontier.insert(parent_node);
-            if (solver.debug_logs()) { Logger::debug("Updating state " + parent_node->state.print() +
-                                                    ": value=" + StringConverter::from(parent_node->value) +
-                                                    ", visits=" + StringConverter::from(parent_node->visits_count) +
-                                                    Tsolver::ExecutionPolicy::print_thread()); }
-        }
-    }
-};
+    template <typename Texecution_policy>
+    struct Impl<Texecution_policy,
+                typename std::enable_if<std::is_same<Texecution_policy, SequentialExecution>::value>::type> {
 
-template <typename Tsolver>
-template <typename Texecution_policy>
-struct GraphBackup<Tsolver>::UpdateFrontierImplementation<
-            Texecution_policy,
-            typename std::enable_if<std::is_same<Texecution_policy, ParallelExecution>::value>::type> {
-
-    static void update_frontier(Tsolver& solver,
-                                std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
-                                typename Tsolver::StateNode* f) {
-        std::list<typename Tsolver::ActionNode*> parents;
-        solver.execution_policy().protect([&f, &parents](){
-            std::copy(f->parents.begin(), f->parents.end(), std::inserter(parents, parents.end()));
-        }, f->mutex);
-        for (auto& a : parents) {
-            solver.execution_policy().protect([&a, &solver, &f, &new_frontier](){
+        static void update_frontier(Tsolver& solver,
+                                    std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
+                                    typename Tsolver::StateNode* f) {
+            for (auto& a : f->parents) {
                 double q_value = a->outcomes[f].first + (solver.discount() * (f->value));
                 a->value = (((a->visits_count) * (a->value))  + q_value) / ((double) (a->visits_count + 1));
                 a->visits_count += 1;
@@ -64,9 +37,38 @@ struct GraphBackup<Tsolver>::UpdateFrontierImplementation<
                                                         ": value=" + StringConverter::from(parent_node->value) +
                                                         ", visits=" + StringConverter::from(parent_node->visits_count) +
                                                         Tsolver::ExecutionPolicy::print_thread()); }
-            }, a->parent->mutex);
+            }
         }
-    }
+    };
+
+    template <typename Texecution_policy>
+    struct Impl<Texecution_policy,
+                typename std::enable_if<std::is_same<Texecution_policy, ParallelExecution>::value>::type> {
+
+        static void update_frontier(Tsolver& solver,
+                                    std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
+                                    typename Tsolver::StateNode* f) {
+            std::list<typename Tsolver::ActionNode*> parents;
+            solver.execution_policy().protect([&f, &parents](){
+                std::copy(f->parents.begin(), f->parents.end(), std::inserter(parents, parents.end()));
+            }, f->mutex);
+            for (auto& a : parents) {
+                solver.execution_policy().protect([&a, &solver, &f, &new_frontier](){
+                    double q_value = a->outcomes[f].first + (solver.discount() * (f->value));
+                    a->value = (((a->visits_count) * (a->value))  + q_value) / ((double) (a->visits_count + 1));
+                    a->visits_count += 1;
+                    typename Tsolver::StateNode* parent_node = a->parent;
+                    parent_node->value = (((parent_node->visits_count) * (parent_node->value))  + (a->value)) / ((double) (parent_node->visits_count + 1));
+                    parent_node->visits_count += 1;
+                    new_frontier.insert(parent_node);
+                    if (solver.debug_logs()) { Logger::debug("Updating state " + parent_node->state.print() +
+                                                            ": value=" + StringConverter::from(parent_node->value) +
+                                                            ", visits=" + StringConverter::from(parent_node->visits_count) +
+                                                            Tsolver::ExecutionPolicy::print_thread()); }
+                }, a->parent->mutex);
+            }
+        }
+    };
 };
 
 #define SK_MCTS_GRAPH_BACKUP_TEMPLATE_DECL \
@@ -106,7 +108,7 @@ SK_MCTS_GRAPH_BACKUP_TEMPLATE_DECL
 void SK_MCTS_GRAPH_BACKUP_CLASS::update_frontier(Tsolver& solver,
                                                  std::unordered_set<typename Tsolver::StateNode*>& new_frontier,
                                                  typename Tsolver::StateNode* f) {
-    UpdateFrontierImplementation<>::update_frontier(solver, new_frontier, f);
+    UpdateFrontierImplementation::template Impl<>::update_frontier(solver, new_frontier, f);
 }
 
 } // namespace skdecide

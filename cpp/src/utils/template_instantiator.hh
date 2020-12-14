@@ -34,9 +34,9 @@ namespace skdecide {
  *         template <typename... Args>
  *         Select(FirstSelector& This, Args... args) {
  *             if (This._test) {
- *                 Propagator::PushType<FirstCaseType>(args...);
+ *                 typename Propagator::template PushType<FirstCaseType>(args...);
  *             } else {
- *                 Propagator::PushType<SecondCaseType>(args...);
+ *                 typename Propagator::template PushType<SecondCaseType>(args...);
  *             }
  *         }
  *     };
@@ -63,13 +63,13 @@ namespace skdecide {
  *         Select(SecondSelector& This, Args... args) {
  *             switch (This._cases) {
  *                 case CASE_1 :
- *                     Propagator::PushTemplate<Case1TemplateClass>(args...);
+ *                     typename Propagator::template PushTemplate<Case1TemplateClass>(args...);
  *                     break;
  *                 case CASE_2 :
- *                     Propagator::PushTemplate<Case2TemplateClass>(args...);
+ *                     typename Propagator::template PushTemplate<Case2TemplateClass>(args...);
  *                     break;
  *                 case CASE_3 :
- *                     Propagator::PushTemplate<Case3TemplateClass>(args...);
+ *                     typename Propagator::template PushTemplate<Case3TemplateClass>(args...);
  *                     break;
  *             }
  *         }
@@ -148,19 +148,18 @@ struct TemplateInstantiator {
 
                 template <typename... Args>
                 TemplateInstantiationPropagator(Implementation& impl, Args... args) {
-                    FirstInstantiator::Select<
+                    typedef typename FirstInstantiator::template Select<
                         typename Implementation<SecondInstantiator, RemainingInstantiators...>::template TypeInstantiationPropagator<
-                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>>(
-                            impl._current_instantiator,
-                            impl._remaining_instantiators,
-                            args...);
+                                CurrentTypeInstantiations...>::template TemplateInstantiationPropagator<CurrentTemplateInstantiations...>> Select;
+                        Select(impl._current_instantiator, impl._remaining_instantiators, args...);
                 }
             };
         };
 
         template <typename... Args>
         void instantiate(Args... args) {
-            TypeInstantiationPropagator<>::TemplateInstantiationPropagator<>(*this, args...);
+            typedef typename TypeInstantiationPropagator<>::template TemplateInstantiationPropagator<> TIP;
+            TIP(*this, args...);
         }
     };
 
@@ -185,9 +184,9 @@ struct TemplateInstantiator {
 
                 template <typename... Args>
                 TemplateInstantiationPropagator(Implementation& impl, Args... args) {
-                FinalInstantiator::TypeList<CurrentTypeInstantiations...>
-                                 ::TemplateList<CurrentTemplateInstantiations...>::Instantiate(
-                                     impl._final_instantiator, args...);
+                typedef typename FinalInstantiator::template TypeList<CurrentTypeInstantiations...>
+                                                  ::template TemplateList<CurrentTemplateInstantiations...>::Instantiate Instantiate;
+                 Instantiate(impl._final_instantiator, args...);
                 }
             };
 
@@ -203,8 +202,8 @@ struct TemplateInstantiator {
 
                 template <typename... Args>
                 TemplateInstantiationPropagator(Implementation& impl, Args... args) {
-                FinalInstantiator::Instantiate<CurrentTypeInstantiations...>(
-                                     impl._final_instantiator, args...);
+                typedef typename FinalInstantiator::template Instantiate<CurrentTypeInstantiations...> Instantiate;
+                Instantiate(impl._final_instantiator, args...);
                 }
             };
         };
@@ -223,8 +222,8 @@ struct TemplateInstantiator {
 
                 template <typename... Args>
                 TemplateInstantiationPropagator(Implementation& impl, Args... args) {
-                FinalInstantiator::Instantiate<CurrentTemplateInstantiations...>(
-                                     impl._final_instantiator, args...);
+                typedef typename FinalInstantiator::template Instantiate<CurrentTemplateInstantiations...> Instantiate;
+                Instantiate(impl._final_instantiator, args...);
                 }
             };
         };

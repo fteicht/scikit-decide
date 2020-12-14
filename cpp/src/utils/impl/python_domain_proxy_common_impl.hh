@@ -281,12 +281,12 @@ SK_PY_ITER_TYPE SK_PY_ITER_CLASS::operator++(int) {
 
 SK_PY_ITER_TEMPLATE_DECL
 T SK_PY_ITER_CLASS::operator*() const {
-    return SK_PY_ITER_TYPE::Implementation::dereference_object(*(this->_pyobj));
+    return SK_PY_ITER_CLASS::Implementation::dereference_object(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL
 std::unique_ptr<T> SK_PY_ITER_CLASS::operator->() const {
-    return SK_PY_ITER_TYPE::Implementation::dereference_pointer(*(this->_pyobj));
+    return SK_PY_ITER_CLASS::Implementation::dereference_pointer(*(this->_pyobj));
 }
 
 SK_PY_ITER_TEMPLATE_DECL

@@ -3,15 +3,51 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_call_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_impl.hh"
 
-template class skdecide::PythonDomainProxy<${Texecution},
-                                           ${Tagent},
-                                           ${Tobservability},
-                                           ${Tcontrollability},
-                                           ${Tmemory}>;
+#include <boost/preprocessor/list/for_each.hpp>
 
-template class skdecide::PythonDomainProxyBase<${Texecution}>::PyIter<
-                    skdecide::PythonDomainProxy<${Texecution},
-                                                ${Tagent},
-                                                ${Tobservability},
-                                                ${Tcontrollability},
-                                                ${Tmemory}>::NextStateDistribution::DistributionValue>;
+template class skdecide::PythonDomainProxy<skdecide::${Texecution},
+                                           skdecide::${Tagent},
+                                           skdecide::${Tobservability},
+                                           skdecide::${Tcontrollability},
+                                           skdecide::${Tmemory}>;
+
+typedef skdecide::PythonDomainProxyBase<skdecide::${Texecution}> PDPB;
+
+typedef skdecide::PythonDomainProxy<skdecide::${Texecution},
+                                    skdecide::${Tagent},
+                                    skdecide::${Tobservability},
+                                    skdecide::${Tcontrollability},
+                                    skdecide::${Tmemory}> PDP;
+
+#define LIST (State, \
+             (Observation, \
+             (Event, \
+             (Action, \
+             (ApplicableActionSpace, \
+             (Value, \
+             (Predicate, \
+             (OutcomeInfo, \
+              BOOST_PP_NIL))))))))
+
+#define MACRO(r, data, elem) \
+    template class PDP::AgentDataAccess< \
+                    typename PDPB::elem, skdecide::${Tagent}>;
+
+BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
+
+#define D_${Tagent}
+#if defined D_MultiAgent
+#define MMACRO(r, data, elem) \
+    template class PDPB::PyIter<typename PDP::AgentDataAccess< \
+                                    typename PDPB::elem, \
+                                    skdecide::${Tagent} \
+                                >::Item, \
+                                py::detail::dict_iterator>;
+
+BOOST_PP_LIST_FOR_EACH(MMACRO, , LIST)
+#endif
+
+template class PDP::Outcome<PDP::TransitionOutcome, PDP::State>;
+template class PDP::Outcome<PDP::EnvironmentOutcome, PDP::Observation>;
+
+template class PDPB::PyIter<PDP::NextStateDistribution::DistributionValue>;

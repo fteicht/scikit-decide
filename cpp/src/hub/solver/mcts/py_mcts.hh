@@ -310,9 +310,9 @@ private :
             template <typename... Args>
             Select(ExecutionSelector& This, Args... args) {
                 if (This._parallel) {
-                    Propagator::PushType<ParallelExecution>(args...);
+                    typename Propagator::template PushType<ParallelExecution>(args...);
                 } else {
-                    Propagator::PushType<SequentialExecution>(args...);
+                    typename Propagator::template PushType<SequentialExecution>(args...);
                 }
             }
         };
@@ -333,15 +333,15 @@ private :
                 switch (This._transition_mode) {
                     case PyMCTSOptions::TransitionMode::Step:
                         This.check_domain<PyMCTSOptions::TransitionMode::Step>();
-                        Propagator::PushTemplate<StepTransitionMode>(args...);
+                        typename Propagator::template PushTemplate<StepTransitionMode>(args...);
                         break;
                     case PyMCTSOptions::TransitionMode::Sample:
                         This.check_domain<PyMCTSOptions::TransitionMode::Sample>();
-                        Propagator::PushTemplate<SampleTransitionMode>(args...);
+                        typename Propagator::template PushTemplate<SampleTransitionMode>(args...);
                         break;
                     case PyMCTSOptions::TransitionMode::Distribution:
                         This.check_domain<PyMCTSOptions::TransitionMode::Distribution>();
-                        Propagator::PushTemplate<DistributionTransitionMode>(args...);
+                        typename Propagator::template PushTemplate<DistributionTransitionMode>(args...);
                         break;
                     default:
                         Logger::error("Available transition modes: TransitionMode.Step , TransitionMode.Sample , TransitionMode.Distribution");
@@ -405,7 +405,7 @@ private :
             Select(TreePolicySelector& This, Args... args) {
                 switch (This._tree_policy) {
                     case PyMCTSOptions::TreePolicy::Default:
-                        Propagator::PushTemplate<DefaultTreePolicy>(args...);
+                        typename Propagator::template PushTemplate<DefaultTreePolicy>(args...);
                         break;
                     default:
                         Logger::error("Available tree policies: TreePolicy.Default");
@@ -427,10 +427,10 @@ private :
             Select(ExpanderSelector& This, Args... args) {
                 switch (This._expander) {
                     case PyMCTSOptions::Expander::Full:
-                        Propagator::PushTemplate<FullExpand>(args...);
+                        typename Propagator::template PushTemplate<FullExpand>(args...);
                         break;
                     case PyMCTSOptions::Expander::Partial:
-                        Propagator::PushTemplate<PartialExpand>(args...);
+                        typename Propagator::template PushTemplate<PartialExpand>(args...);
                         break;
                     default:
                         Logger::error("Available expanders: Expander.Full, Expander.Partial");
@@ -452,10 +452,10 @@ private :
             Select(ActionSelector& This, Args... args) {
                 switch (This._action_selector) {
                     case PyMCTSOptions::ActionSelector::UCB1:
-                        Propagator::PushTemplate<UCB1ActionSelector>(args...);
+                        typename Propagator::template PushTemplate<UCB1ActionSelector>(args...);
                         break;
                     case PyMCTSOptions::ActionSelector::BestQValue:
-                        Propagator::PushTemplate<BestQValueActionSelector>(args...);
+                        typename Propagator::template PushTemplate<BestQValueActionSelector>(args...);
                         break;
                     default:
                         Logger::error("Available action selector: ActionSelector.UCB1 , ActionSelector.BestQValue");
@@ -479,14 +479,14 @@ private :
             Select(RolloutPolicySelector& This, Args... args) {
                 switch (This._rollout_policy) {
                     case PyMCTSOptions::RolloutPolicy::Random:
-                        Propagator::PushTemplate<DefaultRolloutPolicy>(args...);
+                        typename Propagator::template PushTemplate<DefaultRolloutPolicy>(args...);
                         if (!This._custom_policy_functor) {
                             Logger::warn("Requesting MCTS random rollout policy but providing custom policy functor (will be ignored)");
                         }
                         This._custom_policy_functor = nullptr;
                         break;
                     case PyMCTSOptions::RolloutPolicy::Custom:
-                        Propagator::PushTemplate<DefaultRolloutPolicy>(args...);
+                        typename Propagator::template PushTemplate<DefaultRolloutPolicy>(args...);
                         if (!This._custom_policy_functor) {
                             Logger::error("Requesting MCTS custom rollout policy but giving null rollout policy functor");
                             throw std::runtime_error("Requesting MCTS custom rollout policy but providing null rollout policy functor");
@@ -512,7 +512,7 @@ private :
             Select(BackPropagatorSelector& This, Args... args) {
                 switch (This._back_propagator) {
                     case PyMCTSOptions::BackPropagator::Graph:
-                        Propagator::PushTemplate<GraphBackup>(args...);
+                        typename Propagator::template PushTemplate<GraphBackup>(args...);
                         break;
                     default:
                         Logger::error("Available back propagators: BackPropagator.Graph");

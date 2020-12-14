@@ -2,4 +2,27 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_common_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_base_impl.hh"
 
-template class skdecide::PythonDomainProxyBase<${Texecution}>;
+#include <boost/preprocessor/list/for_each.hpp>
+
+template class skdecide::PythonDomainProxyBase<skdecide::${Texecution}>;
+
+typedef skdecide::PythonDomainProxyBase<skdecide::${Texecution}> PDPB;
+
+#define LIST (State, \
+             (Observation, \
+             (Event, \
+             (Action, \
+             (ApplicableActionSpace, \
+             (ApplicableActionSpace::Elements, \
+             (Value, \
+             (Predicate, \
+             (OutcomeInfo, \
+              BOOST_PP_NIL)))))))))
+
+#define MACRO(r, data, elem) \
+    template struct PDPB::elem::Hash; \
+    template struct PDPB::elem::Equal; \
+    template class PDPB::PyIter<PDPB::elem>;
+
+
+BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
