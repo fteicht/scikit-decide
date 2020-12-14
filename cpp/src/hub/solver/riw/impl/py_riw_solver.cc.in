@@ -4,7 +4,7 @@
  */
 
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/riw.hh"
-#include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/riw_impl.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/solver/riw/impl/riw_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_container_proxy.hh"
 

@@ -7,6 +7,49 @@
 
 #include "py_mcts.hh"
 
+namespace skdecide {
+
+PyMCTSSolver::PyMCTSSolver(py::object& domain,
+                           std::size_t time_budget,
+                           std::size_t rollout_budget,
+                           std::size_t max_depth,
+                           std::size_t epsilon_moving_average_window,
+                           double epsilon,
+                           double discount,
+                           bool uct_mode,
+                           double ucb_constant,
+                           bool online_node_garbage,
+                           const CustomPolicyFunctor& custom_policy,
+                           const HeuristicFunctor& heuristic,
+                           double state_expansion_rate,
+                           double action_expansion_rate,
+                           PyMCTSOptions::TransitionMode transition_mode,
+                           PyMCTSOptions::TreePolicy tree_policy,
+                           PyMCTSOptions::Expander expander,
+                           PyMCTSOptions::ActionSelector action_selector_optimization,
+                           PyMCTSOptions::ActionSelector action_selector_execution,
+                           PyMCTSOptions::RolloutPolicy rollout_policy,
+                           PyMCTSOptions::BackPropagator back_propagator,
+                           bool parallel,
+                           bool debug_logs,
+                           const WatchdogFunctor& watchdog)
+    : _filtered_custom_policy(custom_policy) {
+    
+    TemplateInstantiator::select(
+        ExecutionSelector(parallel),
+        TransitionModeSelector(transition_mode, domain),
+        TreePolicySelector(tree_policy),
+        ExpanderSelector(expander),
+        PartialSolverInstantiator(_implementation,
+                                  action_selector_optimization, action_selector_execution,
+                                  rollout_policy, back_propagator, _filtered_custom_policy)).instantiate(
+            domain, time_budget, rollout_budget, max_depth, epsilon_moving_average_window,
+            epsilon, discount, ucb_constant, online_node_garbage, _filtered_custom_policy,
+            heuristic, state_expansion_rate, action_expansion_rate, debug_logs, watchdog);
+}
+
+} // namespace skdecide
+
 void init_pymcts(py::module& m) {
     py::class_<skdecide::PyMCTSOptions> py_mcts_options(m, "_MCTSOptions_");
 

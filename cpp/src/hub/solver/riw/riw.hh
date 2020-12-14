@@ -293,7 +293,7 @@ private :
 } // namespace skdecide
 
 #ifdef SKDECIDE_HEADERS_ONLY
-#include "riw_impl.hh"
+#include "impl/riw_impl.hh"
 #endif
 
 #endif // SKDECIDE_RIW_HH

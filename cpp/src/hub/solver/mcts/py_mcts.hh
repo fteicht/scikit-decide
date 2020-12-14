@@ -57,6 +57,20 @@ template <typename Texecution>
 using PyMCTSDomain = PythonDomainProxy<Texecution>;
 
 
+#define MCTS_SOLVER_DECL_ARGS \
+    py::object& domain, std::size_t time_budget, std::size_t rollout_budget, \
+    std::size_t max_depth, std::size_t epsilon_moving_average_window, \
+    double epsilon, double discount, double ucb_constant, bool online_node_garbage, \
+    const CustomPolicyFunctor& custom_policy, const HeuristicFunctor& heuristic, \
+    double state_expansion_rate, double action_expansion_rate, bool debug_logs, \
+    const WatchdogFunctor& watchdog
+
+#define MCTS_SOLVER_ARGS \
+    domain, time_budget, rollout_budget, max_depth, epsilon_moving_average_window, \
+    epsilon, discount, ucb_constant, online_node_garbage, custom_policy, heuristic, \
+    state_expansion_rate, action_expansion_rate, debug_logs, watchdog
+
+
 class PyMCTSSolver {
 public :
 
@@ -96,21 +110,7 @@ private :
                                      TactionSelectorOptimization, TactionSelectorExecution,
                                      TrolloutPolicy, TbackPropagator> PyMCTSSolver;
         
-        Implementation(py::object& domain,
-                       std::size_t time_budget,
-                       std::size_t rollout_budget,
-                       std::size_t max_depth,
-                       std::size_t epsilon_moving_average_window,
-                       double epsilon,
-                       double discount,
-                       double ucb_constant,
-                       bool online_node_garbage,
-                       const CustomPolicyFunctor& custom_policy,
-                       const HeuristicFunctor& heuristic,
-                       double state_expansion_rate,
-                       double action_expansion_rate,
-                       bool debug_logs,
-                       const WatchdogFunctor& watchdog)
+        Implementation(MCTS_SOLVER_DECL_ARGS)
             : _custom_policy(custom_policy),
               _heuristic(heuristic),
               _watchdog(watchdog) {
@@ -522,21 +522,57 @@ private :
         };
     };
 
-    struct SolverInstantiator {
+    // Separate template instantiations in two parts in order to reduce compilation effort.
+    // Otherwise we would test in one shot all the possible combinations of
+    // all the template instantiations, which consumes too much memory.
+    struct PartialSolverInstantiator {
         std::unique_ptr<BaseImplementation>& _implementation;
+        PyMCTSOptions::ActionSelector _action_selector_optimization;
+        PyMCTSOptions::ActionSelector _action_selector_execution;
+        PyMCTSOptions::RolloutPolicy _rollout_policy;
+        PyMCTSOptions::BackPropagator _back_propagator;
+        CustomPolicyFunctor& _custom_policy_functor;
 
-        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
-        : _implementation(implementation) {}
+        PartialSolverInstantiator(std::unique_ptr<BaseImplementation>& implementation,
+                                  PyMCTSOptions::ActionSelector action_selector_optimization,
+                                  PyMCTSOptions::ActionSelector action_selector_execution,
+                                  PyMCTSOptions::RolloutPolicy rollout_policy,
+                                  PyMCTSOptions::BackPropagator back_propagator,
+                                  CustomPolicyFunctor& custom_policy_functor)
+        : _implementation(implementation),
+          _action_selector_optimization(action_selector_optimization) ,
+          _action_selector_execution(action_selector_execution),
+          _rollout_policy(rollout_policy),
+          _back_propagator(back_propagator),
+          _custom_policy_functor(custom_policy_functor) {}
 
         template <typename... TypeInstantiations>
         struct TypeList {
             template<template <typename...> class... TemplateInstantiations>
             struct TemplateList {
                 struct Instantiate {
-                    template <typename... Args>
-                    Instantiate(SolverInstantiator& This, Args... args) {
-                        This._implementation = std::make_unique<Implementation<TypeInstantiations..., TemplateInstantiations...>>(args...);
-                    }
+                    Instantiate(PartialSolverInstantiator& This, MCTS_SOLVER_DECL_ARGS);
+                };
+            };
+        };
+    };
+
+    // Separate template instantiations in two parts in order to reduce compilation effort.
+    // Otherwise we would test in one shot all the possible combinations of
+    // all the template instantiations, which consumes too much memory.
+    struct FullSolverInstantiator {
+        template <typename... PartialTypeInstantiations>
+        struct TypeList {
+            template<template <typename...> class... PartialTemplateInstantiations>
+            struct TemplateList {
+                std::unique_ptr<BaseImplementation>& _implementation;
+
+                TemplateList(std::unique_ptr<BaseImplementation>& implementation)
+                : _implementation(implementation) {}
+
+                template<template <typename...> class... TemplateInstantiations>
+                struct Instantiate {
+                    Instantiate(TemplateList& This, MCTS_SOLVER_DECL_ARGS);
                 };
             };
         };
@@ -570,23 +606,7 @@ public :
                  PyMCTSOptions::BackPropagator back_propagator = PyMCTSOptions::BackPropagator::Graph,
                  bool parallel = false,
                  bool debug_logs = false,
-                 const WatchdogFunctor& watchdog = nullptr)
-        : _filtered_custom_policy(custom_policy) {
-        
-        TemplateInstantiator::select(
-            ExecutionSelector(parallel),
-            TransitionModeSelector(transition_mode, domain),
-            TreePolicySelector(tree_policy),
-            ExpanderSelector(expander),
-            ActionSelector(action_selector_optimization),
-            ActionSelector(action_selector_execution),
-            RolloutPolicySelector(rollout_policy, _filtered_custom_policy),
-            BackPropagatorSelector(back_propagator),
-            SolverInstantiator(_implementation)).instantiate(
-                domain, time_budget, rollout_budget, max_depth, epsilon_moving_average_window,
-                epsilon, discount, ucb_constant, online_node_garbage, _filtered_custom_policy,
-                heuristic, state_expansion_rate, action_expansion_rate, debug_logs, watchdog);
-    }
+                 const WatchdogFunctor& watchdog = nullptr);
 
     void clear() {
         _implementation->clear();
