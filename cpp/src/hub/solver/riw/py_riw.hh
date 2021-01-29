@@ -200,9 +200,9 @@ private :
             template <typename... Args>
             Select(ExecutionSelector& This, Args... args) {
                 if (This._parallel) {
-                    typename Propagator::template PushType<ParallelExecution>(args...);
+                    Propagator::template PushType<ParallelExecution>::Forward(args...);
                 } else {
-                    typename Propagator::template PushType<SequentialExecution>(args...);
+                    Propagator::template PushType<SequentialExecution>::Forward(args...);
                 }
             }
         };
@@ -219,9 +219,9 @@ private :
             template <typename... Args>
             Select(HashingPolicySelector& This, Args... args) {
                 if (This._use_state_feature_hash) {
-                    typename Propagator::template PushTemplate<StateFeatureHash>(args...);
+                    Propagator::template PushTemplate<StateFeatureHash>::Forward(args...);
                 } else {
-                    typename Propagator::template PushTemplate<DomainStateHash>(args...);
+                    Propagator::template PushTemplate<DomainStateHash>::Forward(args...);
                 }
             }
         };
@@ -238,9 +238,9 @@ private :
             template <typename... Args>
             Select(RolloutPolicySelector& This, Args... args) {
                 if (This._use_simulation_domain) {
-                    typename Propagator::template PushTemplate<SimulationRollout>(args...);
+                    Propagator::template PushTemplate<SimulationRollout>::Forward(args...);
                 } else {
-                    typename Propagator::template PushTemplate<EnvironmentRollout>(args...);
+                    Propagator::template PushTemplate<EnvironmentRollout>::Forward(args...);
                 }
             }
         };
