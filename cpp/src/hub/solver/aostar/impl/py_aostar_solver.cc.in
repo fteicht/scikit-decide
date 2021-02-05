@@ -8,7 +8,4 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
 template class skdecide::AOStarSolver<skdecide::PythonDomainProxy<${Texecution}>,
-                                      skdecide::PythonContainerProxy<${Texecution}>,
-                                      ${Thashing_policy},
-                                      ${Trollout_policy},
                                       ${Texecution}>;

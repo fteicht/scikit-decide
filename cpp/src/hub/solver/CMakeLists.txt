@@ -3,5 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 ADD_SUBDIRECTORY(aostar)
+ADD_SUBDIRECTORY(astar)
 ADD_SUBDIRECTORY(mcts)
 ADD_SUBDIRECTORY(riw)
