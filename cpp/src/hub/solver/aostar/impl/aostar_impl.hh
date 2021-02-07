@@ -16,8 +16,7 @@ namespace skdecide {
 // === AOStarSolver implementation ===
 
 #define SK_AOSTAR_SOLVER_TEMPLATE_DECL \
-template <typename Tdomain,
-          typename Texecution_policy>
+template <typename Tdomain, typename Texecution_policy>
 
 #define SK_AOSTAR_SOLVER_CLASS \
 AOStarSolver<Tdomain, Texecution_policy>
@@ -26,22 +25,18 @@ SK_AOSTAR_SOLVER_TEMPLATE_DECL
 SK_AOSTAR_SOLVER_CLASS::AOStarSolver(Domain& domain,
                                      const std::function<bool (Domain&, const State&)>& goal_checker,
                                      const std::function<Value (Domain&, const State&)>& heuristic,
-                                     double discount = 1.0,
-                                     std::size_t max_tip_expansions = 1,
-                                     bool detect_cycles = false,
-                                     bool debug_logs = false)
+                                     double discount,
+                                     std::size_t max_tip_expansions,
+                                     bool detect_cycles,
+                                     bool debug_logs)
 : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic),
   _discount(discount), _max_tip_expansions(max_tip_expansions),
   _detect_cycles(detect_cycles), _debug_logs(debug_logs) {
-    if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
-        std::string msg = "Debug logs requested for algorithm AO* but global log level is higher than debug";
-        if (spdlog::get_level() <= spdlog::level::warn) {
-            Logger::warn(msg);
-        } else {
-            msg = "\033[1;33mbold " + msg + "\033[0m";
-            std::cerr << msg << std::endl;
-        }
+
+    if (debug_logs) {
+        Logger::check_level(logging::debug, "algorithm AO*");
     }
+    
 }
 
 
@@ -200,7 +195,8 @@ bool SK_AOSTAR_SOLVER_CLASS::is_solution_defined_for(const State& s) const {
 
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
-const Action& SK_AOSTAR_SOLVER_CLASS::get_best_action(const State& s) const {
+const typename SK_AOSTAR_SOLVER_CLASS::Action&
+SK_AOSTAR_SOLVER_CLASS::get_best_action(const State& s) const {
     auto si = _graph.find(s);
     if ((si == _graph.end()) || (si->best_action == nullptr)) {
         throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());

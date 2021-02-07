@@ -2,8 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#ifndef SKDECIDE_AOSTAR_IMPL_HH
-#define SKDECIDE_AOSTAR_IMPL_HH
+#ifndef SKDECIDE_ASTAR_IMPL_HH
+#define SKDECIDE_ASTAR_IMPL_HH
 
 #include <queue>
 #include <chrono>
@@ -16,8 +16,7 @@ namespace skdecide {
 // === AStarSolver implementation ===
 
 #define SK_ASTAR_SOLVER_TEMPLATE_DECL \
-template <typename Tdomain,
-          typename Texecution_policy>
+template <typename Tdomain, typename Texecution_policy>
 
 #define SK_ASTAR_SOLVER_CLASS \
 AStarSolver<Tdomain, Texecution_policy>
@@ -26,17 +25,13 @@ SK_ASTAR_SOLVER_TEMPLATE_DECL
 SK_ASTAR_SOLVER_CLASS::AStarSolver(Domain& domain,
                                    const std::function<bool (Domain&, const State&)>& goal_checker,
                                    const std::function<Value (Domain&, const State&)>& heuristic,
-                                   bool debug_logs = false)
+                                   bool debug_logs)
 : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic), _debug_logs(debug_logs) {
-    if (debug_logs && (spdlog::get_level() > spdlog::level::debug)) {
-        std::string msg = "Debug logs requested for algorithm A* but global log level is higher than debug";
-        if (spdlog::get_level() <= spdlog::level::warn) {
-            Logger::warn(msg);
-        } else {
-            msg = "\033[1;33mbold " + msg + "\033[0m";
-            std::cerr << msg << std::endl;
-        }
+
+    if (debug_logs) {
+        Logger::check_level(logging::debug, "algorithm A*");
     }
+
 }
 
 
@@ -163,7 +158,8 @@ bool SK_ASTAR_SOLVER_CLASS::is_solution_defined_for(const State& s) const {
 
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
-const Action& SK_ASTAR_SOLVER_CLASS::get_best_action(const State& s) const {
+const typename SK_ASTAR_SOLVER_CLASS::Action&
+SK_ASTAR_SOLVER_CLASS::get_best_action(const State& s) const {
     auto si = _graph.find(s);
     if ((si == _graph.end()) || (si->best_action == nullptr)) {
         throw std::runtime_error("SKDECIDE exception: no best action found in state " + s.print());
@@ -209,4 +205,4 @@ bool SK_ASTAR_SOLVER_CLASS::NodeCompare::operator()(Node*& a, Node*& b) const {
 
 } // namespace skdecide
 
-#endif // SKDECIDE_AOSTAR_IMPL_HH
+#endif // SKDECIDE_ASTAR_IMPL_HH

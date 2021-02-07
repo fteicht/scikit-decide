@@ -77,4 +77,8 @@ private :
 
 } // namespace skdecide
 
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/astar_impl.hh"
+#endif
+
 #endif // SKDECIDE_ASTAR_HH
