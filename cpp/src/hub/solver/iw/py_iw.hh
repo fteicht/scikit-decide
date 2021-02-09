@@ -2,42 +2,32 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#ifndef SKDECIDE_PY_IW_HH
+#define SKDECIDE_PY_IW_HH
+
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "iw.hh"
-
+#include "utils/execution.hh"
+#include "utils/python_gil_control.hh"
 #include "utils/python_domain_proxy.hh"
+#include "utils/python_container_proxy.hh"
+#include "utils/template_instantiator.hh"
+#include "utils/impl/python_domain_proxy_call_impl.hh"
+
+#include "iw.hh"
 
 namespace py = pybind11;
 
+namespace skdecide {
 
 template <typename Texecution>
-class PyIWDomain : public skdecide::PythonDomainProxy<Texecution> {
-public :
+using PyIWDomain = PythonDomainProxy<Texecution>;
 
-    PyIWDomain(const py::object& domain)
-    : skdecide::PythonDomainProxy<Texecution>(domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_next_state()");
-        }
-        if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_transition_value()");
-        }
-        if (!py::hasattr(domain, "is_goal")) {
-            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_goal()");
-        }
-        if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_terminal()");
-        }
-    }
-
-};
+template <typename Texecution>
+using PyIWFeatureVector = PythonContainerProxy<Texecution>;
 
 
 template <typename Texecution>
@@ -45,68 +35,6 @@ using PyIWFeatureVector = skdecide::PythonContainerProxy<Texecution>;
 
 
 class PyIWSolver {
-public :
-
-    PyIWSolver(py::object& domain,
-               const std::function<py::object (const py::object&, const py::object&)>& state_features,
-               bool use_state_feature_hash = false,
-               const std::function<bool (const double&, const std::size_t&, const std::size_t&,
-                                         const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
-               std::size_t time_budget = 0,
-               bool parallel = false,
-               bool debug_logs = false) {
-
-        if (parallel) {
-            if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, node_ordering, time_budget, debug_logs);
-            } else {
-                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, node_ordering, time_budget, debug_logs);
-            }
-        } else {
-            if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, node_ordering, time_budget, debug_logs);
-            } else {
-                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, node_ordering, time_budget, debug_logs);
-            }
-        }
-    }
-
-    void clear() {
-        _implementation->clear();
-    }
-
-    void solve(const py::object& s) {
-        _implementation->solve(s);
-    }
-
-    py::bool_ is_solution_defined_for(const py::object& s) {
-        return _implementation->is_solution_defined_for(s);
-    }
-
-    py::object get_next_action(const py::object& s) {
-        return _implementation->get_next_action(s);
-    }
-
-    py::float_ get_utility(const py::object& s) {
-        return _implementation->get_utility(s);
-    }
-
-    py::int_ get_nb_of_explored_states() {
-        return _implementation->get_nb_of_explored_states();
-    }
-
-    py::int_ get_nb_of_pruned_states() {
-        return _implementation->get_nb_of_pruned_states();
-    }
-
-    py::list get_intermediate_scores() {
-        return _implementation->get_intermediate_scores();
-    }
-
 private :
 
     class BaseImplementation {
@@ -151,6 +79,7 @@ private :
                 };
             }
 
+            check_domain(domain);
             _domain = std::make_unique<PyIWDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::IWSolver<PyIWDomain<Texecution>, PyIWFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
@@ -179,6 +108,24 @@ private :
         }
 
         virtual ~Implementation() {}
+
+        void check_domain(py::object& domain) {
+            if (!py::hasattr(domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(domain, "get_next_state")) {
+                throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_next_state()");
+            }
+            if (!py::hasattr(domain, "get_transition_value")) {
+                throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing get_transition_value()");
+            }
+            if (!py::hasattr(domain, "is_goal")) {
+                throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_goal()");
+            }
+            if (!py::hasattr(domain, "is_terminal")) {
+                throw std::invalid_argument("SKDECIDE exception: IW algorithm needs python domain for implementing is_terminal()");
+            }
+        }
 
         virtual void clear() {
             _solver->clear();
@@ -237,35 +184,117 @@ private :
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
     };
 
+    struct ExecutionSelector {
+        bool _parallel;
+        
+        ExecutionSelector(bool parallel) : _parallel(parallel) {}
+
+        template <typename Propagator>
+        struct Select {
+            template <typename... Args>
+            Select(ExecutionSelector& This, Args... args) {
+                if (This._parallel) {
+                    Propagator::template PushType<ParallelExecution>::Forward(args...);
+                } else {
+                    Propagator::template PushType<SequentialExecution>::Forward(args...);
+                }
+            }
+        };
+    };
+
+    struct HashingPolicySelector {
+        bool _use_state_feature_hash;
+        
+        HashingPolicySelector(bool use_state_feature_hash)
+        : _use_state_feature_hash(use_state_feature_hash) {}
+
+        template <typename Propagator>
+        struct Select {
+            template <typename... Args>
+            Select(HashingPolicySelector& This, Args... args) {
+                if (This._use_state_feature_hash) {
+                    Propagator::template PushTemplate<StateFeatureHash>::Forward(args...);
+                } else {
+                    Propagator::template PushTemplate<DomainStateHash>::Forward(args...);
+                }
+            }
+        };
+    };
+
+    struct SolverInstantiator {
+        std::unique_ptr<BaseImplementation>& _implementation;
+
+        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
+        : _implementation(implementation) {}
+
+        template <typename... TypeInstantiations>
+        struct TypeList {
+            template<template <typename...> class... TemplateInstantiations>
+            struct TemplateList {
+                struct Instantiate {
+                    template <typename... Args>
+                    Instantiate(SolverInstantiator& This, Args... args) {
+                        This._implementation = std::make_unique<Implementation<TypeInstantiations..., TemplateInstantiations...>>(args...);
+                    }
+                };
+            };
+        };
+    };
+
     std::unique_ptr<BaseImplementation> _implementation;
+
+public :
+
+    PyIWSolver(py::object& domain,
+               const std::function<py::object (const py::object&, const py::object&)>& state_features,
+               bool use_state_feature_hash = false,
+               const std::function<bool (const double&, const std::size_t&, const std::size_t&,
+                                         const double&, const std::size_t&, const std::size_t&)>& node_ordering = nullptr,
+               std::size_t time_budget = 0,
+               bool parallel = false,
+               bool debug_logs = false) {
+        
+        TemplateInstantiator::select(
+            ExecutionSelector(parallel),
+            HashingPolicySelector(use_state_feature_hash),
+            SolverInstantiator(_implementation)).instantiate(
+                domain, state_features, node_ordering, time_budget, debug_logs);
+        
+    }
+
+    void clear() {
+        _implementation->clear();
+    }
+
+    void solve(const py::object& s) {
+        _implementation->solve(s);
+    }
+
+    py::bool_ is_solution_defined_for(const py::object& s) {
+        return _implementation->is_solution_defined_for(s);
+    }
+
+    py::object get_next_action(const py::object& s) {
+        return _implementation->get_next_action(s);
+    }
+
+    py::float_ get_utility(const py::object& s) {
+        return _implementation->get_utility(s);
+    }
+
+    py::int_ get_nb_of_explored_states() {
+        return _implementation->get_nb_of_explored_states();
+    }
+
+    py::int_ get_nb_of_pruned_states() {
+        return _implementation->get_nb_of_pruned_states();
+    }
+
+    py::list get_intermediate_scores() {
+        return _implementation->get_intermediate_scores();
+    }
 };
 
+} // namespace skdecide
 
-void init_pyiw(py::module& m) {
-    py::class_<PyIWSolver> py_iw_solver(m, "_IWSolver_");
-        py_iw_solver
-            .def(py::init<py::object&,
-                          const std::function<py::object (const py::object&, const py::object&)>&,
-                          bool,
-                          const std::function<bool (const double&, const std::size_t&, const std::size_t&,
-                                                    const double&, const std::size_t&, const std::size_t&)>&,
-                          std::size_t,
-                          bool,
-                          bool>(),
-                 py::arg("domain"),
-                 py::arg("state_features"),
-                 py::arg("use_state_feature_hash")=false,
-                 py::arg("node_ordering")=nullptr,
-                 py::arg("time_budget")=0,
-                 py::arg("parallel")=false,
-                 py::arg("debug_logs")=false)
-            .def("clear", &PyIWSolver::clear)
-            .def("solve", &PyIWSolver::solve, py::arg("state"))
-            .def("is_solution_defined_for", &PyIWSolver::is_solution_defined_for, py::arg("state"))
-            .def("get_next_action", &PyIWSolver::get_next_action, py::arg("state"))
-            .def("get_utility", &PyIWSolver::get_utility, py::arg("state"))
-            .def("get_nb_of_explored_states", &PyIWSolver::get_nb_of_explored_states)
-            .def("get_nb_of_pruned_states", &PyIWSolver::get_nb_of_pruned_states)
-            .def("get_intermediate_scores", &PyIWSolver::get_intermediate_scores)
-        ;
-}
+#endif // SKDECIDE_PY_IW_HH
