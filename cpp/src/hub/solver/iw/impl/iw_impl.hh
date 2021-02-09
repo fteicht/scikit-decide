@@ -108,7 +108,7 @@ SK_IW_SOLVER_CLASS::IWSolver(Domain& domain,
     }
 
     if (debug_logs) {
-        Logger::check_level(logging::debug, "algorithm RIW");
+        Logger::check_level(logging::debug, "algorithm IW");
     }
 }
 
