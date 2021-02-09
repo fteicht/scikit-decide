@@ -2,97 +2,38 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#ifndef SKDECIDE_PY_BFWS_HH
+#define SKDECIDE_PY_BFWS_HH
+
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/functional.h>
 #include <pybind11/iostream.h>
 
-#include "bfws.hh"
-
+#include "utils/execution.hh"
+#include "utils/python_gil_control.hh"
 #include "utils/python_domain_proxy.hh"
+#include "utils/python_container_proxy.hh"
+#include "utils/template_instantiator.hh"
+#include "utils/impl/python_domain_proxy_call_impl.hh"
+
+#include "bfws.hh"
 
 namespace py = pybind11;
 
+namespace skdecide {
 
 template <typename Texecution>
-class PyBFWSDomain : public skdecide::PythonDomainProxy<Texecution> {
-public :
+using PyBFWSDomain = PythonDomainProxy<Texecution>;
 
-    PyBFWSDomain(const py::object& domain)
-    : skdecide::PythonDomainProxy<Texecution>(domain) {
-        if (!py::hasattr(domain, "get_applicable_actions")) {
-            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
-        }
-        if (!py::hasattr(domain, "get_next_state")) {
-            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_sample()");
-        }
-        if (!py::hasattr(domain, "get_transition_value")) {
-            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_transition_value()");
-        }
-        if (!py::hasattr(domain, "is_terminal")) {
-            throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing is_terminal()");
-        }
-    }
-
-};
-
+template <typename Texecution>
+using PyBFWSFeatureVector = PythonContainerProxy<Texecution>;
 
 template <typename Texecution>
 using PyBFWSFeatureVector = skdecide::PythonContainerProxy<Texecution>;
 
 
 class PyBFWSSolver {
-public :
-    PyBFWSSolver(py::object& domain,
-                 const std::function<py::object (const py::object&, const py::object&)>& state_features,
-                 const std::function<py::object (const py::object&, const py::object&)>& heuristic,
-                 const std::function<py::object (const py::object&, const py::object&)>& termination_checker,
-                 bool use_state_feature_hash = false,
-                 bool parallel = false,
-                 bool debug_logs = false) {
-        if (parallel) {
-            if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, heuristic, termination_checker, debug_logs
-                );
-            } else {
-                _implementation = std::make_unique<Implementation<skdecide::ParallelExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, heuristic, termination_checker, debug_logs
-                );
-            }
-        } else {
-            if (use_state_feature_hash) {
-                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::StateFeatureHash>>(
-                    domain, state_features, heuristic, termination_checker, debug_logs
-                );
-            } else {
-                _implementation = std::make_unique<Implementation<skdecide::SequentialExecution, skdecide::DomainStateHash>>(
-                    domain, state_features, heuristic, termination_checker, debug_logs
-                );
-            }
-        }
-    }
-
-    void clear() {
-        _implementation->clear();
-    }
-
-    void solve(const py::object& s) {
-        _implementation->solve(s);
-    }
-
-    py::bool_ is_solution_defined_for(const py::object& s) {
-        return _implementation->is_solution_defined_for(s);
-    }
-
-    py::object get_next_action(const py::object& s) {
-        return _implementation->get_next_action(s);
-    }
-
-    py::float_ get_utility(const py::object& s) {
-        return _implementation->get_utility(s);
-    }
-
 private :
 
     class BaseImplementation {
@@ -114,6 +55,8 @@ private :
                        const std::function<py::object (const py::object&, const py::object&)>& termination_checker,
                        bool debug_logs = false)
         : _state_features(state_features), _heuristic(heuristic), _termination_checker(termination_checker) {
+
+            check_domain(domain);
             _domain = std::make_unique<PyBFWSDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::BFWSSolver<PyBFWSDomain<Texecution>, PyBFWSFeatureVector<Texecution>, Thashing_policy, Texecution>>(
                                                                             *_domain,
@@ -167,6 +110,21 @@ private :
 
         virtual ~Implementation() {}
 
+        void check_domain(py::object& domain) {
+            if (!py::hasattr(domain, "get_applicable_actions")) {
+                throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_applicable_actions()");
+            }
+            if (!py::hasattr(domain, "get_next_state")) {
+                throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_sample()");
+            }
+            if (!py::hasattr(domain, "get_transition_value")) {
+                throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing get_transition_value()");
+            }
+            if (!py::hasattr(domain, "is_terminal")) {
+                throw std::invalid_argument("SKDECIDE exception: BFWS algorithm needs python domain for implementing is_terminal()");
+            }
+        }
+
         virtual void clear() {
             _solver->clear();
         }
@@ -200,31 +158,103 @@ private :
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
     };
 
+    struct ExecutionSelector {
+        bool _parallel;
+        
+        ExecutionSelector(bool parallel) : _parallel(parallel) {}
+
+        template <typename Propagator>
+        struct Select {
+            template <typename... Args>
+            Select(ExecutionSelector& This, Args... args) {
+                if (This._parallel) {
+                    Propagator::template PushType<ParallelExecution>::Forward(args...);
+                } else {
+                    Propagator::template PushType<SequentialExecution>::Forward(args...);
+                }
+            }
+        };
+    };
+
+    struct HashingPolicySelector {
+        bool _use_state_feature_hash;
+        
+        HashingPolicySelector(bool use_state_feature_hash)
+        : _use_state_feature_hash(use_state_feature_hash) {}
+
+        template <typename Propagator>
+        struct Select {
+            template <typename... Args>
+            Select(HashingPolicySelector& This, Args... args) {
+                if (This._use_state_feature_hash) {
+                    Propagator::template PushTemplate<StateFeatureHash>::Forward(args...);
+                } else {
+                    Propagator::template PushTemplate<DomainStateHash>::Forward(args...);
+                }
+            }
+        };
+    };
+
+    struct SolverInstantiator {
+        std::unique_ptr<BaseImplementation>& _implementation;
+
+        SolverInstantiator(std::unique_ptr<BaseImplementation>& implementation)
+        : _implementation(implementation) {}
+
+        template <typename... TypeInstantiations>
+        struct TypeList {
+            template<template <typename...> class... TemplateInstantiations>
+            struct TemplateList {
+                struct Instantiate {
+                    template <typename... Args>
+                    Instantiate(SolverInstantiator& This, Args... args) {
+                        This._implementation = std::make_unique<Implementation<TypeInstantiations..., TemplateInstantiations...>>(args...);
+                    }
+                };
+            };
+        };
+    };
+
     std::unique_ptr<BaseImplementation> _implementation;
+
+public :
+    PyBFWSSolver(py::object& domain,
+                 const std::function<py::object (const py::object&, const py::object&)>& state_features,
+                 const std::function<py::object (const py::object&, const py::object&)>& heuristic,
+                 const std::function<py::object (const py::object&, const py::object&)>& termination_checker,
+                 bool use_state_feature_hash = false,
+                 bool parallel = false,
+                 bool debug_logs = false) {
+        
+        TemplateInstantiator::select(
+            ExecutionSelector(parallel),
+            HashingPolicySelector(use_state_feature_hash),
+            SolverInstantiator(_implementation)).instantiate(
+                domain, state_features, heuristic, termination_checker, debug_logs);
+        
+    }
+
+    void clear() {
+        _implementation->clear();
+    }
+
+    void solve(const py::object& s) {
+        _implementation->solve(s);
+    }
+
+    py::bool_ is_solution_defined_for(const py::object& s) {
+        return _implementation->is_solution_defined_for(s);
+    }
+
+    py::object get_next_action(const py::object& s) {
+        return _implementation->get_next_action(s);
+    }
+
+    py::float_ get_utility(const py::object& s) {
+        return _implementation->get_utility(s);
+    }
 };
 
+} // namespace skdecide
 
-void init_pybfws(py::module& m) {
-    py::class_<PyBFWSSolver> py_bfws_solver(m, "_BFWSSolver_");
-        py_bfws_solver
-            .def(py::init<py::object&,
-                          const std::function<py::object (const py::object&, const py::object&)>&,
-                          const std::function<py::object (const py::object&, const py::object&)>&,
-                          const std::function<py::object (const py::object&, const py::object&)>&,
-                          bool,
-                          bool,
-                          bool>(),
-                 py::arg("domain"),
-                 py::arg("state_features"),
-                 py::arg("heuristic"),
-                 py::arg("termination_checker"),
-                 py::arg("use_state_feature_hash")=false,
-                 py::arg("parallel")=false,
-                 py::arg("debug_logs")=false)
-            .def("clear", &PyBFWSSolver::clear)
-            .def("solve", &PyBFWSSolver::solve, py::arg("state"))
-            .def("is_solution_defined_for", &PyBFWSSolver::is_solution_defined_for, py::arg("state"))
-            .def("get_next_action", &PyBFWSSolver::get_next_action, py::arg("state"))
-            .def("get_utility", &PyBFWSSolver::get_utility, py::arg("state"))
-        ;
-}
+#endif // SKDECIDE_PY_BFWS_HH
