@@ -17,11 +17,13 @@ void init_pylrtdp(py::module& m) {
                           std::size_t,
                           std::size_t,
                           std::size_t,
+                          std::size_t,
                           double,
                           double,
                           bool,
                           bool,
-                          bool>(),
+                          bool,
+                          const std::function<bool (const py::int_&, const py::int_&, const py::float_&, const py::float_&)>&>(),
                  py::arg("domain"),
                  py::arg("goal_checker"),
                  py::arg("heuristic"),
@@ -29,11 +31,13 @@ void init_pylrtdp(py::module& m) {
                  py::arg("time_budget")=3600000,
                  py::arg("rollout_budget")=100000,
                  py::arg("max_depth")=1000,
-                 py::arg("discount")=1.0,
+                 py::arg("epsilon_moving_average_window")=100,
                  py::arg("epsilon")=0.001,
+                 py::arg("discount")=1.0,
                  py::arg("online_node_garbage")=false,
                  py::arg("parallel")=false,
-                 py::arg("debug_logs")=false)
+                 py::arg("debug_logs")=false,
+                 py::arg("watchdog")=nullptr)
             .def("clear", &skdecide::PyLRTDPSolver::clear)
             .def("solve", &skdecide::PyLRTDPSolver::solve, py::arg("state"))
             .def("is_solution_defined_for", &skdecide::PyLRTDPSolver::is_solution_defined_for, py::arg("state"))

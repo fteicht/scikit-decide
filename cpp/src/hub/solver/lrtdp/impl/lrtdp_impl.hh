@@ -22,20 +22,23 @@ LRTDPSolver<Tdomain, Texecution_policy>
 
 SK_LRTDP_SOLVER_TEMPLATE_DECL
 SK_LRTDP_SOLVER_CLASS::LRTDPSolver(Domain& domain,
-            const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
-            const std::function<Value (Domain&, const State&, const std::size_t*)>& heuristic,
-            bool use_labels,
-            std::size_t time_budget,
-            std::size_t rollout_budget,
-            std::size_t max_depth,
-            double discount,
-            double epsilon,
-            bool online_node_garbage,
-            bool debug_logs)
+                                   const GoalCheckerFunctor& goal_checker,
+                                   const HeuristicFunctor& heuristic,
+                                   bool use_labels,
+                                   std::size_t time_budget,
+                                   std::size_t rollout_budget,
+                                   std::size_t max_depth,
+                                   std::size_t epsilon_moving_average_window,
+                                   double epsilon,
+                                   double discount,
+                                   bool online_node_garbage,
+                                   bool debug_logs,
+                                   const WatchdogFunctor& watchdog)
 : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic), _use_labels(use_labels),
   _time_budget(time_budget), _rollout_budget(rollout_budget), _max_depth(max_depth),
-  _discount(discount), _epsilon(epsilon), _online_node_garbage(online_node_garbage),
-  _debug_logs(debug_logs), _current_state(nullptr), _nb_rollouts(0) {
+  _epsilon_moving_average_window(epsilon_moving_average_window), _epsilon(epsilon),
+  _discount(discount), _online_node_garbage(online_node_garbage), _debug_logs(debug_logs),
+  _watchdog(watchdog), _current_state(nullptr), _nb_rollouts(0) {
     
     if (debug_logs) {
         Logger::check_level(logging::debug, "algorithm LRTDP");
@@ -76,14 +79,23 @@ void SK_LRTDP_SOLVER_CLASS::solve(const State& s) {
 
         std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(),
                         [this, &start_time, &root_node] (const std::size_t& thread_id) {
+            std::size_t etime = 0;
             
-            while ((!_use_labels || !root_node.solved) &&
-                    (elapsed_time(start_time) < _time_budget) &&
-                    (_nb_rollouts < _rollout_budget)) {
+            do {
                 if (_debug_logs) Logger::debug("Starting rollout " + StringConverter::from(_nb_rollouts) + ExecutionPolicy::print_thread());
                 _nb_rollouts++;
+                double root_node_record_value = root_node.best_value;
                 trial(&root_node, start_time, &thread_id);
-            }
+                update_epsilon_moving_average(root_node, root_node_record_value);
+            } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
+                               root_node.best_value,
+                               (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                    (double) _epsilon_moving_average :
+                                    std::numeric_limits<double>::infinity()) &&
+                     (!_use_labels || !root_node.solved) &&
+                     (etime < _time_budget) &&
+                     (_nb_rollouts < _rollout_budget) &&
+                     (_epsilon_moving_average > _epsilon));
         });
 
         auto end_time = std::chrono::high_resolution_clock::now();
@@ -447,6 +459,25 @@ void SK_LRTDP_SOLVER_CLASS::remove_subgraph(std::unordered_set<StateNode*>& root
         if (child_subgraph.find(n) == child_subgraph.end()) {
             _graph.erase(StateNode(n->state));
         }
+    }
+}
+
+
+SK_LRTDP_SOLVER_TEMPLATE_DECL
+void SK_LRTDP_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+    if (_epsilon_moving_average_window > 0) {
+        double current_epsilon = std::fabs(node_record_value - node.best_value);
+        _execution_policy.protect([this, &current_epsilon](){
+            if (_epsilons.size() < _epsilon_moving_average_window) {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            (current_epsilon / ((double) _epsilon_moving_average_window));
+            } else {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            ((current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window));
+                _epsilons.pop_front();
+            }
+            _epsilons.push_back(current_epsilon);
+        }, _epsilons_protect);
     }
 }
 

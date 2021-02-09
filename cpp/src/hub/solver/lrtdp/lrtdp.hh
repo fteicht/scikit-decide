@@ -31,19 +31,29 @@ public :
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
     typedef typename Domain::Value Value;
+    typedef typename Domain::Predicate Predicate;
     typedef Texecution_policy ExecutionPolicy;
 
+    typedef std::function<Predicate (Domain&, const State&, const std::size_t*)> GoalCheckerFunctor;
+    typedef std::function<Value (Domain&, const State&, const std::size_t*)> HeuristicFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> WatchdogFunctor;
+
     LRTDPSolver(Domain& domain,
-                const std::function<bool (Domain&, const State&, const std::size_t*)>& goal_checker,
-                const std::function<Value (Domain&, const State&, const std::size_t*)>& heuristic,
+                const GoalCheckerFunctor& goal_checker,
+                const HeuristicFunctor& heuristic,
                 bool use_labels = true,
                 std::size_t time_budget = 3600000,
                 std::size_t rollout_budget = 100000,
                 std::size_t max_depth = 1000,
-                double discount = 1.0,
+                std::size_t epsilon_moving_average_window = 100,
                 double epsilon = 0.001,
+                double discount = 1.0,
                 bool online_node_garbage = false,
-                bool debug_logs = false);
+                bool debug_logs = false,
+                const WatchdogFunctor& watchdog = [](
+                    const std::size_t&, const std::size_t&, const double&, const double&){
+                        return true;
+                    });
 
     // clears the solver (clears the search graph, thus preventing from reusing
     // previous search results)
@@ -71,14 +81,21 @@ private :
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
-    atomic_double _discount;
+    atomic_size_t _epsilon_moving_average_window;
     atomic_double _epsilon;
+    atomic_double _discount;
     bool _online_node_garbage;
     atomic_bool _debug_logs;
+    WatchdogFunctor _watchdog;
     ExecutionPolicy _execution_policy;
+
     std::unique_ptr<std::mt19937> _gen;
     typename ExecutionPolicy::Mutex _gen_mutex;
     typename ExecutionPolicy::Mutex _time_mutex;
+    typename ExecutionPolicy::Mutex _epsilons_protect;
+
+    atomic_double _epsilon_moving_average;
+    std::list<double> _epsilons;
 
     struct ActionNode;
 
@@ -127,6 +144,7 @@ private :
                const std::size_t* thread_id);
     void compute_reachable_subgraph(StateNode* node, std::unordered_set<StateNode*>& subgraph);
     void remove_subgraph(std::unordered_set<StateNode*>& root_subgraph, std::unordered_set<StateNode*>& child_subgraph);
+    void update_epsilon_moving_average(const StateNode& node, const double& node_record_value);
 };
 
 } // namespace skdecide
