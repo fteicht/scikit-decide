@@ -17,6 +17,41 @@
 
 namespace skdecide {
 
+// === Agent implementation ===
+
+#define SK_PY_AGENT_TEMPLATE_DECL \
+template <typename Texecution, typename Tagent, typename Tobservability, typename Tcontrollability, typename Tmemory> \
+
+#define SK_PY_AGENT_CLASS \
+PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Agent
+
+#define SK_PY_AGENT_TYPE \
+typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Agent
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_CLASS::Agent() : PyObj<Agent>() {}
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_CLASS::Agent(std::unique_ptr<py::object>&& a)
+: PyObj<Agent>(std::move(a)) {}
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_CLASS::Agent(const py::object& a)
+: PyObj<Agent>(a) {}
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_CLASS::Agent(const Agent& other)
+: PyObj<Agent>(other) {}
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_TYPE& SK_PY_AGENT_CLASS::operator=(const Agent& other) {
+    static_cast<PyObj<Agent>&>(*this) = other;
+    return *this;
+}
+
+SK_PY_AGENT_TEMPLATE_DECL
+SK_PY_AGENT_CLASS::~Agent() {}
+
 // === AgentDataAccess implementation ===
 
 #define SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL \
@@ -123,60 +158,6 @@ SK_PY_AGENT_DATA_ACCESS_TYPE::PyIter SK_PY_AGENT_DATA_ACCESS_CLASS::end() const 
     return PyIter(this->_pyobj->end());
 }
 
-// === AgentDataAccess::Agent implementation ===
-
-SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-struct SK_PY_AGENT_DATA_ACCESS_CLASS::Agent::Implementation {
-    template <typename Tother,
-              std::enable_if_t<std::is_same<py::object, Tother>::value, int> = 0>
-    static const py::object& agent(const Tother& other) {
-        return other;
-    }
-
-    template <typename Tother,
-              std::enable_if_t<std::is_same<Agent, Tother>::value, int> = 0>
-    static const Agent& agent(const Tother& other) {
-        return other;
-    }
-
-    template <typename Tother,
-              std::enable_if_t<!std::is_base_of<py::object, Tother>::value &&
-                               !std::is_base_of<Agent, Tother>::value, int> = 0>
-    static const py::object& agent(const Tother& other) {
-        return other.pyobj();
-    }
-};
-
-#define SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL \
-SK_PY_AGENT_DATA_ACCESS_TEMPLATE_DECL
-
-#define SK_PY_AGENT_DATA_AGENT_CLASS \
-SK_PY_AGENT_DATA_ACCESS_CLASS::Agent
-
-#define SK_PY_AGENT_DATA_AGENT_TYPE \
-SK_PY_AGENT_DATA_ACCESS_TYPE::Agent
-
-SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_DATA_AGENT_CLASS::Agent() : PyObj<Agent>() {}
-
-SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_DATA_AGENT_CLASS::Agent(std::unique_ptr<py::object>&& a)
-: PyObj<Agent>(std::move(a)) {}
-
-SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
-template <typename Tother>
-SK_PY_AGENT_DATA_AGENT_CLASS::Agent(const Tother& other)
-: PyObj<Agent>(Implementation::agent(other)) {}
-
-SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_DATA_AGENT_TYPE& SK_PY_AGENT_DATA_AGENT_CLASS::operator=(const Agent& other) {
-    static_cast<PyObj<Agent>&>(*this) = other;
-    return *this;
-}
-
-SK_PY_AGENT_DATA_AGENT_TEMPLATE_DECL
-SK_PY_AGENT_DATA_AGENT_CLASS::~Agent() {}
-
 // === AgentDataAccess::Item implementation ===
 
 #define SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL \
@@ -214,7 +195,7 @@ SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
 SK_PY_AGENT_DATA_ITEM_CLASS::~Item() {}
 
 SK_PY_AGENT_DATA_ITEM_TEMPLATE_DECL
-SK_PY_AGENT_DATA_AGENT_TYPE SK_PY_AGENT_DATA_ITEM_CLASS::agent() {
+SK_PY_AGENT_TYPE SK_PY_AGENT_DATA_ITEM_CLASS::agent() {
     typename GilControl<Texecution>::Acquire acquire;
     return Agent(py::cast<py::object>((*(this->_pyobj))[0]));
 }
@@ -858,13 +839,12 @@ SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_applicable_actions(const Memory& m,
 
 SK_PY_DOMAIN_PROXY_SEQ_IMPL_TEMPLATE_DECL
 template <typename TTagent,
-            typename TTaction,
-            typename TactionAgent,
-            typename TagentApplicableActions>
+          typename TTaction,
+          typename TagentApplicableActions>
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_agent_applicable_actions(const Memory& m,
                                                                 const TTaction& other_agents_actions,
-                                                                const TactionAgent& agent,
+                                                                const typename TTaction::Agent& agent,
                                                                 [[maybe_unused]] const std::size_t* thread_id) {
     try {
         return TagentApplicableActions(_domain->attr("get_agent_applicable_actions")(
@@ -1045,13 +1025,12 @@ SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_applicable_actions(const Memory& m,
 
 SK_PY_DOMAIN_PROXY_PAR_IMPL_TEMPLATE_DECL
 template <typename TTagent,
-            typename TTaction,
-            typename TactionAgent,
-            typename TagentApplicableActions>
+          typename TTaction,
+          typename TagentApplicableActions>
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_agent_applicable_actions(const Memory& m,
                                                                 const TTaction& other_agents_actions,
-                                                                const TactionAgent& agent,
+                                                                const typename TTaction::Agent& agent,
                                                                 const std::size_t* thread_id) {
     return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
                                                         m.pyobj(),
@@ -1182,12 +1161,11 @@ SK_PY_DOMAIN_PROXY_CLASS::get_applicable_actions(const Memory& m, const std::siz
 SK_PY_DOMAIN_PROXY_TEMPLATE_DECL
 template <typename TTagent,
           typename TTaction,
-          typename TactionAgent,
           typename TagentApplicableActions>
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
                                                        const TTaction& other_agents_actions,
-                                                       const TactionAgent& agent,
+                                                       const typename TTaction::Agent& agent,
                                                        const std::size_t* thread_id) {
     try {
         return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);

@@ -38,6 +38,13 @@ struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::Implementation
     }
 
     template <typename TTpyobj = Tpyobj,
+              std::enable_if_t<!std::is_same<TTpyobj, py::object>::value &&
+                               !std::is_base_of<py::object, TTpyobj>::value &&
+                               std::is_base_of<py::detail::pyobject_tag, TTpyobj>::value &&
+                               !std::is_default_constructible<TTpyobj>::value, int> = 0>
+    static void construct(std::unique_ptr<Tpyobj>& po) {}
+
+    template <typename TTpyobj = Tpyobj,
               std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
     static void construct(std::unique_ptr<Tpyobj>& po, std::unique_ptr<py::object>&& o, bool check = true) {
         typename GilControl<Texecution>::Acquire acquire; // !(*po) class python if *po is of type py::bool_

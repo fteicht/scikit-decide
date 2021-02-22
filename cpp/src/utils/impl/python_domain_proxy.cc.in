@@ -4,6 +4,8 @@
 #include "${CMAKE_SOURCE_DIR}/src/utils/impl/python_domain_proxy_impl.hh"
 
 #include <boost/preprocessor/list/for_each.hpp>
+#include <boost/preprocessor/list/for_each_product.hpp>
+#include <boost/preprocessor/tuple/elem.hpp>
 
 template class skdecide::PythonDomainProxy<skdecide::${Texecution},
                                            skdecide::${Tagent},
@@ -38,6 +40,10 @@ BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
 #define D_${Tagent}
 #if defined D_MultiAgent
 #define MMACRO(r, data, elem) \
+    template struct PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Hash; \
+    template struct PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Equal; \
+    template class PDPB::PyObj<typename PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Item, py::tuple>; \
+    template class PDPB::PyObj<typename PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::AgentDataAccessor, py::detail::item_accessor>; \
     template class PDPB::PyIter<typename PDP::AgentDataAccess< \
                                     typename PDPB::elem, \
                                     skdecide::${Tagent} \
@@ -45,6 +51,10 @@ BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
                                 py::detail::dict_iterator>;
 
 BOOST_PP_LIST_FOR_EACH(MMACRO, , LIST)
+template typename PDPB::ApplicableActionSpace PDP::get_agent_applicable_actions(const typename PDP::Memory&, \
+                                                                                const typename PDP::Action&, \
+                                                                                const typename PDP::Action::Agent&, \
+                                                                                const std::size_t*);
 #endif
 
 template class PDP::Outcome<PDP::TransitionOutcome, PDP::State>;

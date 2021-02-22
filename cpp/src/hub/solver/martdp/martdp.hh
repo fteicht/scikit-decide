@@ -25,8 +25,8 @@ template <typename Tdomain,
 class MARTDPSolver {
 public :
     typedef Tdomain Domain;
+    typedef typename Domain::Agent Agent;
     typedef typename Domain::State State;
-    typedef typename Domain::State::Agent Agent;
     typedef typename Domain::State::Data AgentState;
     typedef typename Domain::Event Action;
     typedef typename Domain::Action::Data AgentAction;

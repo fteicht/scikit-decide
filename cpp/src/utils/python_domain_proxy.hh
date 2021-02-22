@@ -51,7 +51,19 @@ public :
     template<typename T, typename Titerator = py::iterator>
     using PyIter = typename PythonDomainProxyBase<Texecution>::template PyIter<T, Titerator>;
 
-    template <typename DData, typename TTagent, typename Enable = void>
+    class Agent : public PyObj<Agent> {
+    public :
+        static constexpr char class_name[] = "agent";
+        
+        Agent();
+        Agent(std::unique_ptr<py::object>&& a);
+        Agent(const py::object& a);
+        Agent(const Agent& other);
+        Agent& operator=(const Agent& other);
+        virtual ~Agent();
+    };
+
+    template <typename DData, typename TTagent = Tagent, typename Enable = void>
     class AgentDataAccess {};
 
     template <typename DData, typename TTagent>
@@ -72,6 +84,9 @@ public :
 
         typedef AgentDataAccess<DData, TTagent> Data;
 
+        // Agents are dict keys
+        typedef Agent Agent;
+
         // AgentData are dict values
         typedef DData AgentData;
 
@@ -83,24 +98,6 @@ public :
         virtual ~AgentDataAccess();
 
         std::size_t size() const;
-
-        // Agents are dict keys
-        class Agent : public PyObj<Agent> {
-        public :
-            static constexpr char class_name[] = "agent";
-            
-            Agent();
-            Agent(std::unique_ptr<py::object>&& a);
-
-            template <typename Tother>
-            Agent(const Tother& other);
-            
-            Agent& operator=(const Agent& other);
-            virtual ~Agent();
-
-        private :
-            struct Implementation;
-        };
 
         // Dict items
         class Item : public PyObj<Item, py::tuple> {
@@ -147,8 +144,8 @@ public :
         PyIter end() const;
     };
 
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::State, Tagent>::Data State;
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Observation, Tagent>::Data _Observation;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::State>::Data State;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Observation>::Data _Observation;
 
     typedef typename std::conditional<std::is_same<Tobservability, FullyObservable>::value,
                                         State,
@@ -183,14 +180,8 @@ public :
                                                                  >::type
                                      >::type Memory;
 
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Action, Tagent>::Data _Action;
-
-    typedef typename std::conditional<std::is_same<Tcontrollability, FullyControllable>::value,
-                                        _Action,
-                                        void
-                                     >::type Action;
-    
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Event, Tagent>::Data _Event;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Action, Tagent>::Data Action;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Event>::Data _Event;
 
     typedef typename std::conditional<std::is_same<Tcontrollability, FullyControllable>::value,
                                         Action,
@@ -200,9 +191,9 @@ public :
                                                                  >::type
                                      >::type Event;
 
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::ApplicableActionSpace, Tagent>::Data ApplicableActionSpace;
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Value, Tagent>::Data Value;
-    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Predicate, Tagent>::Data Predicate;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::ApplicableActionSpace>::Data ApplicableActionSpace;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Value>::Data Value;
+    typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::Predicate>::Data Predicate;
 
     template <typename Derived, typename SSituation>
     class Outcome : public PyObj<Derived> {
@@ -210,7 +201,7 @@ public :
         typedef SSituation Situation;
         typedef Value Value;
         typedef Predicate Predicate;
-        typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::OutcomeInfo, Tagent>::Data Info;
+        typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::OutcomeInfo>::Data Info;
 
         Outcome();
         Outcome(std::unique_ptr<py::object>&& outcome);
@@ -341,12 +332,11 @@ public :
 
     template <typename TTagent = Tagent,
               typename TTaction = Action,
-              typename TactionAgent = typename PythonDomainProxyBase<Texecution>::Action,
               typename TagentApplicableActions = typename PythonDomainProxyBase<Texecution>::ApplicableActionSpace>
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
                                  const TTaction& other_agents_actions,
-                                 const TactionAgent& agent,
+                                 const typename TTaction::Agent& agent,
                                  const std::size_t* thread_id = nullptr);
 
     Observation reset(const std::size_t* thread_id = nullptr);
