@@ -75,8 +75,8 @@ private :
     typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
     
     Domain& _domain;
-    std::function<bool (Domain&, const State&, const std::size_t*)> _goal_checker;
-    std::function<Value (Domain&, const State&, const std::size_t*)> _heuristic;
+    GoalCheckerFunctor _goal_checker;
+    HeuristicFunctor _heuristic;
     bool _use_labels;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
