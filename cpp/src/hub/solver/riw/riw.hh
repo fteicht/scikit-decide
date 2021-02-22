@@ -115,15 +115,24 @@ public :
     typedef Trollout_policy<Domain> RolloutPolicy;
     typedef Texecution_policy ExecutionPolicy;
 
+    typedef std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)> StateFeatureFunctor;
+    typedef std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> WatchdogFunctor;
+
     RIWSolver(Domain& domain,
-              const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& state_features,
+              const StateFeatureFunctor& state_features,
               std::size_t time_budget = 3600000,
               std::size_t rollout_budget = 100000,
               std::size_t max_depth = 1000,
               double exploration = 0.25,
+              std::size_t epsilon_moving_average_window = 100,
+              double epsilon = 0.001,
               double discount = 1.0,
               bool online_node_garbage = false,
-              bool debug_logs = false);
+              bool debug_logs = false,
+              const WatchdogFunctor& watchdog = [](
+                    const std::size_t&, const std::size_t&, const double&, const double&){
+                        return true;
+                    });
 
     // clears the solver (clears the search graph, thus preventing from reusing
     // previous search results)
@@ -149,21 +158,29 @@ private :
     typedef typename ExecutionPolicy::template atomic<bool> atomic_bool;
 
     Domain& _domain;
-    std::function<std::unique_ptr<FeatureVector> (Domain&, const State& s, const std::size_t* thread_id)> _state_features;
+    StateFeatureFunctor _state_features;
     atomic_size_t _time_budget;
     atomic_size_t _rollout_budget;
     atomic_size_t _max_depth;
     atomic_double _exploration;
+    atomic_size_t _epsilon_moving_average_window;
+    atomic_double _epsilon;
     atomic_double _discount;
     bool _online_node_garbage;
     atomic_double _min_reward;
     atomic_size_t _nb_rollouts;
     RolloutPolicy _rollout_policy;
     ExecutionPolicy _execution_policy;
+    atomic_bool _debug_logs;
+    WatchdogFunctor _watchdog;
+
     std::unique_ptr<std::mt19937> _gen;
     typename ExecutionPolicy::Mutex _gen_mutex;
     typename ExecutionPolicy::Mutex _time_mutex;
-    atomic_bool _debug_logs;
+    typename ExecutionPolicy::Mutex _epsilons_protect;
+
+    atomic_double _epsilon_moving_average;
+    std::list<double> _epsilons;
 
     struct Node {
         State state;
@@ -180,7 +197,7 @@ private :
         mutable typename ExecutionPolicy::Mutex mutex;
 
         Node(const State& s, Domain& d,
-             const std::function<std::unique_ptr<FeatureVector> (Domain&, const State&, const std::size_t*)>& state_features,
+             const StateFeatureFunctor& state_features,
              const std::size_t* thread_id);
 
         Node(const Node& n);
@@ -207,11 +224,15 @@ private :
         typedef Texecution_policy ExecutionPolicy;
 
         WidthSolver(RIWSolver& parent_solver, Domain& domain,
-                    const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& state_features,
+                    const StateFeatureFunctor& state_features,
                     const atomic_size_t& time_budget,
                     const atomic_size_t& rollout_budget,
                     const atomic_size_t& max_depth,
                     const atomic_double& exploration,
+                    const atomic_size_t& epsilon_moving_average_window,
+                    const atomic_double& epsilon,
+                    atomic_double& epsilon_moving_average,
+                    std::list<double>& epsilons,
                     const atomic_double& discount,
                     atomic_double& min_reward,
                     const atomic_size_t& width,
@@ -221,7 +242,9 @@ private :
                     std::mt19937& gen,
                     typename ExecutionPolicy::Mutex& gen_mutex,
                     typename ExecutionPolicy::Mutex& time_mutex,
-                    const atomic_bool& debug_logs);
+                    typename ExecutionPolicy::Mutex& epsilons_protect,
+                    const atomic_bool& debug_logs,
+                    const WatchdogFunctor& watchdog);
         
         // solves from state s
         // return true iff no state has been pruned or time or rollout budgets are consumed
@@ -237,11 +260,15 @@ private :
 
         RIWSolver& _parent_solver;
         Domain& _domain;
-        const std::function<std::unique_ptr<FeatureVector> (Domain& d, const State& s, const std::size_t* thread_id)>& _state_features;
+        const StateFeatureFunctor& _state_features;
         const atomic_size_t& _time_budget;
         const atomic_size_t& _rollout_budget;
         const atomic_size_t& _max_depth;
         const atomic_double& _exploration;
+        const atomic_size_t& _epsilon_moving_average_window;
+        const atomic_double& _epsilon;
+        atomic_double& _epsilon_moving_average;
+        std::list<double>& _epsilons;
         const atomic_double& _discount;
         atomic_double& _min_reward;
         atomic_bool _min_reward_changed;
@@ -252,7 +279,9 @@ private :
         std::mt19937& _gen;
         typename ExecutionPolicy::Mutex& _gen_mutex;
         typename ExecutionPolicy::Mutex& _time_mutex;
+        typename ExecutionPolicy::Mutex& _epsilons_protect;
         const atomic_bool& _debug_logs;
+        const WatchdogFunctor& _watchdog;
 
         void rollout(Node& root_node, TupleVector& feature_tuples, atomic_size_t& nb_rollouts,
                      atomic_bool& states_pruned, atomic_bool& reached_end_of_trajectory_once,
@@ -275,6 +304,7 @@ private :
         void update_node(Node& node, bool solved);
 
         std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
+        void update_epsilon_moving_average(const Node& node, const double& node_record_value);
     }; // WidthSolver class
 
     void compute_reachable_subgraph(Node& node, std::unordered_set<Node*>& subgraph);

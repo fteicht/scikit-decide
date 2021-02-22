@@ -173,15 +173,19 @@ SK_RIW_SOLVER_CLASS::RIWSolver(Domain& domain,
                                std::size_t rollout_budget,
                                std::size_t max_depth,
                                double exploration,
+                               std::size_t epsilon_moving_average_window,
+                               double epsilon,
                                double discount,
                                bool online_node_garbage,
-                               bool debug_logs)
+                               bool debug_logs,
+                               const WatchdogFunctor& watchdog)
 : _domain(domain), _state_features(state_features),
     _time_budget(time_budget), _rollout_budget(rollout_budget),
     _max_depth(max_depth), _exploration(exploration),
+    _epsilon_moving_average_window(epsilon_moving_average_window), _epsilon(epsilon),
     _discount(discount), _online_node_garbage(online_node_garbage),
     _min_reward(std::numeric_limits<double>::max()),
-    _nb_rollouts(0), _debug_logs(debug_logs) {
+    _nb_rollouts(0), _debug_logs(debug_logs), _watchdog(watchdog) {
 
     if (debug_logs) {
         Logger::check_level(logging::debug, "algorithm RIW");
@@ -211,10 +215,13 @@ void SK_RIW_SOLVER_CLASS::solve(const State& s) {
         for (atomic_size_t w = 1 ; w <= nb_of_binary_features ; w++) {
             if(WidthSolver(*this, _domain, _state_features,
                            _time_budget, _rollout_budget,
-                           _max_depth, _exploration, _discount,
+                           _max_depth, _exploration,
+                           _epsilon_moving_average_window, _epsilon,
+                           _epsilon_moving_average, _epsilons, _discount,
                            _min_reward, w, _graph, _rollout_policy,
                            _execution_policy, *_gen, _gen_mutex, _time_mutex,
-                           _debug_logs).solve(s, start_time, _nb_rollouts, feature_tuples)) {
+                           _epsilons_protect, _debug_logs, _watchdog).solve(
+                               s, start_time, _nb_rollouts, feature_tuples)) {
                 found_solution = true;
                 break;
             }
@@ -522,6 +529,10 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(RIWSolver& parent_solver, Domain& 
                                               const atomic_size_t& rollout_budget,
                                               const atomic_size_t& max_depth,
                                               const atomic_double& exploration,
+                                              const atomic_size_t& epsilon_moving_average_window,
+                                              const atomic_double& epsilon,
+                                              atomic_double& epsilon_moving_average,
+                                              std::list<double>& epsilons,
                                               const atomic_double& discount,
                                               atomic_double& min_reward,
                                               const atomic_size_t& width,
@@ -531,14 +542,19 @@ SK_RIW_SOLVER_CLASS::WidthSolver::WidthSolver(RIWSolver& parent_solver, Domain& 
                                               std::mt19937& gen,
                                               typename ExecutionPolicy::Mutex& gen_mutex,
                                               typename ExecutionPolicy::Mutex& time_mutex,
-                                              const atomic_bool& debug_logs)
+                                              typename ExecutionPolicy::Mutex& epsilons_protect,
+                                              const atomic_bool& debug_logs,
+                                              const WatchdogFunctor& watchdog)
 : _parent_solver(parent_solver), _domain(domain), _state_features(state_features),
     _time_budget(time_budget), _rollout_budget(rollout_budget),
     _max_depth(max_depth), _exploration(exploration),
+    _epsilon_moving_average_window(epsilon_moving_average_window), _epsilon(epsilon),
+    _epsilon_moving_average(epsilon_moving_average), _epsilons(epsilons),
     _discount(discount), _min_reward(min_reward), _min_reward_changed(false),
     _width(width), _graph(graph), _rollout_policy(rollout_policy),
     _execution_policy(execution_policy), _gen(gen), _gen_mutex(gen_mutex),
-    _time_mutex(time_mutex), _debug_logs(debug_logs) {}
+    _time_mutex(time_mutex), _epsilons_protect(epsilons_protect),
+    _debug_logs(debug_logs), _watchdog(watchdog) {}
 
 SK_RIW_SOLVER_TEMPLATE_DECL
 bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State& s,
@@ -576,18 +592,35 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State& s,
                       [this, &start_time, &root_node, &feature_tuples, &nb_rollouts, &states_pruned,
                        &reached_end_of_trajectory_once] (const std::size_t& thread_id) {
             // Start rollouts
-            while (!root_node.solved && elapsed_time(start_time) < _time_budget && nb_rollouts < _rollout_budget) {
+            std::size_t etime = 0;
+            do {
+                double root_node_record_value = root_node.value;
                 rollout(root_node, feature_tuples, nb_rollouts,
                         states_pruned, reached_end_of_trajectory_once,
                         start_time, &thread_id);
-            }
+                update_epsilon_moving_average(root_node, root_node_record_value);
+            } while (_watchdog(etime = elapsed_time(start_time), nb_rollouts,
+                               root_node.value,
+                               (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                    (double) _epsilon_moving_average :
+                                    std::numeric_limits<double>::infinity()) &&
+                     !root_node.solved &&
+                     (etime < _time_budget) &&
+                     (nb_rollouts < _rollout_budget) &&
+                     (_epsilon_moving_average > _epsilon));
         });
 
         if (_debug_logs) Logger::debug("time budget: " + StringConverter::from(elapsed_time(start_time)) +
                                        " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
                                        ", states pruned: " + StringConverter::from(states_pruned));
 
-        if (static_cast<std::size_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start_time).count()) < _time_budget &&
+        std::size_t etime = 0;
+        if (!_watchdog(etime = elapsed_time(start_time), nb_rollouts,
+                               root_node.value,
+                               (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                    (double) _epsilon_moving_average :
+                                    std::numeric_limits<double>::infinity()) &&
+            elapsed_time(start_time) < _time_budget &&
             nb_rollouts < _rollout_budget &&
             !reached_end_of_trajectory_once &&
             states_pruned) {
@@ -914,6 +947,24 @@ std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::elapsed_time(const std::chrono::ti
         );
     }, _time_mutex);
     return milliseconds_duration;
+}
+
+SK_RIW_SOLVER_TEMPLATE_DECL
+void SK_RIW_SOLVER_CLASS::WidthSolver::update_epsilon_moving_average(const Node& node, const double& node_record_value) {
+    if (_epsilon_moving_average_window > 0) {
+        double current_epsilon = std::fabs(node_record_value - node.value);
+        _execution_policy.protect([this, &current_epsilon](){
+            if (_epsilons.size() < _epsilon_moving_average_window) {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            (current_epsilon / ((double) _epsilon_moving_average_window));
+            } else {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            ((current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window));
+                _epsilons.pop_front();
+            }
+            _epsilons.push_back(current_epsilon);
+        }, _epsilons_protect);
+    }
 }
 
 } // namespace skdecide

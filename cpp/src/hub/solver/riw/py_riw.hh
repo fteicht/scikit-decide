@@ -60,10 +60,13 @@ private :
                        std::size_t rollout_budget = 100000,
                        std::size_t max_depth = 1000,
                        double exploration = 0.25,
+                       std::size_t epsilon_moving_average_window = 100,
+                       double epsilon = 0.001,
                        double discount = 1.0,
                        bool online_node_garbage = false,
-                       bool debug_logs = false)
-            : _state_features(state_features) {
+                       bool debug_logs = false,
+                       const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr)
+            : _state_features(state_features), _watchdog(watchdog) {
             
             check_domain(domain);
             _domain = std::make_unique<PyRIWDomain<Texecution>>(domain);
@@ -85,9 +88,18 @@ private :
                 rollout_budget,
                 max_depth,
                 exploration,
+                epsilon_moving_average_window,
+                epsilon,
                 discount,
                 online_node_garbage,
-                debug_logs);
+                debug_logs,
+                [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
+                    if (_watchdog) {
+                        return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
+                    } else {
+                        return true;
+                    }
+                });
             _stdout_redirect = std::make_unique<py::scoped_ostream_redirect>(std::cout,
                                                                             py::module::import("sys").attr("stdout"));
             _stderr_redirect = std::make_unique<py::scoped_estream_redirect>(std::cerr,
@@ -185,6 +197,7 @@ private :
         std::unique_ptr<RIWSolver<PyRIWDomain<Texecution>, PyRIWFeatureVector<Texecution>, Thashing_policy, Trollout_policy, Texecution>> _solver;
         
         std::function<py::object (py::object&, const py::object&, const py::object&)> _state_features;  // last arg used for optional thread_id
+        std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)> _watchdog;
 
         std::unique_ptr<py::scoped_ostream_redirect> _stdout_redirect;
         std::unique_ptr<py::scoped_estream_redirect> _stderr_redirect;
@@ -278,10 +291,13 @@ public :
                 std::size_t rollout_budget = 100000,
                 std::size_t max_depth = 1000,
                 double exploration = 0.25,
+                std::size_t epsilon_moving_average_window = 100,
+                double epsilon = 0.001,
                 double discount = 1.0,
                 bool online_node_garbage = false,
                 bool parallel = false,
-                bool debug_logs = false) {
+                bool debug_logs = false,
+                const std::function<bool (const std::size_t&, const std::size_t&, const double&, const double&)>& watchdog = nullptr) {
         
         TemplateInstantiator::select(
             ExecutionSelector(parallel),
@@ -289,7 +305,8 @@ public :
             RolloutPolicySelector(use_simulation_domain),
             SolverInstantiator(_implementation)).instantiate(
                 domain, state_features, time_budget, rollout_budget, max_depth,
-                exploration, discount, online_node_garbage, debug_logs);
+                exploration, epsilon_moving_average_window, epsilon, discount,
+                online_node_garbage, debug_logs, watchdog);
     }
 
     void clear() {
