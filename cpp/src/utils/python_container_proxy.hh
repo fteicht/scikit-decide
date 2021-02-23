@@ -135,8 +135,8 @@ private :
 
 struct SequentialExecution;
 struct ParallelExecution;
-std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o);
-std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o);
+inline std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o) { return o.hash(); }
+inline std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o) { return o.hash(); }
 
 } // namespace skdecide
 

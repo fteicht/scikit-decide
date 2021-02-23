@@ -51,14 +51,6 @@ bool PythonContainerProxy<Texecution>::value_type::operator== (const value_type&
     return _value->equal(*(other._value));
 }
 
-inline std::size_t hash_value(const PythonContainerProxy<SequentialExecution>::value_type& o) {
-    return o.hash();
-}
-
-inline std::size_t hash_value(const PythonContainerProxy<ParallelExecution>::value_type& o) {
-    return o.hash();
-}
-
 // === PythonContainerProxy::value_type::PrimitiveType implementation ===
 
 template <typename Texecution>
