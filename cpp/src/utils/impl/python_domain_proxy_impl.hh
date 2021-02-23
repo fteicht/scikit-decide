@@ -844,7 +844,7 @@ template <typename TTagent,
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_SEQ_IMPL_CLASS::get_agent_applicable_actions(const Memory& m,
                                                                 const TTaction& other_agents_actions,
-                                                                const typename TTaction::Agent& agent,
+                                                                const Agent& agent,
                                                                 [[maybe_unused]] const std::size_t* thread_id) {
     try {
         return TagentApplicableActions(_domain->attr("get_agent_applicable_actions")(
@@ -1030,7 +1030,7 @@ template <typename TTagent,
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_PAR_IMPL_CLASS::get_agent_applicable_actions(const Memory& m,
                                                                 const TTaction& other_agents_actions,
-                                                                const typename TTaction::Agent& agent,
+                                                                const Agent& agent,
                                                                 const std::size_t* thread_id) {
     return TagentApplicableActions(launch(thread_id, "get_agent_applicable_actions",
                                                         m.pyobj(),
@@ -1165,7 +1165,7 @@ template <typename TTagent,
 std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
 SK_PY_DOMAIN_PROXY_CLASS::get_agent_applicable_actions(const Memory& m,
                                                        const TTaction& other_agents_actions,
-                                                       const typename TTaction::Agent& agent,
+                                                       const Agent& agent,
                                                        const std::size_t* thread_id) {
     try {
         return _implementation->get_agent_applicable_actions(m, other_agents_actions, agent, thread_id);

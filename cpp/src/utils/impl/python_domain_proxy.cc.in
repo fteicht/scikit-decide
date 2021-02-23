@@ -51,10 +51,14 @@ BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
                                 py::detail::dict_iterator>;
 
 BOOST_PP_LIST_FOR_EACH(MMACRO, , LIST)
-template typename PDPB::ApplicableActionSpace PDP::get_agent_applicable_actions(const typename PDP::Memory&, \
-                                                                                const typename PDP::Action&, \
-                                                                                const typename PDP::Action::Agent&, \
-                                                                                const std::size_t*);
+template typename PDPB::ApplicableActionSpace PDP::get_agent_applicable_actions<
+                                                        skdecide::MultiAgent,
+                                                        typename PDP::Action,
+                                                        typename PDPB::ApplicableActionSpace>(
+                                                            const typename PDP::Memory&, \
+                                                            const typename PDP::Action&, \
+                                                            const typename PDP::Agent&, \
+                                                            const std::size_t*);
 #endif
 
 template class PDP::Outcome<PDP::TransitionOutcome, PDP::State>;

@@ -37,7 +37,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
                                  const TTaction& other_agents_actions,
-                                 const typename TTaction::Agent& agent,
+                                 const Agent& agent,
                                  const std::size_t* thread_id = nullptr);
 
     Observation reset(const std::size_t* thread_id = nullptr);
@@ -86,7 +86,7 @@ struct PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, T
     std::enable_if_t<std::is_same<TTagent, MultiAgent>::value, TagentApplicableActions>
     get_agent_applicable_actions(const Memory& m,
                                  const TTaction& other_agents_actions,
-                                 const typename TTaction::Agent& agent,
+                                 const Agent& agent,
                                  const std::size_t* thread_id = nullptr);
 
     Observation reset(const std::size_t* thread_id = nullptr);
