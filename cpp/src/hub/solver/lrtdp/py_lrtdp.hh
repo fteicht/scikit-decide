@@ -64,7 +64,7 @@ private :
             _domain = std::make_unique<PyLRTDPDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::LRTDPSolver<PyLRTDPDomain<Texecution>, Texecution>>(
                 *_domain,
-                [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id)->bool {
+                [this](PyLRTDPDomain<Texecution>& d, const typename PyLRTDPDomain<Texecution>::State& s, const std::size_t* thread_id) -> typename PyLRTDPDomain<Texecution>::Predicate {
                     try {
                         std::unique_ptr<py::object> r = d.call(thread_id, _goal_checker, s.pyobj());
                         typename skdecide::GilControl<Texecution>::Acquire acquire;
@@ -95,6 +95,7 @@ private :
                 debug_logs,
                 [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
                     if (_watchdog) {
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
                         return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
                     } else {
                         return true;

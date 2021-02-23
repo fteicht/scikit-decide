@@ -587,21 +587,22 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State& s,
         novelty(feature_tuples, root_node, true); // initialize feature_tuples with the root node's bits
 
         boost::integer_range<std::size_t> parallel_rollouts(0, _domain.get_parallel_capacity());
+        atomic_size_t etime = 0;
+        atomic_size_t epsilons_size = 0;
 
         std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(),
                       [this, &start_time, &root_node, &feature_tuples, &nb_rollouts, &states_pruned,
-                       &reached_end_of_trajectory_once] (const std::size_t& thread_id) {
+                       &reached_end_of_trajectory_once, &etime, &epsilons_size] (const std::size_t& thread_id) {
             // Start rollouts
-            std::size_t etime = 0;
             do {
                 double root_node_record_value = root_node.value;
                 rollout(root_node, feature_tuples, nb_rollouts,
                         states_pruned, reached_end_of_trajectory_once,
                         start_time, &thread_id);
-                update_epsilon_moving_average(root_node, root_node_record_value);
+                epsilons_size = update_epsilon_moving_average(root_node, root_node_record_value);
             } while (_watchdog(etime = elapsed_time(start_time), nb_rollouts,
                                root_node.value,
-                               (_epsilons.size() >= _epsilon_moving_average_window) ?
+                               (epsilons_size >= _epsilon_moving_average_window) ?
                                     (double) _epsilon_moving_average :
                                     std::numeric_limits<double>::infinity()) &&
                      !root_node.solved &&
@@ -614,13 +615,12 @@ bool SK_RIW_SOLVER_CLASS::WidthSolver::solve(const State& s,
                                        " ms, rollout budget: " + StringConverter::from(nb_rollouts) +
                                        ", states pruned: " + StringConverter::from(states_pruned));
 
-        std::size_t etime = 0;
         if (!_watchdog(etime = elapsed_time(start_time), nb_rollouts,
                                root_node.value,
-                               (_epsilons.size() >= _epsilon_moving_average_window) ?
+                               (epsilons_size >= _epsilon_moving_average_window) ?
                                     (double) _epsilon_moving_average :
                                     std::numeric_limits<double>::infinity()) &&
-            elapsed_time(start_time) < _time_budget &&
+            etime < _time_budget &&
             nb_rollouts < _rollout_budget &&
             !reached_end_of_trajectory_once &&
             states_pruned) {
@@ -937,6 +937,27 @@ void SK_RIW_SOLVER_CLASS::WidthSolver::update_node(Node& node, bool solved) {
 }
 
 SK_RIW_SOLVER_TEMPLATE_DECL
+std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::update_epsilon_moving_average(const Node& node, const double& node_record_value) {
+    std::size_t epsilons_size = 0;
+    if (_epsilon_moving_average_window > 0) {
+        double current_epsilon = std::fabs(node_record_value - node.value);
+        _execution_policy.protect([this, &epsilons_size, &current_epsilon](){
+            if (_epsilons.size() < _epsilon_moving_average_window) {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            (current_epsilon / ((double) _epsilon_moving_average_window));
+            } else {
+                _epsilon_moving_average = ((double) _epsilon_moving_average) +
+                                            ((current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window));
+                _epsilons.pop_front();
+            }
+            _epsilons.push_back(current_epsilon);
+            epsilons_size = _epsilons.size();
+        }, _epsilons_protect);
+    }
+    return epsilons_size;
+}
+
+SK_RIW_SOLVER_TEMPLATE_DECL
 std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time) {
     std::size_t milliseconds_duration;
     _execution_policy.protect([&milliseconds_duration, &start_time](){
@@ -947,24 +968,6 @@ std::size_t SK_RIW_SOLVER_CLASS::WidthSolver::elapsed_time(const std::chrono::ti
         );
     }, _time_mutex);
     return milliseconds_duration;
-}
-
-SK_RIW_SOLVER_TEMPLATE_DECL
-void SK_RIW_SOLVER_CLASS::WidthSolver::update_epsilon_moving_average(const Node& node, const double& node_record_value) {
-    if (_epsilon_moving_average_window > 0) {
-        double current_epsilon = std::fabs(node_record_value - node.value);
-        _execution_policy.protect([this, &current_epsilon](){
-            if (_epsilons.size() < _epsilon_moving_average_window) {
-                _epsilon_moving_average = ((double) _epsilon_moving_average) +
-                                            (current_epsilon / ((double) _epsilon_moving_average_window));
-            } else {
-                _epsilon_moving_average = ((double) _epsilon_moving_average) +
-                                            ((current_epsilon - _epsilons.front()) / ((double) _epsilon_moving_average_window));
-                _epsilons.pop_front();
-            }
-            _epsilons.push_back(current_epsilon);
-        }, _epsilons_protect);
-    }
 }
 
 } // namespace skdecide

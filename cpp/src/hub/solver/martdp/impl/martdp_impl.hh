@@ -106,6 +106,7 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State& s) {
         _epsilon_moving_average = 0.0;
         _epsilons.clear();
         std::size_t etime = 0;
+        std::size_t epsilons_size = 0;
             
         do {
             if (_debug_logs) Logger::debug("Starting rollout " + StringConverter::from(_nb_rollouts));
@@ -113,10 +114,10 @@ void SK_MARTDP_SOLVER_CLASS::solve(const State& s) {
             _nb_rollouts++;
             double root_node_record_value = root_node.all_value;
             trial(&root_node, start_time);
-            update_epsilon_moving_average(root_node, root_node_record_value);
+            epsilons_size = update_epsilon_moving_average(root_node, root_node_record_value);
         } while(_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
                             root_node.all_value,
-                            (_epsilons.size() >= _epsilon_moving_average_window) ?
+                            (epsilons_size >= _epsilon_moving_average_window) ?
                                 _epsilon_moving_average :
                                 std::numeric_limits<double>::infinity()) &&
                 (etime < _time_budget) &&
@@ -559,7 +560,8 @@ void SK_MARTDP_SOLVER_CLASS::remove_subgraph(std::unordered_set<StateNode*>& roo
 
 
 SK_MARTDP_SOLVER_TEMPLATE_DECL
-void SK_MARTDP_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+std::size_t SK_MARTDP_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+    std::size_t epsilons_size = 0;
     if (_epsilon_moving_average_window > 0) {
         double current_epsilon = std::fabs(node_record_value - node.all_value);
         if (_epsilons.size() < _epsilon_moving_average_window) {
@@ -569,7 +571,9 @@ void SK_MARTDP_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node
             _epsilons.pop_front();
         }
         _epsilons.push_back(current_epsilon);
+        epsilons_size = _epsilons.size();
     }
+    return epsilons_size;
 }
 
 

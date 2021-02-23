@@ -26,11 +26,12 @@ public :
     typedef Tdomain Domain;
     typedef typename Domain::State State;
     typedef typename Domain::Action Action;
+    typedef typename Domain::Predicate Predicate;
     typedef typename Domain::Value Value;
     typedef Texecution_policy ExecutionPolicy;
 
     AStarSolver(Domain& domain,
-                const std::function<bool (Domain&, const State&)>& goal_checker,
+                const std::function<Predicate (Domain&, const State&)>& goal_checker,
                 const std::function<Value (Domain&, const State&)>& heuristic,
                 bool debug_logs = false);
     

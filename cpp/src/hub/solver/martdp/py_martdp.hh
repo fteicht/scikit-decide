@@ -112,6 +112,7 @@ private :
                 debug_logs,
                 [this](const std::size_t& elapsed_time, const std::size_t& nb_rollouts, const double& best_value, const double& epsilon_moving_average)->bool{
                     if (_watchdog) {
+                        typename skdecide::GilControl<Texecution>::Acquire acquire;
                         return _watchdog(elapsed_time, nb_rollouts, best_value, epsilon_moving_average);
                     } else {
                         return true;

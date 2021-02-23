@@ -510,9 +510,7 @@ SK_PY_PREDICATE_CLASS::Predicate(const py::object& v)
 
 SK_PY_PREDICATE_TEMPLATE_DECL
 SK_PY_PREDICATE_CLASS::Predicate(const bool& predicate)
-: PyObj<Predicate, py::bool_>() {
-    construct(predicate);
-}
+: PyObj<Predicate, py::bool_>(predicate) {}
 
 SK_PY_PREDICATE_TEMPLATE_DECL
 SK_PY_PREDICATE_CLASS::Predicate(const Predicate& other)
@@ -528,10 +526,10 @@ SK_PY_PREDICATE_TEMPLATE_DECL
 SK_PY_PREDICATE_CLASS::~Predicate() {}
 
 SK_PY_PREDICATE_TEMPLATE_DECL
-void SK_PY_PREDICATE_CLASS::construct(const bool& predicate) {
+void SK_PY_PREDICATE_CLASS::construct() {
     typename GilControl<Texecution>::Acquire acquire;
-    if (this->_pyobj->is_none()) {
-        this->_pyobj = std::make_unique<py::bool_>(predicate);
+    if (this->_pyobj->is_none() || !py::isinstance<py::bool_>(*(this->_pyobj))) {
+        this->_pyobj = std::make_unique<py::bool_>(false);
     }
 }
 

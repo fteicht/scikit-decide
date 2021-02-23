@@ -23,7 +23,7 @@ AStarSolver<Tdomain, Texecution_policy>
 
 SK_ASTAR_SOLVER_TEMPLATE_DECL
 SK_ASTAR_SOLVER_CLASS::AStarSolver(Domain& domain,
-                                   const std::function<bool (Domain&, const State&)>& goal_checker,
+                                   const std::function<Predicate (Domain&, const State&)>& goal_checker,
                                    const std::function<Value (Domain&, const State&)>& heuristic,
                                    bool debug_logs)
 : _domain(domain), _goal_checker(goal_checker), _heuristic(heuristic), _debug_logs(debug_logs) {

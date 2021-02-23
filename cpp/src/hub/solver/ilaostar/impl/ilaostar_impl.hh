@@ -23,7 +23,7 @@ ILAOStarSolver<Tdomain, Texecution_policy>
 
 SK_ILAOSTAR_SOLVER_TEMPLATE_DECL
 SK_ILAOSTAR_SOLVER_CLASS::ILAOStarSolver(Domain& domain,
-               const std::function<bool (Domain&, const State&)>& goal_checker,
+               const std::function<Predicate (Domain&, const State&)>& goal_checker,
                const std::function<Value (Domain&, const State&)>& heuristic,
                double discount,
                double epsilon,

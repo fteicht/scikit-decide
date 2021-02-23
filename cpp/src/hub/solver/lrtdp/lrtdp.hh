@@ -129,7 +129,6 @@ private :
     StateNode* _current_state;
     atomic_size_t _nb_rollouts;
 
-    std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
     void expand(StateNode* s, const std::size_t* thread_id);
     double q_value(ActionNode* a);
     ActionNode* greedy_action(StateNode* s, const std::size_t* thread_id);
@@ -144,7 +143,8 @@ private :
                const std::size_t* thread_id);
     void compute_reachable_subgraph(StateNode* node, std::unordered_set<StateNode*>& subgraph);
     void remove_subgraph(std::unordered_set<StateNode*>& root_subgraph, std::unordered_set<StateNode*>& child_subgraph);
-    void update_epsilon_moving_average(const StateNode& node, const double& node_record_value);
+    std::size_t update_epsilon_moving_average(const StateNode& node, const double& node_record_value);
+    std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
 };
 
 } // namespace skdecide

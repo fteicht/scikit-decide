@@ -303,8 +303,8 @@ private :
 
         void update_node(Node& node, bool solved);
 
+        std::size_t update_epsilon_moving_average(const Node& node, const double& node_record_value);
         std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
-        void update_epsilon_moving_average(const Node& node, const double& node_record_value);
     }; // WidthSolver class
 
     void compute_reachable_subgraph(Node& node, std::unordered_set<Node*>& subgraph);

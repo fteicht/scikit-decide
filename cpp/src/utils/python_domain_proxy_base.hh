@@ -212,7 +212,7 @@ public :
         operator bool() const;
     
     private :
-        void construct(const bool& predicate = false);
+        void construct();
     };
 
     class OutcomeInfo : public PyObj<OutcomeInfo> {

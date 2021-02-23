@@ -51,7 +51,7 @@ private :
             _domain = std::make_unique<PyAStarDomain<Texecution>>(domain);
             _solver = std::make_unique<skdecide::AStarSolver<PyAStarDomain<Texecution>, Texecution>>(
                 *_domain,
-                [this](PyAStarDomain<Texecution>& d, const typename PyAStarDomain<Texecution>::State& s)->bool {
+                [this](PyAStarDomain<Texecution>& d, const typename PyAStarDomain<Texecution>::State& s) -> typename PyAStarDomain<Texecution>::Predicate {
                     try {
                         auto fgc = [this](const py::object& dd, const py::object& ss, [[maybe_unused]] const py::object& ii) {
                             return _goal_checker(dd, ss);

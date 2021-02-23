@@ -143,6 +143,7 @@ void SK_MCTS_SOLVER_CLASS::solve(const State& s) {
 
         std::for_each(ExecutionPolicy::policy, parallel_rollouts.begin(), parallel_rollouts.end(), [this, &start_time, &root_node] (const std::size_t& thread_id) {
             std::size_t etime = 0;
+            std::size_t epsilons_size = 0;
 
             do {
                 std::size_t depth = 0;
@@ -150,11 +151,11 @@ void SK_MCTS_SOLVER_CLASS::solve(const State& s) {
                 StateNode* sn = (*_tree_policy)(*this, &thread_id, *_expander, *_action_selector_optimization, root_node, depth);
                 (*_rollout_policy)(*this, &thread_id, *sn, depth);
                 (*_back_propagator)(*this, &thread_id, *sn);
-                update_epsilon_moving_average(root_node, root_node_record_value);
+                epsilons_size = update_epsilon_moving_average(root_node, root_node_record_value);
                 _nb_rollouts++;
             } while (_watchdog(etime = elapsed_time(start_time), _nb_rollouts,
                                 root_node.value,
-                                (_epsilons.size() >= _epsilon_moving_average_window) ?
+                                (epsilons_size >= _epsilon_moving_average_window) ?
                                     (double) _epsilon_moving_average :
                                     std::numeric_limits<double>::infinity()) &&
                         (etime < _time_budget) &&
@@ -364,10 +365,11 @@ void SK_MCTS_SOLVER_CLASS::remove_subgraph(std::unordered_set<StateNode*>& root_
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL
-void SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+std::size_t SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, const double& node_record_value) {
+    std::size_t epsilons_size = 0;
     if (_epsilon_moving_average_window > 0) {
         double current_epsilon = std::fabs(node_record_value - node.value);
-        _execution_policy->protect([this, &current_epsilon](){
+        _execution_policy->protect([this, &epsilons_size, &current_epsilon](){
             if (_epsilons.size() < _epsilon_moving_average_window) {
                 _epsilon_moving_average = ((double) _epsilon_moving_average) +
                                             (current_epsilon / ((double) _epsilon_moving_average_window));
@@ -377,8 +379,10 @@ void SK_MCTS_SOLVER_CLASS::update_epsilon_moving_average(const StateNode& node, 
                 _epsilons.pop_front();
             }
             _epsilons.push_back(current_epsilon);
+            epsilons_size = _epsilons.size();
         }, _epsilons_protect);
     }
+    return epsilons_size;
 }
 
 SK_MCTS_SOLVER_TEMPLATE_DECL

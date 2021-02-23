@@ -23,7 +23,7 @@ AOStarSolver<Tdomain, Texecution_policy>
 
 SK_AOSTAR_SOLVER_TEMPLATE_DECL
 SK_AOSTAR_SOLVER_CLASS::AOStarSolver(Domain& domain,
-                                     const std::function<bool (Domain&, const State&)>& goal_checker,
+                                     const std::function<Predicate (Domain&, const State&)>& goal_checker,
                                      const std::function<Value (Domain&, const State&)>& heuristic,
                                      double discount,
                                      std::size_t max_tip_expansions,

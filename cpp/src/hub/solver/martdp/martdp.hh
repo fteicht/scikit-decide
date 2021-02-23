@@ -148,7 +148,6 @@ private :
     std::vector<std::vector<std::size_t>> _agents_orders;
     std::bernoulli_distribution _action_choice_noise_dist;
 
-    std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
     void expand_state(StateNode* s);
     StateNode* expand_action(ActionNode* a);
     bool generate_more_actions(StateNode* s);
@@ -160,7 +159,8 @@ private :
                const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
     void compute_reachable_subgraph(StateNode* node, std::unordered_set<StateNode*>& subgraph);
     void remove_subgraph(std::unordered_set<StateNode*>& root_subgraph, std::unordered_set<StateNode*>& child_subgraph);
-    void update_epsilon_moving_average(const StateNode& node, const double& node_record_value);
+    std::size_t update_epsilon_moving_average(const StateNode& node, const double& node_record_value);
+    std::size_t elapsed_time(const std::chrono::time_point<std::chrono::high_resolution_clock>& start_time);
 };
 
 } // namespace skdecide
