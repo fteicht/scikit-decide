@@ -8,21 +8,20 @@ template class skdecide::PythonDomainProxyBase<skdecide::${Texecution}>;
 
 typedef skdecide::PythonDomainProxyBase<skdecide::${Texecution}> PDPB;
 
-#define LIST (State, \
-             (Observation, \
-             (Event, \
-             (Action, \
-             (ApplicableActionSpace, \
-             (ApplicableActionSpace::Elements, \
-             (Value, \
-             (Predicate, \
-             (OutcomeInfo, \
+#define LIST ((State, py::object, py::iterator), \
+             ((Observation, py::object, py::iterator), \
+             ((Event, py::object, py::iterator), \
+             ((Action, py::object, py::iterator), \
+             ((ApplicableActionSpace, py::object, py::iterator), \
+             ((ApplicableActionSpace::Elements, py::object, py::iterator), \
+             ((Value, py::object, py::iterator), \
+             ((Predicate, py::bool_, py::iterator), \
+             ((OutcomeInfo, py::object, py::iterator), \
               BOOST_PP_NIL)))))))))
 
 #define MACRO(r, data, elem) \
-    template struct PDPB::elem::Hash; \
-    template struct PDPB::elem::Equal; \
-    template class PDPB::PyIter<PDPB::elem>;
+    template class PDPB::PyObj<PDPB::BOOST_PP_TUPLE_ELEM(3, 0, elem), BOOST_PP_TUPLE_ELEM(3, 1, elem)>; \
+    template class PDPB::PyIter<PDPB::BOOST_PP_TUPLE_ELEM(3, 0, elem), BOOST_PP_TUPLE_ELEM(3, 2, elem)>;
 
 
 BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)

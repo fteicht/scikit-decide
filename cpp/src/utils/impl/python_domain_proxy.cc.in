@@ -40,8 +40,7 @@ BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
 #define D_${Tagent}
 #if defined D_MultiAgent
 #define MMACRO(r, data, elem) \
-    template struct PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Hash; \
-    template struct PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Equal; \
+    template class PDPB::PyObj<typename PDPB::elem, py::dict>; \
     template class PDPB::PyObj<typename PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::Item, py::tuple>; \
     template class PDPB::PyObj<typename PDP::AgentDataAccess<typename PDPB::elem, skdecide::${Tagent}>::AgentDataAccessor, py::detail::item_accessor>; \
     template class PDPB::PyIter<typename PDP::AgentDataAccess< \

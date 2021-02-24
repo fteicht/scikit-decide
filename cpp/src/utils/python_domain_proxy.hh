@@ -303,7 +303,6 @@ public :
 
         class NextStateDistributionValues : public PyObj<NextStateDistributionValues> {
         public :
-            // typedef PyIter<DistributionValue> PyIter;
             typedef typename PythonDomainProxyBase<Texecution>::template PyIter<DistributionValue> PyIter;
             static constexpr char class_name[] = "next state distribution values";
 
