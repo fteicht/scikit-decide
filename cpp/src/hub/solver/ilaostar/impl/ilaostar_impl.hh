@@ -6,6 +6,7 @@
 #define SKDECIDE_ILAOSTAR_IMPL_HH
 
 #include <queue>
+#include <cmath>
 #include <chrono>
 
 #include "utils/string_converter.hh"

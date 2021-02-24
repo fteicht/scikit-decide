@@ -20,7 +20,7 @@ template <typename Texecution>
 template <typename Derived, typename Tpyobj>
 struct PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj>::Implementation {
     
-    typedef typename PythonDomainProxyBase<Texecution>::PyObj<Derived, Tpyobj> PyObj;
+    typedef typename PythonDomainProxyBase<Texecution>::template PyObj<Derived, Tpyobj> PyObj;
 
     template <typename TTpyobj = Tpyobj,
               std::enable_if_t<std::is_same<TTpyobj, py::object>::value, int> = 0>
@@ -144,16 +144,14 @@ SK_PY_OBJ_CLASS::PyObj() {
 }
 
 SK_PYOBJ_TEMPLATE_DECL
-template <typename TTpyobj,
-          std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int>>
-SK_PY_OBJ_CLASS::PyObj(std::unique_ptr<TTpyobj>&& o, bool check) {
+template <typename TTpyobj>
+void SK_PY_OBJ_CLASS::move_construct(std::unique_ptr<TTpyobj>&& o, bool check) {
     Implementation::construct(_pyobj, std::move(o), check);
 }
 
 SK_PYOBJ_TEMPLATE_DECL
-template <typename TTpyobj,
-          std::enable_if_t<!std::is_base_of<SK_PY_OBJ_TYPE, TTpyobj>::value, int>>
-SK_PY_OBJ_CLASS::PyObj(const TTpyobj& o, bool check) {
+template <typename TTpyobj>
+void SK_PY_OBJ_CLASS::conv_construct(const TTpyobj& o, bool check) {
     Implementation::construct(_pyobj, o, check);
 }
 

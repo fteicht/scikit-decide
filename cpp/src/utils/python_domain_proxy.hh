@@ -85,7 +85,7 @@ public :
         typedef AgentDataAccess<DData, TTagent> Data;
 
         // Agents are dict keys
-        typedef Agent Agent;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Agent Agent;
 
         // AgentData are dict values
         typedef DData AgentData;
@@ -136,7 +136,7 @@ public :
             virtual ~AgentDataAccessor();
         };
 
-        typedef PyIter<Item, py::detail::dict_iterator> PyIter;
+        typedef typename PythonDomainProxyBase<Texecution>::template PyIter<Item, py::detail::dict_iterator> PyIter;
 
         AgentDataAccessor operator[](const Agent& a);
         const AgentData operator[](const Agent& a) const;
@@ -157,7 +157,7 @@ public :
     
     class MemoryState : public PyObj<MemoryState, py::list> {
     public :
-        typedef State State;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::State State;
         typedef typename State::AgentData AgentData;
         static constexpr char class_name[] = "memory";
 
@@ -199,8 +199,8 @@ public :
     class Outcome : public PyObj<Derived> {
     public :
         typedef SSituation Situation;
-        typedef Value Value;
-        typedef Predicate Predicate;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Value Value;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Predicate Predicate;
         typedef typename AgentDataAccess<typename PythonDomainProxyBase<Texecution>::OutcomeInfo>::Data Info;
 
         Outcome();
@@ -230,7 +230,7 @@ public :
 
     class TransitionOutcome : public Outcome<TransitionOutcome, State> {
     public :
-        typedef State State;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::State State;
 
         static constexpr char pyclass[] = "TransitionOutcome";
         static constexpr char class_name[] = "transition outcome";
@@ -253,7 +253,7 @@ public :
 
     class EnvironmentOutcome : public Outcome<EnvironmentOutcome, Observation> {
     public :
-        typedef Observation Observation;
+        typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::Observation Observation;
 
         static constexpr char pyclass[] = "EnvironmentOutcome";
         static constexpr char class_name[] = "environment outcome";
@@ -287,7 +287,7 @@ public :
 
         class DistributionValue {
         public :
-            typedef State State;
+            typedef typename PythonDomainProxy<Texecution, Tagent, Tobservability, Tcontrollability, Tmemory>::State State;
             static constexpr char class_name[] = "distribution value";
             State _state;
             double _probability;
@@ -304,7 +304,7 @@ public :
         class NextStateDistributionValues : public PyObj<NextStateDistributionValues> {
         public :
             // typedef PyIter<DistributionValue> PyIter;
-            typedef PyIter<DistributionValue> PyIter;
+            typedef typename PythonDomainProxyBase<Texecution>::template PyIter<DistributionValue> PyIter;
             static constexpr char class_name[] = "next state distribution values";
 
             NextStateDistributionValues();

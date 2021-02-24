@@ -30,12 +30,12 @@ public :
 
         template <typename TTpyobj,
                   std::enable_if_t<std::is_convertible<TTpyobj, py::object>::value, int> = 0>
-        PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true);
+        PyObj(std::unique_ptr<TTpyobj>&& o, bool check = true) { move_construct(std::move(o), check); }
 
         template <typename TTpyobj,
                   std::enable_if_t<!std::is_base_of<typename PythonDomainProxyBase<Texecution>::template PyObj<Derived, Tpyobj>,
                                                     TTpyobj>::value, int> = 0>
-        PyObj(const TTpyobj& o, bool check = true);
+        PyObj(const TTpyobj& o, bool check = true) { conv_construct(o, check); }
 
         PyObj(const PyObj& other);
         PyObj& operator=(const PyObj& other);
@@ -59,6 +59,12 @@ public :
     private :
     
         struct Implementation;
+
+        template <typename TTpyobj>
+        void move_construct(std::unique_ptr<TTpyobj>&& o, bool check = true);
+
+        template <typename TTpyobj>
+        void conv_construct(const TTpyobj& o, bool check = true);
     };
 
     template<typename T, typename Titerator = py::iterator>
@@ -147,7 +153,7 @@ public :
         class Elements : public PyObj<Elements> {
         public :
             static constexpr char class_name[] = "applicable action space elements";
-            typedef PyIter<Action> PyIter;
+            typedef typename PythonDomainProxyBase<Texecution>::template PyIter<Action> PyIter;
 
             Elements();
             Elements(std::unique_ptr<py::object>&& applicable_action_space_elements);   
