@@ -67,7 +67,7 @@ public :
         void conv_construct(const TTpyobj& o, bool check = true);
     };
 
-    template<typename T, typename Titerator = py::iterator>
+    template <typename T, typename Titerator = py::iterator>
     class PyIter : PyObj<PyIter<T, Titerator>, Titerator> {
     public :
 
@@ -153,7 +153,7 @@ public :
         class Elements : public PyObj<Elements> {
         public :
             static constexpr char class_name[] = "applicable action space elements";
-            typedef typename PythonDomainProxyBase<Texecution>::template PyIter<Action> PyIter;
+            typedef typename PythonDomainProxyBase<Texecution>::template PyIter<Action, py::iterator> PyIter;
 
             Elements();
             Elements(std::unique_ptr<py::object>&& applicable_action_space_elements);   
