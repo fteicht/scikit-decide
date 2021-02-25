@@ -80,12 +80,16 @@ namespace skdecide {
             struct function_list_action {
                 template <typename Input>
                 static void apply(const Input& in, state& s) {
-                    // check if the domain has other functions than total-time and total-cost
+                    // check if the domain has other functions than total-time and total-cost without delcaring
+                    // numeric fluents requirement, or if it has the two later functions but without declaring
+                    //  action costs or time requirements, in which case numeric fluents are required
                     for (const auto& f : s.domain->get_functions()) {
-                        if ((f->get_name() != "total-cost") &&
-                            (f->get_name() != "total-time") &&
+                        if (((f->get_name() != "total-cost") ||
+                             ((f->get_name() == "total-cost") && !s.global_requirements->has_action_costs())) &&
+                            ((f->get_name() != "total-time") ||
+                             ((f->get_name() == "total-time") && !s.global_requirements->has_time() && !s.global_requirements->has_durative_actions())) &&
                             !s.global_requirements->has_numeric_fluents()) {
-                            throw pegtl::parse_error("declaring functions without :numeric-fluents requirement", in.position());
+                                throw pegtl::parse_error("declaring functions without :numeric-fluents requirement", in.position());
                         }
                     }
                 }

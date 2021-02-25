@@ -45,6 +45,7 @@
 #include "problem.hh"
 #include "optimization_expression.hh"
 #include "totaltime_expression.hh"
+#include "totalcost_expression.hh"
 #include "violation_expression.hh"
 
 namespace skdecide {

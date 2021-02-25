@@ -17,6 +17,7 @@
 
 #include "optimization_expression.hh"
 #include "totaltime_expression.hh"
+#include "totalcost_expression.hh"
 #include "violation_expression.hh"
 
 namespace pegtl = TAO_PEGTL_NAMESPACE;  // NOLINT
@@ -42,6 +43,24 @@ namespace skdecide {
             struct action<totaltime_expression> {
                 static void apply0(state& s) {
                     s.expression = std::make_shared<TotalTimeExpression>();
+                }
+            };
+
+            struct totalcost_expression : pegtl::sor<
+                                                keyword<'t', 'o', 't', 'a', 'l', '-', 'c', 'o', 's', 't'>,
+                                                pegtl::seq<
+                                                    pegtl::one<'('>,
+                                                    ignored,
+                                                    keyword<'t', 'o', 't', 'a', 'l', '-', 'c', 'o', 's', 't'>,
+                                                    ignored,
+                                                    pegtl::one<')'>
+                                                >
+                                          > {};
+            
+            template <>
+            struct action<totalcost_expression> {
+                static void apply0(state& s) {
+                    s.expression = std::make_shared<TotalCostExpression>();
                 }
             };
 
@@ -78,10 +97,11 @@ namespace skdecide {
                                         operation_expression<SubOperator, ground_f_exp>,
                                         operation_expression<MulOperator, ground_f_exp>,
                                         operation_expression<DivOperator, ground_f_exp>,
-                                        function_head,
                                         number_expression,
                                         totaltime_expression,
-                                        violation_expression
+                                        totalcost_expression,
+                                        violation_expression,
+                                        function_head
                                   > {};
 
             struct MinimizeOperator {

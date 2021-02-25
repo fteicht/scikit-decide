@@ -24,12 +24,6 @@ TEST_CASE("PDDL", "[pddl]") {
                 pp.path().filename().string() == "tidybot-sequential-satisficing" || // not using negative precondition requirement
                 pp.path().filename().string() == "tidybot-sequential-optimal" || // not using negative precondition requirement
                 pp.path().filename().string() == "elevator-temporal-satisficing" || // not using numeric fluents requirement
-                pp.path().filename().string() == "driverlog-numeric-hard-hand-coded" || // not using :time or :action-durations requirement with total-time
-                pp.path().filename().string() == "driverlog-numeric-hard-automatic" || // not using :time or :action-durations requirement with total-time
-                pp.path().filename().string() == "zenotravel-numeric-hand-coded" || // not using :time or :action-durations requirement with total-time
-                pp.path().filename().string() == "zenotravel-numeric-automatic" || // not using :time or :action-durations requirement with total-time
-                pp.path().filename().string() == "depots-numeric-automatic" || // not using :time or :action-durations requirement with total-time
-                pp.path().filename().string() == "depots-numeric-hand-coded" || // not using :time or :action-durations requirement with total-time
                 pp.path().filename().string() == "storage-temporal-satisficing" ) { // declares type 'area' twice
                 continue;
             }

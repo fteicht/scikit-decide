@@ -66,6 +66,7 @@ try:
     from __skdecide_hub_cpp import _PDDL_MinimizeExpression_ as MinimizeExpression
     from __skdecide_hub_cpp import _PDDL_MaximizeExpression_ as MaximizeExpression
     from __skdecide_hub_cpp import _PDDL_TotalTimeExpression_ as TotalTimeExpression
+    from __skdecide_hub_cpp import _PDDL_TotalCostExpression_ as TotalCostExpression
     from __skdecide_hub_cpp import _PDDL_ViolationExpression_ as ViolationExpression
     from __skdecide_hub_cpp import _PDDL_Effect_ as Effect
     from __skdecide_hub_cpp import _PDDL_PredicateEffect_ as PredicateEffect

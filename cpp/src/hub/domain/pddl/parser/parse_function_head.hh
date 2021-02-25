@@ -28,15 +28,15 @@ namespace skdecide {
                 static void apply(const Input& in, state& s) {
                     s.name = in.string();
                     s.expression = std::make_shared<FunctionExpression>();
-                    if (s.name == "total-cost" && !s.global_requirements->has_action_costs()) {
-                        throw pegtl::parse_error("using 'total-cost' without enabling :action-costs requirement", in.position());
-                    }
-                    if (s.name == "total-time" && !s.global_requirements->has_time() && !s.global_requirements->has_durative_actions()) {
-                        throw pegtl::parse_error("using 'total-time' without enabling :time nor :durative-actions requirement", in.position());
-                    }
                     try {
                         std::static_pointer_cast<FunctionExpression>(s.expression)->set_function(s.domain->get_function(s.name));
                     } catch (const std::exception& e) {
+                        if (s.name == "total-cost" && !s.global_requirements->has_action_costs()) {
+                            throw pegtl::parse_error("using 'total-cost' without enabling :action-costs requirement nor explicitly defining it", in.position());
+                        }
+                        if (s.name == "total-time" && !s.global_requirements->has_time() && !s.global_requirements->has_durative_actions()) {
+                            throw pegtl::parse_error("using 'total-time' without enabling :time nor :durative-actions requirement nor explicitly defining it", in.position());
+                        }
                         throw pegtl::parse_error(e.what(), in.position());
                     }
                 }
@@ -61,15 +61,15 @@ namespace skdecide {
                 static void apply(const Input& in, state& s) {
                     s.name = in.string();
                     s.expression = std::make_shared<FunctionExpression>();
-                    if (s.name == "total-cost" && !s.global_requirements->has_action_costs()) {
-                        throw pegtl::parse_error("using 'total-cost' without enabling :action-costs requirement", in.position());
-                    }
-                    if (s.name == "total-time" && !s.global_requirements->has_time() && !s.global_requirements->has_durative_actions()) {
-                        throw pegtl::parse_error("using 'total-time' without enabling :time nor :durative-actions requirement", in.position());
-                    }
                     try {
                         std::static_pointer_cast<FunctionExpression>(s.expression)->set_function(s.cls->get_function(s.name));
                     } catch (const std::exception& e) {
+                        if (s.name == "total-cost" && !s.global_requirements->has_action_costs()) {
+                            throw pegtl::parse_error("using 'total-cost' without enabling :action-costs requirement nor explicitly defining it", in.position());
+                        }
+                        if (s.name == "total-time" && !s.global_requirements->has_time() && !s.global_requirements->has_durative_actions()) {
+                            throw pegtl::parse_error("using 'total-time' without enabling :time nor :durative-actions requirement nor explicitly defining it", in.position());
+                        }
                         throw pegtl::parse_error(e.what(), in.position());
                     }
                 }

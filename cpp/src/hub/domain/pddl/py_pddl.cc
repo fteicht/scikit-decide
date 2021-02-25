@@ -790,6 +790,12 @@ void init_pypddl(py::module& m) {
             .def("__str__", (std::string (TotalTimeExpression::*)() const) &TotalTimeExpression::print)
         ;
     
+    py::class_<TotalCostExpression, TotalCostExpression::Ptr> py_total_cost_expression(m, "_PDDL_TotalCostExpression_");
+        py_total_cost_expression
+            .def(py::init<>())
+            .def("__str__", (std::string (TotalCostExpression::*)() const) &TotalCostExpression::print)
+        ;
+    
     py::class_<ViolationExpression, ViolationExpression::Ptr> py_violation_expression(m, "_PDDL_ViolationExpression_");
         py_violation_expression
             .def(py::init<>())
