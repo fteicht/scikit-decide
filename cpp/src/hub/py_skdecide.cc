@@ -17,6 +17,7 @@ void init_pylrtdp(py::module& m);
 void init_pymartdp(py::module& m);
 void init_pymcts(py::module& m);
 void init_pyriw(py::module& m);
+void init_pypddl(py::module& m);
 
 PYBIND11_MODULE(__skdecide_hub_cpp, m) {
     skdecide::Globals::init();
@@ -29,4 +30,5 @@ PYBIND11_MODULE(__skdecide_hub_cpp, m) {
     init_pymartdp(m);
     init_pymcts(m);
     init_pyriw(m);
+    init_pypddl(m);
 }

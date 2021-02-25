@@ -25,9 +25,11 @@ try:
     from __skdecide_hub_cpp import _PDDL_Function_ as Function
     from __skdecide_hub_cpp import _PDDL_DerivedPredicate_ as DerivedPredicate
     from __skdecide_hub_cpp import _PDDL_Class_ as Class
+    from __skdecide_hub_cpp import _PDDL_Number_ as Number
     from __skdecide_hub_cpp import _PDDL_Formula_ as Formula
     from __skdecide_hub_cpp import _PDDL_Preference_ as Preference
     from __skdecide_hub_cpp import _PDDL_PredicateFormula_ as PredicateFormula
+    from __skdecide_hub_cpp import _PDDL_EqualityFormula_ as EqualityFormula
     from __skdecide_hub_cpp import _PDDL_UniversalFormula_ as UniversalFormula
     from __skdecide_hub_cpp import _PDDL_ExistentialFormula_ as ExistentialFormula
     from __skdecide_hub_cpp import _PDDL_ConjunctionFormula_ as ConjunctionFormula
@@ -42,6 +44,15 @@ try:
     from __skdecide_hub_cpp import _PDDL_GreaterEqFormula_ as GreaterEqFormula
     from __skdecide_hub_cpp import _PDDL_LessFormula_ as LessFormula
     from __skdecide_hub_cpp import _PDDL_LessEqFormula_ as LessEqFormula
+    from __skdecide_hub_cpp import _PDDL_EqFormula_ as EqFormula
+    from __skdecide_hub_cpp import _PDDL_AlwaysFormula_ as AlwaysFormula
+    from __skdecide_hub_cpp import _PDDL_SometimeFormula_ as SometimeFormula
+    from __skdecide_hub_cpp import _PDDL_AtMostOnceFormula_ as AtMostOnceFormula
+    from __skdecide_hub_cpp import _PDDL_WithinFormula_ as WithinFormula
+    from __skdecide_hub_cpp import _PDDL_HoldDuringFormula_ as HoldDuringFormula
+    from __skdecide_hub_cpp import _PDDL_SometimeAfterFormula_ as SometimeAfterFormula
+    from __skdecide_hub_cpp import _PDDL_SometimeBeforeFormula_ as SometimeBeforeFormula
+    from __skdecide_hub_cpp import _PDDL_AlwaysWithinFormula_ as AlwaysWithinFormula
     from __skdecide_hub_cpp import _PDDL_Expression_ as Expression
     from __skdecide_hub_cpp import _PDDL_AddExpression_ as AddExpression
     from __skdecide_hub_cpp import _PDDL_SubExpression_ as SubExpression
@@ -50,6 +61,12 @@ try:
     from __skdecide_hub_cpp import _PDDL_MinusExpression_ as MinusExpression
     from __skdecide_hub_cpp import _PDDL_NumericalExpression_ as NumericalExpression
     from __skdecide_hub_cpp import _PDDL_FunctionExpression_ as FunctionExpression
+    from __skdecide_hub_cpp import _PDDL_TimeExpression_ as TimeExpression
+    from __skdecide_hub_cpp import _PDDL_DurationExpression_ as DurationExpression
+    from __skdecide_hub_cpp import _PDDL_MinimizeExpression_ as MinimizeExpression
+    from __skdecide_hub_cpp import _PDDL_MaximizeExpression_ as MaximizeExpression
+    from __skdecide_hub_cpp import _PDDL_TotalTimeExpression_ as TotalTimeExpression
+    from __skdecide_hub_cpp import _PDDL_ViolationExpression_ as ViolationExpression
     from __skdecide_hub_cpp import _PDDL_Effect_ as Effect
     from __skdecide_hub_cpp import _PDDL_PredicateEffect_ as PredicateEffect
     from __skdecide_hub_cpp import _PDDL_ConjunctionEffect_ as ConjunctionEffect
@@ -60,8 +77,8 @@ try:
     from __skdecide_hub_cpp import _PDDL_NegationEffect_ as NegationEffect
     from __skdecide_hub_cpp import _PDDL_AtStartEffect_ as AtStartEffect
     from __skdecide_hub_cpp import _PDDL_AtEndEffect_ as AtEndEffect
+    from __skdecide_hub_cpp import _PDDL_AtTimeEffect_ as AtTimeEffect
     from __skdecide_hub_cpp import _PDDL_DurationEffect_ as DurationEffect
-    from __skdecide_hub_cpp import _PDDL_FunctionEffect_ as FunctionEffect
     from __skdecide_hub_cpp import _PDDL_AssignEffect_ as AssignEffect
     from __skdecide_hub_cpp import _PDDL_ScaleUpEffect_ as ScaleUpEffect
     from __skdecide_hub_cpp import _PDDL_ScaleDownEffect_ as ScaleDownEffect

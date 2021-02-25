@@ -1,2 +1,3 @@
 #cmakedefine HAS_EXECUTION
 #cmakedefine HAS_OPENMP
+#define SKDECIDE_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
