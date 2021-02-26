@@ -102,9 +102,17 @@ namespace skdecide {
                 }
             };
 
-            struct problem_require_def : pegtl::if_must<open_problem_requirements,
-                                                        pegtl::seq<pegtl::list<require_key, ignored>,
-                                                                  pegtl::one<')'>>> {};
+            struct problem_require_def : pegtl::if_must<
+                                            open_problem_requirements,
+                                            pegtl::seq<
+                                                pegtl::list<
+                                                    require_key,
+                                                    ignored
+                                                >,
+                                                ignored,
+                                                pegtl::one<')'>
+                                            >
+                                         > {};
             
             template <> struct action<problem_require_def> {
                 static void apply0(state& s) {
