@@ -33,10 +33,14 @@ namespace skdecide {
                                     assignment<expression>,
                                     predicate_head<effect>
                               > {};
+            
+            struct cond_effect : pegtl::sor<
+                                    aggregation<Conjunction, p_effect>,
+                                    p_effect
+                                 > {};
 
             struct c_effect : pegtl::sor<
-                                    aggregation<Conjunction, p_effect>,
-                                    implication<effect>,
+                                    implication<cond_effect>,
                                     quantification<Universal, effect>,
                                     p_effect
                               > {};
@@ -44,11 +48,21 @@ namespace skdecide {
             struct p_effect_da : pegtl::sor<
                                     negation<predicate_head<effect>>,
                                     assignment<durative_expression>,
+                                    unary_constraint<AtStartEffectOperator>,
+                                    unary_constraint<AtEndEffectOperator>,
+                                    operation_expression<IncreaseOperator, timed_expression>,
+                                    operation_expression<DecreaseOperator, timed_expression>,
                                     predicate_head<effect>
                                  > {};
             
+            struct cond_effect_da : pegtl::sor<
+                                        aggregation<Conjunction, p_effect_da>,
+                                        p_effect_da
+                                    > {};
+
             struct a_effect_da : pegtl::sor<
-                                    aggregation<Conjunction, p_effect_da>,
+                                    implication<cond_effect_da>,
+                                    quantification<Universal, da_effect>,
                                     p_effect_da
                                  > {};
             
@@ -73,11 +87,14 @@ namespace skdecide {
             struct effect : pegtl::sor<
                                 empty_effect,
                                 aggregation<Conjunction, c_effect>,
-                                negation<predicate_head<effect>>,
-                                implication<effect>,
-                                quantification<Universal, effect>,
-                                predicate_head<effect>
+                                c_effect
                             > {};
+            
+            struct da_effect : pegtl::sor<
+                                    empty_effect,
+                                    aggregation<Conjunction, a_effect_da>,
+                                    a_effect_da
+                                  > {};
             
             struct process_effect : pegtl::sor<
                                         empty_effect,
@@ -85,18 +102,6 @@ namespace skdecide {
                                         operation_expression<IncreaseOperator, timed_expression>,
                                         operation_expression<DecreaseOperator, timed_expression>
                                     > {};
-            
-            struct timed_effect : pegtl::sor<
-                                        empty_effect,
-                                        aggregation<Conjunction, timed_effect>,
-                                        quantification<Universal, timed_effect>,
-                                        implication<timed_effect>,
-                                        unary_constraint<AtStartEffectOperator>,
-                                        unary_constraint<AtEndEffectOperator>,
-                                        operation_expression<IncreaseOperator, timed_expression>,
-                                        operation_expression<DecreaseOperator, timed_expression>,
-                                        assignment<expression>
-                                  > {};
 
         } // namespace parser
 

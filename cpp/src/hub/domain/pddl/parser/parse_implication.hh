@@ -24,8 +24,8 @@ namespace skdecide {
 
             struct formula;
             struct timed_formula;
-            struct effect;
-            struct timed_effect;
+            struct cond_effect;
+            struct cond_effect_da;
 
             template <typename ImpliedRule, typename Enable = void>
             struct ImplicationProxy;
@@ -52,8 +52,8 @@ namespace skdecide {
 
             template <typename ImpliedRule>
             struct ImplicationProxy<ImpliedRule,
-                                    typename std::enable_if<std::is_same<ImpliedRule, effect>::value ||
-                                                            std::is_same<ImpliedRule, timed_effect>::value>::type> {
+                                    typename std::enable_if<std::is_same<ImpliedRule, cond_effect>::value ||
+                                                            std::is_same<ImpliedRule, cond_effect_da>::value>::type> {
                 typedef keyword<'w', 'h', 'e', 'n'> keyword;
                 typedef ConditionalEffect PDDLType;
                 static std::stack<Effect::Ptr>& parsing_stack(state& s) { return s.effects; }
@@ -98,7 +98,7 @@ namespace skdecide {
             struct implication_lhs : pegtl::action<
                                         action,
                                         typename std::conditional<
-                                            std::is_same<ImpliedRule, timed_effect>::value,
+                                            std::is_same<ImpliedRule, cond_effect_da>::value,
                                             timed_formula,
                                             formula
                                         >::type

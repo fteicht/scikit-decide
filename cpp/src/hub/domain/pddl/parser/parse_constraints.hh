@@ -13,6 +13,7 @@
 
 #include "parse_aggregation.hh"
 #include "parse_quantification.hh"
+#include "parse_assignment.hh"
 #include "parse_number.hh"
 #include "parse_preference.hh"
 
@@ -29,7 +30,8 @@ namespace skdecide {
         namespace parser {
 
             struct formula;
-            struct a_effect_da;
+            struct effect;
+            struct durative_expression;
             struct duration_comparison;
 
             // Operators
@@ -133,7 +135,9 @@ namespace skdecide {
                                                 pegtl::seq<
                                                     typename std::conditional<
                                                         std::is_same<Operator, AtStartEffectOperator>::value || std::is_same<Operator, AtEndEffectOperator>::value,
-                                                        a_effect_da,
+                                                        // try_catch used below to avoid if_must rule in assignment<expression> failing
+                                                        // in rule effect whereas we want assignment<durative_expression>
+                                                        pegtl::sor<pegtl::try_catch<effect>, assignment<durative_expression>>,
                                                         typename std::conditional<
                                                             std::is_same<Operator, AtStartDurationOperator>::value || std::is_same<Operator, AtEndDurationOperator>::value,
                                                             duration_comparison,

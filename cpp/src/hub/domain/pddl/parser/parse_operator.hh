@@ -183,7 +183,7 @@ namespace skdecide {
                                                     process_effect,
                                                     typename std::conditional<
                                                         std::is_same<Operator, DurativeActionOperator>::value,
-                                                        timed_effect,
+                                                        da_effect,
                                                         effect
                                                     >::type
                                                 >::type

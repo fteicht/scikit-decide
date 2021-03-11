@@ -28,9 +28,9 @@ namespace skdecide {
             struct pref_con_goal;
             struct c_effect;
             struct p_effect;
+            struct a_effect_da;
             struct p_effect_da;
             struct process_effect;
-            struct timed_effect;
             struct duration_constraint;
             template <typename FormulaRule> struct precondition_preference;
 
@@ -56,9 +56,9 @@ namespace skdecide {
             struct AggregationProxy<AggregationOperator, AggregatedRule,
                                     typename std::enable_if<std::is_same<AggregatedRule, c_effect>::value ||
                                                             std::is_same<AggregatedRule, p_effect>::value ||
+                                                            std::is_same<AggregatedRule, a_effect_da>::value ||
                                                             std::is_same<AggregatedRule, p_effect_da>::value ||
-                                                            std::is_same<AggregatedRule, process_effect>::value ||
-                                                            std::is_same<AggregatedRule, timed_effect>::value>::type> {
+                                                            std::is_same<AggregatedRule, process_effect>::value>::type> {
                 typedef Effect BasePDDLType;
                 typedef typename AggregationOperator<BasePDDLType>::type DerivedPDDLType;
                 static std::stack<Effect::Ptr>& parsing_stack(state& s) { return s.effects; }
