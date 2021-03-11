@@ -16,13 +16,6 @@ TEST_CASE("PDDL", "[pddl]") {
             if (pp.path().filename().string() == "mystery-prime-round-1-adl" || // we don't handle :vars
                 pp.path().filename().string() == "logistics-round-1-adl" || // we don't handle :domain-axioms
                 pp.path().filename().string() == "mystery-round-1-adl" || // we don't handle 'in-package'
-                pp.path().filename().string() == "floor-tile-sequential-satisficing" || // not using numeric fluents requirement
-                pp.path().filename().string() == "floor-tile-sequential-optimal" || // not using numeric fluents requirement
-                pp.path().filename().string() == "floor-tile-sequential-multi-core" || // not using numeric fluents requirement
-                pp.path().filename().string() == "temporal-machine-shop-temporal-satisficing" || // declares type 'kiln0' twice
-                pp.path().filename().string() == "tidybot-sequential-multi-core" || // not using negative 
-                pp.path().filename().string() == "tidybot-sequential-satisficing" || // not using negative precondition requirement
-                pp.path().filename().string() == "tidybot-sequential-optimal" || // not using negative precondition requirement
                 pp.path().filename().string() == "elevator-temporal-satisficing" || // not using numeric fluents requirement
                 pp.path().filename().string() == "storage-temporal-satisficing" ) { // declares type 'area' twice
                 continue;
