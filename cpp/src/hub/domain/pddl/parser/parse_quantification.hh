@@ -28,7 +28,7 @@ namespace skdecide {
             struct pref_goal;
             struct formula;
             struct effect;
-            struct timed_effect;
+            struct da_effect;
             template <typename FormulaRule> struct precondition_preference;
 
             template <template <typename> class QuantificationOperator, typename QuantifiedRule, typename Enable = void>
@@ -50,7 +50,7 @@ namespace skdecide {
             template <template <typename> class QuantificationOperator, typename QuantifiedRule>
             struct QuantificationProxy<QuantificationOperator, QuantifiedRule,
                                        typename std::enable_if<std::is_same<QuantifiedRule, effect>::value ||
-                                                               std::is_same<QuantifiedRule, timed_effect>::value>::type> {
+                                                               std::is_same<QuantifiedRule, da_effect>::value>::type> {
                 typedef Effect BasePDDLType;
                 typedef typename QuantificationOperator<BasePDDLType>::type DerivedPDDLType;
                 static std::stack<Effect::Ptr>& parsing_stack(state& s) { return s.effects; }
