@@ -20,18 +20,25 @@
 using namespace skdecide::pddl;
 
 Domain::Domain(const std::string& name)
-: Identifier(name) {
-    add_type(Type::object());
-    add_type(Type::number());
-}
+: Identifier(name) {}
 
-Domain::~Domain() {
-    
-}
+Domain::~Domain() {}
 
 
 void Domain::set_requirements(const Requirements::Ptr& requirements) {
+    if (_requirements && _requirements->has_typing()) {
+        remove_type(Type::object());
+    }
+    if (_requirements && _requirements->has_fluents()) {
+        remove_type(Type::number());
+    }
     _requirements = requirements;
+    if (requirements->has_typing()) {
+        add_type(Type::object());
+    }
+    if (requirements->has_fluents()) {
+        add_type(Type::number());
+    }
 }
 
 
