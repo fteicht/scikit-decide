@@ -374,9 +374,8 @@ jobs:
     needs: [build-windows, setup]
     strategy:
       matrix:
-        os: ${{ fromJSON(needs.setup.outputs.test).windows }}
-        python-version: ${{ fromJSON(needs.setup.outputs.python_version) }}
-        compiler: [gnu]
+        os: ${{ fromJSON(needs.init.outputs.test_windows) }}
+        python-version: ${{ fromJSON(needs.init.outputs.python_versions) }}
       fail-fast: true
     runs-on: ${{ matrix.os }}
 
