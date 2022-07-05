@@ -7,5 +7,6 @@
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/martdp/impl/martdp_impl.hh"
 #include "${CMAKE_SOURCE_DIR}/src/utils/python_domain_proxy.hh"
 
-template class skdecide::MARTDPSolver<skdecide::PythonDomainProxy<${Texecution}, skdecide::MultiAgent>,
-                                      ${Texecution}>;
+template class skdecide::MARTDPSolver<
+    skdecide::PythonDomainProxy<${Texecution}, skdecide::MultiAgent>,
+    ${Texecution}>;

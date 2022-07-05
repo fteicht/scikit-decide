@@ -19,124 +19,105 @@
 #include "parse_domain.hh"
 #include "parse_problem.hh"
 
-namespace pegtl = TAO_PEGTL_NAMESPACE;  // NOLINT
+namespace pegtl = tao::pegtl; // NOLINT
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        namespace parser {
+namespace parser {
 
-            // parse domain
+// parse domain
 
-            struct domain : pegtl::if_must<
-                                pegtl::seq<
-                                    pegtl::one<'('>,
-                                    ignored,
-                                    keyword<'d', 'e', 'f', 'i', 'n', 'e'>,
-                                    ignored,
-                                    domain_name,
-                                    ignored
-                                >,
-                                pegtl::seq<
-                                    preamble,
-                                    ignored,
-                                    pegtl::one<')'>
-                                >
-                            > {};
-            
-            template <>
-            struct action<domain> {
-                static void apply0(state& s) {
-                    // release current domain
-                    s.domain.reset();
-                    s.registered_objects.clear();
-                }
-            };
+struct domain : pegtl::if_must<pegtl::seq<pegtl::one<'('>, ignored,
+                                          keyword<'d', 'e', 'f', 'i', 'n', 'e'>,
+                                          ignored, domain_name, ignored>,
+                               pegtl::seq<preamble, ignored, pegtl::one<')'>>> {
+};
 
-            struct problem : pegtl::if_must<
-                                pegtl::seq<
-                                    pegtl::one<'('>,
-                                    ignored,
-                                    keyword<'d', 'e', 'f', 'i', 'n', 'e'>,
-                                    ignored,
-                                    problem_name,
-                                    ignored,
-                                    problem_domain_name,
-                                    ignored
-                                >,
-                                pegtl::seq<
-                                    problem_body,
-                                    ignored,
-                                    pegtl::one<')'>
-                                >
-                             > {};
-            
-            template <>
-            struct action<problem> {
-                static void apply0(state& s) {
-                    // release current problem
-                    s.problem.reset();
-                    s.registered_objects.clear();
-                }
-            };
+template <> struct action<domain> {
+  static void apply0(state &s) {
+    // release current domain
+    s.domain.reset();
+    s.registered_objects.clear();
+  }
+};
 
-            struct grammar : pegtl::star<pegtl::seq<ignored, pegtl::sor<domain, problem>, ignored>> {};
+struct problem
+    : pegtl::if_must<
+          pegtl::seq<pegtl::one<'('>, ignored,
+                     keyword<'d', 'e', 'f', 'i', 'n', 'e'>, ignored,
+                     problem_name, ignored, problem_domain_name, ignored>,
+          pegtl::seq<problem_body, ignored, pegtl::one<')'>>> {};
 
-        } // namespace parser
+template <> struct action<problem> {
+  static void apply0(state &s) {
+    // release current problem
+    s.problem.reset();
+    s.registered_objects.clear();
+  }
+};
 
-        void Parser::parse(const std::list<std::string>& files,
-                           std::list<Domain::Ptr>& domains,
-                           std::list<Problem::Ptr>& problems,
-                           bool debug_logs) {
-            if (debug_logs) {
-                spdlog::set_level(spdlog::level::debug);
-            } else {
-                spdlog::set_level(spdlog::level::info);
-            }
+struct grammar
+    : pegtl::star<pegtl::seq<ignored, pegtl::sor<domain, problem>, ignored>> {};
 
-            parser::state s;
+} // namespace parser
 
-            // Load known domains
-            for (auto& d : domains) {
-                s.domains.insert(std::make_pair(d->get_name(), d));
-            }
+void Parser::parse(const std::list<std::string> &files,
+                   std::list<Domain::Ptr> &domains,
+                   std::list<Problem::Ptr> &problems, bool debug_logs) {
+  if (debug_logs) {
+    spdlog::set_level(spdlog::level::debug);
+  } else {
+    spdlog::set_level(spdlog::level::info);
+  }
 
-            for (const std::string& f : files) {
-                spdlog::info("Parsing " + f);
-                pegtl::file_input<> in(f);
-                
-                try {
-                    if (debug_logs) {
-                        pegtl::trace_state t;
-                        if (!pegtl::parse<parser::grammar, parser::action, pegtl::tracer>(in, t, s)) {
-                            throw std::runtime_error("SKDECIDE exception: unable to parse " + f);
-                        }
-                    } else {
-                        if (!pegtl::parse<parser::grammar, parser::action>(in, s)) {
-                            throw std::runtime_error("SKDECIDE exception: unable to parse " + f);
-                        }
-                    }
-                } catch (const pegtl::parse_error& e) {
-                    const auto p = e.positions().front();
-                    throw std::runtime_error("SKDECIDE parsing exception: " + std::string(e.what()) + '\n' +
-                                             std::string(in.line_at( p )) + '\n' + std::string( p.column, ' ' ) + '^');
-                } catch (const std::system_error& e) {
-                    throw std::runtime_error("SKDECIDE exception: error when reading " + f + ": " + e.what());
-                } catch (const std::exception& e) {
-                    throw std::runtime_error("SKDECIDE exception: error when parsing " + f + ": " + e.what());
-                }
-            }
+  parser::state s;
 
-            for (const auto& d : s.domains) {
-                domains.push_back(d.second);
-            }
+  // Load known domains
+  for (auto &d : domains) {
+    s.domains.insert(std::make_pair(d->get_name(), d));
+  }
 
-            for (const auto& p : s.problems) {
-                problems.push_back(p.second);
-            }
+  for (const std::string &f : files) {
+    spdlog::info("Parsing " + f);
+    pegtl::file_input<> in(f);
+
+    try {
+      if (debug_logs) {
+        pegtl::trace_state t;
+        if (!pegtl::parse<parser::grammar, parser::action, pegtl::tracer>(in, t,
+                                                                          s)) {
+          throw std::runtime_error("SKDECIDE exception: unable to parse " + f);
         }
+      } else {
+        if (!pegtl::parse<parser::grammar, parser::action>(in, s)) {
+          throw std::runtime_error("SKDECIDE exception: unable to parse " + f);
+        }
+      }
+    } catch (const pegtl::parse_error &e) {
+      const auto p = e.positions().front();
+      throw std::runtime_error(
+          "SKDECIDE parsing exception: " + std::string(e.what()) + '\n' +
+          std::string(in.line_at(p)) + '\n' + std::string(p.column, ' ') + '^');
+    } catch (const std::system_error &e) {
+      throw std::runtime_error("SKDECIDE exception: error when reading " + f +
+                               ": " + e.what());
+    } catch (const std::exception &e) {
+      throw std::runtime_error("SKDECIDE exception: error when parsing " + f +
+                               ": " + e.what());
+    }
+  }
 
-    } // namespace pddl
+  for (const auto &d : s.domains) {
+    domains.push_back(d.second);
+  }
+
+  for (const auto &p : s.problems) {
+    problems.push_back(p.second);
+  }
+}
+
+} // namespace pddl
 
 } // namespace skdecide
