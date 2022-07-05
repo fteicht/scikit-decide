@@ -91,7 +91,9 @@ try:
     from __skdecide_hub_cpp import _PDDL_Process_ as Process
 except ImportError:
     sys.path = record_sys_path
-    print('Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".')
+    print(
+        'Scikit-decide C++ hub library not found. Please check it is installed in "skdecide/hub".'
+    )
     raise
 
 # class PDDL:
@@ -106,6 +108,6 @@ except ImportError:
 
 #         """
 #         self._pddl = _PDDL_(domain_file, problem_file, debug_logs)
-    
+
 #     def get_domain(self):
 #         return self._pddl.get_domain()

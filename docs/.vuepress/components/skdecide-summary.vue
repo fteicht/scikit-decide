@@ -1,13 +1,11 @@
 <template>
   <div style="margin: 10px 0px">
-    <span>{{ isSolver ? 'Solver' : 'Domain' }} specification:</span>
-    
     <div style="margin-top: 5px; margin-bottom: 10px">
     <!-- Template -->
     <el-tag type="danger" effect="dark" style="margin-bottom: 5px">
       <strong>{{ selection[domainOrSolver].template }}</strong>
     </el-tag>
-    
+
     <!-- Characteristics -->
     <el-tag v-for="[characteristic, level] in Object.entries(selection[domainOrSolver].characteristics).filter(([k, v]) => !selection[domainOrSolver].showFinetunedOnly || isFinetuned(k, v, domainOrSolver))" :key="characteristic" :effect="isFinetuned(characteristic, level, domainOrSolver) ? 'dark' : 'plain'" class="tag">
       <el-tag size="mini" class="subtag">{{ characteristic }}</el-tag>
@@ -25,7 +23,7 @@
 
     <!-- Spec dialog -->
     <el-dialog :title="'Edit ' + domainOrSolver + ' specification'" :visible.sync="specDialogVisible">
-      <iframe v-if="specDialogVisible" :src="$withBase('/guide/_' + domainOrSolver + 'spec.html')" frameborder="0" style="width: 100%; height: 50vh"></iframe>
+      <iframe v-if="specDialogVisible" :src="$withBase('/codegen/_' + domainOrSolver + 'spec.html')" frameborder="0" style="width: 100%; height: 50vh"></iframe>
     </el-dialog>
   </div>
 </template>

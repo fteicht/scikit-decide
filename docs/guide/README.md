@@ -10,6 +10,8 @@ It is meant for being a one-stop shop solution to formalize decision-making prob
 
 <img :src="$withBase('/architecture.png')" alt="Architecture">
 
+Please refer to our <router-link to="/install">installation instructions</router-link> for installing scikit-decide.
+
 ### As a domain developer
 
 ::: tip
@@ -21,37 +23,6 @@ Scikit-decide supports formalizing the problem one characteristic at a time with
 ::: tip
 Scikit-decide provides a meaningful API to interact with domains at the expected level of information, as well as a catalog of domains/solvers to test/benchmark new algorithms.
 :::
-
-## Installation
-
-### 1. Make sure to have a Python 3.7+ environment
-
-The use of a virtual environment for scikit-decide is recommended, e.g. by using [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install):
-
-    conda create --name skdecide python=3.7
-    conda activate skdecide
-
-### 2. Install the scikit-decide library
-
-#### a. Full installation (recommended)
-
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE/python
-    pip install .[all]
-
-This will install the core library and additionally all dependencies required by domains/solvers in the hub (scikit-decide catalog).
-
-Alternatively, if you wish to install only the ones required by domains (resp. solvers) from the hub, replace `[all]` in the last command by `[domains]` (resp. `[solvers]`).
-
-#### b. Minimal installation (not recommended)
-
-Make sure you are in the "scikit-decide for Python" root directory and install with Pip:
-
-    cd YOUR_LOCAL_PATH_TO_GIT_CLONED_SKDECIDE/python
-    pip install .
-
-This will only install the core library, which is enough if you intend to create your own domain and solver.
 
 ## Getting started
 
@@ -101,44 +72,68 @@ compatible_solvers = utils.match_solvers(MyDomain())
 print(compatible_solvers)
 # prints: [<class 'skdecide.hub.solver.lazy_astar.lazy_astar.LazyAstar'>, ...]
 
-MySolver = compatible_solvers[0]  # selecting Lazy A* solver here
+# select Lazy A* solver and instanciate with default parameters
+from skdecide.hub.solver.lazy_astar import LazyAstar
+mysolver = LazyAstar()
 ```
 
 ### Compute a solution
 
-Here is how to solve `MyDomain` with `MySolver`:
+Here is how to solve `MyDomain` with `mysolver`:
 
 ```python
-# Simple case (no arguments for domain nor solver)
-solution = MyDomain.solve_with(MySolver)
-
-# Case with solver arguments
-solution = MyDomain.solve_with(lambda: MySolver(verbose=True))
+MyDomain.solve_with(mysolver)
 ```
 
 ### Test the solution
 
 ```python
 # Simple case (one basic rollout)
-utils.rollout(MyDomain(), solution)
+utils.rollout(MyDomain(), mysolver)
 
 # Example of additional rollout parameters
-utils.rollout(MyDomain(), solution, num_episodes=3, max_steps=1000, max_framerate=30)
+utils.rollout(MyDomain(), mysolver, num_episodes=3, max_steps=1000, max_framerate=30)
 ```
 
 In the example of the Maze solved with Lazy A*, the goal (in green) should be reached by the agent (in blue):
 
 <img :src="$withBase('/maze.png')" alt="Maze">
 
+::: tip
+The rendering of the maze is done in a separate window when running in a local python script.
+To get a similar result in a jupyter notebook, add a line
+```jupyter
+%matplotlib qt
+```
+before calling `rollout()`. See also the available <router-link to="/notebooks">tutorial notebooks</router-link>
+to know how to render the maze inline.
+:::
+
+### Clean up the solver
+
+Some solvers (especially parallel C++ ones) need to be properly cleaned once used.
+```python
+mysolver._cleanup()
+```
+
+::: tip
+Note that this is automatically done if you use the solver within a `with` statement:
+```python
+with LazyAstar() as mysolver:
+    MyDomain.solve_with(mysolver)
+    utils.rollout(MyDomain(), mysolver)
+```
+:::
+
 ## Examples
 
-**Go to <router-link to="_examples">Examples</router-link> for a curated list of Python notebooks (recommended to start).**
+### Notebooks
 
-More examples can be found in the `/examples` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
+Go to the dedicated <router-link to="/notebooks">Notebooks</router-link> page to see a curated list of notebooks recommended to start with scikit-decide.
 
-**Warning**: the examples whose filename starts with an underscore are currently being migrated to the new API and might not be working in the meantime (same goes for domains/solvers inside `skdecide/hub`).
+### Python scripts
 
-**Warning**: some content currently in the hub (especially the MasterMind domain and the POMCP/CGP solvers) will require permission from their original authors before entering the public hub when open sourced.
+More examples can be found in the `examples/` folder, showing how to import or define a domain, and how to run or solve it. Most of the examples rely on scikit-decide Hub, an extensible catalog of domains/solvers.
 
 ### Playground
 
@@ -172,15 +167,15 @@ These combinations are particularly efficient if you want to try them out:
 - Mountain Car continuous -> CGP: Cartesian Genetic Programming
 - ATARI Pacman -> Random walk
 
-**Warning**: some domains/solvers might require extra manual setup steps to work at 100%. In the future, each scikit-decide hub entry should have a dedicated help page to list them, but in the meantime please refer to this:
-
-- [domain] OpenAI Gym ones -> [gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default
-- [solver] PPO: Proximal Policy Optimization -> see [Stable Baselines installation](https://stable-baselines.readthedocs.io/en/master/guide/install.html)
-- [solver] IW: Iterated Width search (same for AOstar, Astar, BFWS) -> special C++ compilation (TBD)
+::: warning
+Some domains/solvers might require extra manual setup steps to work at 100%.
+In the future, each scikit-decide hub entry might have a dedicated help page to list them, but in the meantime please refer to this:
+- OpenAI Gym domains: [OpenAI Gym](http://gym.openai.com/docs/#installation) for loading Gym environments not included by default (e.g. atari games).
+:::
 
 ## Code generators
 
-**Go to <router-link to="codegen">Code generators</router-link> for assistance when creating a new domain or solver.**
+Go to <router-link to="/codegen">Code generators</router-link> for assistance when creating a new domain or solver.
 
 ## Roadmap
 

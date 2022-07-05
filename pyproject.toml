@@ -1,0 +1,132 @@
+[tool.poetry]
+name = "scikit-decide"
+version = "0.0.0"
+description = "The AI framework for Reinforcement Learning, Automated Planning and Scheduling"
+authors = [ "Airbus AI Research <scikit-decide@airbus.com>",]
+license = "MIT"
+readme = "README.md"
+homepage = "https://airbus.github.io/scikit-decide/"
+repository = "https://github.com/airbus/scikit-decide"
+keywords = ["reinforcement learning", "planning", "scheduling"]
+packages = [{include = "skdecide"}]
+include = [ "LICENSE", "README.md", ]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Programming Language :: C++",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Software Development",
+    "Topic :: Scientific/Engineering",
+]
+
+[tool.poetry.build]
+script = "builder.py"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+format-jinja = """
+    {%- if distance == 0 -%}
+        {{ base }}
+    {%- else -%}
+        {{ serialize_pep440(bump_version(base), stage, revision, dev=distance, metadata=[commit]) }}
+    {%- endif -%}
+"""
+
+[tool.poetry-dynamic-versioning.substitution]
+files = ["skdecide/__init__.py"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+pynng = "^0.6.2"
+pathos = "^0.2.7"
+simplejson = {version = "^3.17.2", optional = true}
+gym = {version = "^0.18.0", optional = true}
+numpy = {version = "^1.20.1", optional = true}
+matplotlib = {version = "^3.3.4", optional = true}
+joblib = {version = "^1.0.1", optional = true}
+stable-baselines3 = {version = "^0.11.1", optional = true}
+ray = {extras = ["rllib"], version = "^1.2.0", optional = true}
+networkx = {version = "^2.5", optional = true}
+minizinc = {version = "^0.4.2", optional = true}
+mip = {version = "^1.13.0", optional = true}
+deap = {version = "^1.3.1", optional = true}
+protobuf = {version = "<4", optional = true}
+
+[tool.poetry.extras]
+domains = [ "gym", "numpy", "matplotlib", "simplejson" ]
+solvers = [ "gym", "numpy", "joblib", "ray", "protobuf", "stable-baselines3" ]
+discrete_optimization = [ "networkx", "minizinc", "mip", "deap" ]
+all = [ "gym", "numpy", "matplotlib", "simplejson", "joblib", "ray", "protobuf", "stable-baselines3", "networkx", "minizinc", "mip", "deap" ]
+
+[tool.poetry.plugins."skdecide.domains"]
+  GymDomain = "skdecide.hub.domain.gym:GymDomain [domains]"
+  DeterministicGymDomain = "skdecide.hub.domain.gym:DeterministicGymDomain [domains]"
+  CostDeterministicGymDomain = "skdecide.hub.domain.gym:CostDeterministicGymDomain [domains]"
+  GymPlanningDomain = "skdecide.hub.domain.gym:GymPlanningDomain [domains]"
+  GymWidthPlanningDomain = "skdecide.hub.domain.gym:GymWidthPlanningDomain [domains]"
+  MasterMind = "skdecide.hub.domain.mastermind:MasterMind [domains]"
+  Maze = "skdecide.hub.domain.maze:Maze [domains]"
+  RockPaperScissors = "skdecide.hub.domain.rock_paper_scissors:RockPaperScissors [domains]"
+  SimpleGridWorld = "skdecide.hub.domain.simple_grid_world:SimpleGridWorld [domains]"
+
+[tool.poetry.plugins."skdecide.solvers"]
+  AOstar = "skdecide.hub.solver.aostar:AOstar"
+  Astar = "skdecide.hub.solver.astar:Astar"
+  LRTAstar = "skdecide.hub.solver.lrtastar:LRTAstar"
+  MCTS = "skdecide.hub.solver.mcts:MCTS"
+  UCT = "skdecide.hub.solver.mcts:UCT"
+  AugmentedRandomSearch = "skdecide.hub.solver.ars:AugmentedRandomSearch [solvers]"
+  BFWS = "skdecide.hub.solver.bfws:BFWS"
+  CGP = "skdecide.hub.solver.cgp:CGP [solvers]"
+  IW = "skdecide.hub.solver.iw:IW"
+  RIW = "skdecide.hub.solver.riw:RIW"
+  LRTDP = "skdecide.hub.solver.lrtdp:LRTDP"
+  ILAOstar = "skdecide.hub.solver.ilaostar:ILAOstar"
+  LazyAstar = "skdecide.hub.solver.lazy_astar:LazyAstar"
+  MARTDP = "skdecide.hub.solver.martdp:MARTDP"
+  MAHD = "skdecide.hub.solver.mahd:MAHD"
+  MaxentIRL = "skdecide.hub.solver.maxent_irl:MaxentIRL [solvers]"
+  POMCP = "skdecide.hub.solver.pomcp:POMCP"
+  RayRLlib = "skdecide.hub.solver.ray_rllib:RayRLlib [solvers]"
+  SimpleGreedy = "skdecide.hub.solver.simple_greedy:SimpleGreedy"
+  StableBaseline = "skdecide.hub.solver.stable_baselines:StableBaseline [solvers]"
+
+[tool.poetry.dev-dependencies]
+poetry-dynamic-versioning = "^0.13.0"
+pytest = "^6.2.2"
+pytest-cov = "^2.11.1"
+simplejson = "^3.17.2"
+tqdm = "^4.59.0"
+nbmake = "^1.0"
+docopt = ">=0.6.2"
+commonmark = ">=0.9.1"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+
+[tool.isort]
+profile = "black"
+
+[tool.pycln]
+all = true
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "setuptools>=49.2.1", "poetry-dynamic-versioning>=0.13.0"]
+build-backend = "poetry.core.masonry.api"
