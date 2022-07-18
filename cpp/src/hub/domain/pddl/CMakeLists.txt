@@ -10,6 +10,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "ConjunctionFormula!Con;DisjunctionFormula!Dis")
 
+generate_template_instantiation_files(
+        ASSIGNMENT_EFFECT_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/assignment_effect.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "AssignEffect!Asg;ScaleUpEffect!ScU;ScaleDownEffect!ScD;IncreaseEffect!Inc;DecreaseEffect!Dec")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -20,6 +26,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/aggregation_effect.cc
         ${AGGREGATION_FORMULA_TEMPLATE_FILES}
         impl/aggregation_formula.cc
+        ${ASSIGNMENT_EFFECT_TEMPLATE_FILES}
+        impl/assignment_effect.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
