@@ -19,11 +19,8 @@ public:
   typedef std::vector<Effect::Ptr> EffectVector;
 
   AggregationEffect();
-
   AggregationEffect(const AggregationEffect &other);
-
   AggregationEffect &operator=(const AggregationEffect &other);
-
   virtual ~AggregationEffect();
 
   AggregationEffect &append_effect(const Effect::Ptr &effect);
@@ -43,7 +40,6 @@ public:
   const Effect::Ptr &effect_at(const std::size_t &index);
 
   const EffectVector &get_effects() const;
-
   virtual std::ostream &print(std::ostream &o) const;
 
 private:
@@ -59,11 +55,8 @@ public:
   typedef std::vector<EffectPtr> EffectVector;
 
   ConjunctionEffect();
-
   ConjunctionEffect(const ConjunctionEffect &other);
-
   ConjunctionEffect &operator=(const ConjunctionEffect &other);
-
   virtual ~ConjunctionEffect();
 };
 
@@ -76,11 +69,8 @@ public:
   typedef std::vector<EffectPtr> EffectVector;
 
   DisjunctionEffect();
-
   DisjunctionEffect(const DisjunctionEffect &other);
-
   DisjunctionEffect &operator=(const DisjunctionEffect &other);
-
   virtual ~DisjunctionEffect();
 };
 
