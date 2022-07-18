@@ -10,124 +10,86 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        template <typename Derived>
-        class AggregationEffect : public Effect {
-        public :
-            typedef std::shared_ptr<AggregationEffect<Derived>> Ptr;
-            typedef Effect::Ptr EffectPtr;
-            typedef std::vector<Effect::Ptr> EffectVector;
+template <typename Derived> class AggregationEffect : public Effect {
+public:
+  typedef std::shared_ptr<AggregationEffect<Derived>> Ptr;
+  typedef Effect::Ptr EffectPtr;
+  typedef std::vector<Effect::Ptr> EffectVector;
 
-            AggregationEffect() {}
-            
-            AggregationEffect(const AggregationEffect& other)
-                : _effects(other._effects) {}
-            
-            AggregationEffect& operator= (const AggregationEffect& other) {
-                this->_effects = other._effects;
-                return *this;
-            }
+  AggregationEffect();
 
-            virtual ~AggregationEffect() {}
+  AggregationEffect(const AggregationEffect &other);
 
-            AggregationEffect& append_effect(const Effect::Ptr& effect) {
-                _effects.push_back(effect);
-                return *this;
-            }
+  AggregationEffect &operator=(const AggregationEffect &other);
 
-            /**
-             * Removes the effect at a given index.
-             * Throws an exception if the given index exceeds the size of the
-             * aggregation effect
-             */
-            AggregationEffect& remove_effect(const std::size_t& index) {
-                if (index >= _effects.size()) {
-                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
-                                            " exceeds the size of the '" + Derived::class_name + "' effect");
-                } else {
-                    _effects.erase(_effects.begin() + index);
-                    return *this;
-                }
-            }
+  virtual ~AggregationEffect();
 
-            /**
-             * Gets the effect at a given index.
-             * Throws an exception if the given index exceeds the size of the
-             * aggregation effect
-             */
-            const Effect::Ptr& effect_at(const std::size_t& index) {
-                if (index >= _effects.size()) {
-                    throw std::out_of_range("SKDECIDE exception: index " + std::to_string(index) +
-                                            " exceeds the size of the '" + Derived::class_name + "' effect");
-                } else {
-                    return _effects[index];
-                }
-            }
+  AggregationEffect &append_effect(const Effect::Ptr &effect);
 
-            const EffectVector& get_effects() const {
-                return _effects;
-            }
+  /**
+   * Removes the effect at a given index.
+   * Throws an exception if the given index exceeds the size of the
+   * aggregation effect
+   */
+  AggregationEffect &remove_effect(const std::size_t &index);
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << Derived::class_name;
-                for (const auto& f : _effects) {
-                    o << " " << *f;
-                }
-                o << ")";
-                return o;
-            }
-        
-        private :
-            EffectVector _effects;
-        };
+  /**
+   * Gets the effect at a given index.
+   * Throws an exception if the given index exceeds the size of the
+   * aggregation effect
+   */
+  const Effect::Ptr &effect_at(const std::size_t &index);
 
+  const EffectVector &get_effects() const;
 
-        class ConjunctionEffect : public AggregationEffect<ConjunctionEffect> {
-        public :
-            static constexpr char class_name[] = "and";
+  virtual std::ostream &print(std::ostream &o) const;
 
-            typedef std::shared_ptr<ConjunctionEffect> Ptr;
-            typedef AggregationEffect<ConjunctionEffect>::EffectPtr EffectPtr;
-            typedef std::vector<EffectPtr> EffectVector;
+private:
+  EffectVector _effects;
+};
 
-            ConjunctionEffect() {}
-            
-            ConjunctionEffect(const ConjunctionEffect& other)
-                : AggregationEffect(other) {}
-            
-            ConjunctionEffect& operator= (const ConjunctionEffect& other) {
-                dynamic_cast<AggregationEffect<ConjunctionEffect>&>(*this) = other;
-                return *this;
-            }
+class ConjunctionEffect : public AggregationEffect<ConjunctionEffect> {
+public:
+  static constexpr char class_name[] = "and";
 
-            virtual ~ConjunctionEffect() {}
-        };
+  typedef std::shared_ptr<ConjunctionEffect> Ptr;
+  typedef AggregationEffect<ConjunctionEffect>::EffectPtr EffectPtr;
+  typedef std::vector<EffectPtr> EffectVector;
 
+  ConjunctionEffect();
 
-        class DisjunctionEffect : public AggregationEffect<DisjunctionEffect> {
-        public :
-            static constexpr char class_name[] = "oneof";
+  ConjunctionEffect(const ConjunctionEffect &other);
 
-            typedef std::shared_ptr<DisjunctionEffect> Ptr;
-            typedef AggregationEffect<DisjunctionEffect>::EffectPtr EffectPtr;
-            typedef std::vector<EffectPtr> EffectVector;
+  ConjunctionEffect &operator=(const ConjunctionEffect &other);
 
-            DisjunctionEffect() {}
-            
-            DisjunctionEffect(const DisjunctionEffect& other)
-                : AggregationEffect(other) {}
-            
-            DisjunctionEffect& operator= (const DisjunctionEffect& other) {
-                dynamic_cast<AggregationEffect<DisjunctionEffect>&>(*this) = other;
-                return *this;
-            }
+  virtual ~ConjunctionEffect();
+};
 
-            virtual ~DisjunctionEffect() {}
-        };
+class DisjunctionEffect : public AggregationEffect<DisjunctionEffect> {
+public:
+  static constexpr char class_name[] = "oneof";
 
-    } // namespace pddl
+  typedef std::shared_ptr<DisjunctionEffect> Ptr;
+  typedef AggregationEffect<DisjunctionEffect>::EffectPtr EffectPtr;
+  typedef std::vector<EffectPtr> EffectVector;
+
+  DisjunctionEffect();
+
+  DisjunctionEffect(const DisjunctionEffect &other);
+
+  DisjunctionEffect &operator=(const DisjunctionEffect &other);
+
+  virtual ~DisjunctionEffect();
+};
+
+} // namespace pddl
 
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/aggregation_effect_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_AGGREGATION_EFFECT_HH
