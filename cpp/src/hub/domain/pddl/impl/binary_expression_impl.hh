@@ -3,7 +3,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "hub/domain/pddl/aggregation_effect.hh"
+#include "hub/domain/pddl/binary_expression.hh"
 
 namespace skdecide {
 
