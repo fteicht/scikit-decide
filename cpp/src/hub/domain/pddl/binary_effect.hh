@@ -10,52 +10,31 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class BinaryEffect { // does not inherit from Effect since Action is not an effect but needs BinaryEffect's methods
-        public :
-            typedef std::shared_ptr<BinaryEffect> Ptr;
+class BinaryEffect { // does not inherit from Effect since Action is not an
+                     // effect but needs BinaryEffect's methods
+public:
+  typedef std::shared_ptr<BinaryEffect> Ptr;
 
-            BinaryEffect() {}
+  BinaryEffect();
+  BinaryEffect(const Formula::Ptr &condition, const Effect::Ptr &effect);
+  BinaryEffect(const BinaryEffect &other);
+  BinaryEffect &operator=(const BinaryEffect &other);
+  virtual ~BinaryEffect();
 
-            BinaryEffect(const Formula::Ptr& condition,
-                         const Effect::Ptr& effect)
-                : _condition(condition), _effect(effect) {}
-            
-            BinaryEffect(const BinaryEffect& other)
-                : _condition(other._condition),
-                  _effect(other._effect) {}
-            
-            BinaryEffect& operator= (const BinaryEffect& other) {
-                this->_condition = other._condition;
-                this->_effect = other._effect;
-                return *this;
-            }
+  void set_condition(const Formula::Ptr &condition);
+  const Formula::Ptr &get_condition() const;
 
-            virtual ~BinaryEffect() {}
+  void set_effect(const Effect::Ptr &effect);
+  const Effect::Ptr &get_effect() const;
 
-            void set_condition(const Formula::Ptr& condition) {
-                _condition = condition;
-            }
+protected:
+  Formula::Ptr _condition;
+  Effect::Ptr _effect;
+};
 
-            const Formula::Ptr& get_condition() const {
-                return _condition;
-            }
-
-            void set_effect(const Effect::Ptr& effect) {
-                _effect = effect;
-            }
-
-            const Effect::Ptr& get_effect() const {
-                return _effect;
-            }
-
-        protected :
-            Formula::Ptr _condition;
-            Effect::Ptr _effect;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

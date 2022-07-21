@@ -36,6 +36,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${ASSIGNMENT_EFFECT_TEMPLATE_FILES}
         impl/assignment_effect.cc
         ${ASSOCIATIVE_CONTAINER_TEMPLATE_FILES}
+        impl/binary_effect.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
