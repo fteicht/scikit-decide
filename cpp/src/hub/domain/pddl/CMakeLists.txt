@@ -23,6 +23,12 @@ generate_template_instantiation_files(
         "Tderived" "Domain!Dom;Problem!Pbm"
         "Tsymbol" "Class!Cls;Predicate!Prd;DerivedPredicate!Dpr;Function!Fun;Object!Obj;Preference!Prf;Type!Typ;Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
 
+generate_template_instantiation_files(
+        BINARY_EXPRESSION_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/binary_expression.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "AddExpression!Ade;SubExpression!Sue;MulExpression!Mue;DivExpression!Die;GreaterFormula!Grf;GreaterEqFormula!Gef;LessFormula!Lsf;LessEqFormula!Lef;EqFormula!Eqf")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -37,6 +43,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/assignment_effect.cc
         ${ASSOCIATIVE_CONTAINER_TEMPLATE_FILES}
         impl/binary_effect.cc
+        ${BINARY_EXPRESSION_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

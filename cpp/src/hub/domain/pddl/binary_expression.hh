@@ -9,58 +9,33 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        template <typename Derived>
-        class BinaryExpression : public Expression {
-        public :
-            typedef std::shared_ptr<BinaryExpression<Derived>> Ptr;
+template <typename Derived> class BinaryExpression : public Expression {
+public:
+  typedef std::shared_ptr<BinaryExpression<Derived>> Ptr;
 
-            BinaryExpression() {}
+  BinaryExpression();
+  BinaryExpression(const Expression::Ptr &left_expression,
+                   const Expression::Ptr &right_expression);
+  BinaryExpression(const BinaryExpression<Derived> &other);
+  BinaryExpression<Derived> &operator=(const BinaryExpression<Derived> &other);
+  virtual ~BinaryExpression();
 
-            BinaryExpression(const Expression::Ptr& left_expression,
-                             const Expression::Ptr& right_expression)
-                : _left_expression(left_expression), _right_expression(right_expression) {}
-            
-            BinaryExpression(const BinaryExpression<Derived>& other)
-                : _left_expression(other._left_expression),
-                  _right_expression(other._right_expression) {}
-            
-            BinaryExpression<Derived>& operator= (const BinaryExpression<Derived>& other) {
-                this->_left_expression = other._left_expression;
-                this->_right_expression = other._right_expression;
-                return *this;
-            }
+  void set_left_expression(const Expression::Ptr &expression);
+  const Expression::Ptr &get_left_expression() const;
 
-            virtual ~BinaryExpression() {}
+  void set_right_expression(const Expression::Ptr &expression);
+  const Expression::Ptr &get_right_expression() const;
 
-            void set_left_expression(const Expression::Ptr& expression) {
-                _left_expression = expression;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
 
-            const Expression::Ptr& get_left_expression() const {
-                return _left_expression;
-            }
+protected:
+  Expression::Ptr _left_expression;
+  Expression::Ptr _right_expression;
+};
 
-            void set_right_expression(const Expression::Ptr& expression) {
-                _right_expression = expression;
-            }
-
-            const Expression::Ptr& get_right_expression() const {
-                return _right_expression;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << Derived::class_name << " " << *_left_expression << " " << *_right_expression << ")";
-                return o;
-            }
-
-        protected :
-            Expression::Ptr _left_expression;
-            Expression::Ptr _right_expression;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
