@@ -35,6 +35,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "SometimeAfterFormula!Saf;SometimeBeforeFormula!Sbf;AlwaysWithinFormula!Awf;ImplyFormula!Imf")
 
+generate_template_instantiation_files(
+        CLASS_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/class_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -51,6 +57,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/binary_effect.cc
         ${BINARY_EXPRESSION_TEMPLATE_FILES}
         ${BINARY_FORMULA_TEMPLATE_FILES}
+        ${CLASS_CONTAINER_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

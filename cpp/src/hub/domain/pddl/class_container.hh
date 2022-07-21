@@ -9,49 +9,34 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Class;
+class Class;
 
-        template <typename Derived>
-        class ClassContainer : public AssociativeContainer<Derived, Class> {
-        public :
-            typedef typename AssociativeContainer<Derived, Class>::SymbolPtr ClassPtr;
-            typedef typename AssociativeContainer<Derived, Class>::SymbolSet ClassSet;
+template <typename Derived>
+class ClassContainer : public AssociativeContainer<Derived, Class> {
+public:
+  typedef typename AssociativeContainer<Derived, Class>::SymbolPtr ClassPtr;
+  typedef typename AssociativeContainer<Derived, Class>::SymbolSet ClassSet;
 
-            ClassContainer(const ClassContainer& other)
-                : AssociativeContainer<Derived, Class>(other) {}
-            
-            ClassContainer& operator=(const ClassContainer& other) {
-                dynamic_cast<AssociativeContainer<Derived, Class>&>(*this) = other;
-                return *this;
-            }
+  ClassContainer(const ClassContainer &other);
+  ClassContainer &operator=(const ClassContainer &other);
 
-            template <typename T>
-            inline const ClassPtr& add_class(const T& cls) {
-                return AssociativeContainer<Derived, Class>::add(cls);
-            }
+  template <typename T> const ClassPtr &add_class(const T &cls);
+  template <typename T> void remove_class(const T &cls);
+  template <typename T> const ClassPtr &get_class(const T &cls) const;
+  const ClassSet &get_classes() const;
 
-            template <typename T>
-            inline void remove_class(const T& cls) {
-                AssociativeContainer<Derived, Class>::remove(cls);
-            }
+protected:
+  ClassContainer();
+};
 
-            template <typename T>
-            inline const ClassPtr& get_class(const T& cls) const {
-                return AssociativeContainer<Derived, Class>::get(cls);
-            }
+} // namespace pddl
 
-            inline const ClassSet& get_classes() const {
-                return AssociativeContainer<Derived, Class>::get_container();
-            }
-        
-        protected :
-            ClassContainer() {}
-        };     
-
-    } // namespace pddl
-    
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/class_container_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_CLASS_CONTAINER_HH
