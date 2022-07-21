@@ -39,4 +39,8 @@ protected:
 
 } // namespace skdecide
 
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/binary_expression_impl.hh"
+#endif
+
 #endif // SKDECIDE_PDDL_BINARY_EXPRESSION_HH
