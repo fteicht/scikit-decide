@@ -29,6 +29,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "AddExpression!Ade;SubExpression!Sue;MulExpression!Mue;DivExpression!Die;GreaterFormula!Grf;GreaterEqFormula!Gef;LessFormula!Lsf;LessEqFormula!Lef;EqFormula!Eqf")
 
+generate_template_instantiation_files(
+        BINARY_FORMULA_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/binary_formula.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "SometimeAfterFormula!Saf;SometimeBeforeFormula!Sbf;AlwaysWithinFormula!Awf;ImplyFormula!Imf")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -44,6 +50,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${ASSOCIATIVE_CONTAINER_TEMPLATE_FILES}
         impl/binary_effect.cc
         ${BINARY_EXPRESSION_TEMPLATE_FILES}
+        ${BINARY_FORMULA_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
