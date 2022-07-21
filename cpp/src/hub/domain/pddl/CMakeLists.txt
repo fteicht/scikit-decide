@@ -58,6 +58,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${BINARY_EXPRESSION_TEMPLATE_FILES}
         ${BINARY_FORMULA_TEMPLATE_FILES}
         ${CLASS_CONTAINER_TEMPLATE_FILES}
+        impl/class.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
