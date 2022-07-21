@@ -1,3 +1,5 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/problem.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/associative_container.hh"
 #include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/associative_container_impl.hh"
 
