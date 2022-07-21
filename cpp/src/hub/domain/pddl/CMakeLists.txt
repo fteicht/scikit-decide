@@ -16,6 +16,13 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "AssignEffect!Asg;ScaleUpEffect!ScU;ScaleDownEffect!ScD;IncreaseEffect!Inc;DecreaseEffect!Dec")
 
+generate_template_instantiation_files(
+        ASSOCIATIVE_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/associative_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom;Problem!Pbm"
+        "Tsymbol" "Class!Cls;Predicate!Prd;DerivedPredicate!Dpr;Function!Fun;Object!Obj;Preference!Prf;Type!Typ;Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -28,6 +35,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/aggregation_formula.cc
         ${ASSIGNMENT_EFFECT_TEMPLATE_FILES}
         impl/assignment_effect.cc
+        ${ASSOCIATIVE_CONTAINER_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

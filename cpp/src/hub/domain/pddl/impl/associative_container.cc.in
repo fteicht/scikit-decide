@@ -1,0 +1,5 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/associative_container.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/associative_container_impl.hh"
+
+template class skdecide::pddl::AssociativeContainer<skdecide::pddl::${Tderived},
+                                                    skdecide::pddl::${Tsymbol}>;
