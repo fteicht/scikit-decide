@@ -24,11 +24,9 @@ typedef skdecide::MCTSSolver<
     skdecide::${TbackPropagator}>
     InstantiatedMCTSSolver;
 
-#define D_$                                                                    \
-  { Texecution }
+#define D_${Texecution}
 
-#define D_$                                                                    \
-  { TtransitionMode }
+#define D_${TtransitionMode}
 #if defined D_StepTransitionMode
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_step_transition_mode_impl.hh"
 template struct skdecide::StepTransitionMode<InstantiatedMCTSSolver>;
@@ -40,15 +38,13 @@ template struct skdecide::SampleTransitionMode<InstantiatedMCTSSolver>;
 template struct skdecide::DistributionTransitionMode<InstantiatedMCTSSolver>;
 #endif
 
-#define D_$                                                                    \
-  { TtreePolicy }
+#define D_${TtreePolicy}
 #if defined D_DefaultTreePolicy
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_tree_policy_impl.hh"
 template class skdecide::DefaultTreePolicy<InstantiatedMCTSSolver>;
 #endif
 
-#define D_$                                                                    \
-  { Texpander }
+#define D_${Texpander}
 #if defined D_FullExpand
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_full_expand_impl.hh"
 template class skdecide::FullExpand<InstantiatedMCTSSolver>;
@@ -78,15 +74,13 @@ template class skdecide::UCB1ActionSelector<InstantiatedMCTSSolver>;
 template class skdecide::BestQValueActionSelector<InstantiatedMCTSSolver>;
 #endif
 
-#define D_$                                                                    \
-  { TrolloutPolicy }
+#define D_${TrolloutPolicy}
 #if defined D_DefaultRolloutPolicy
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_default_rollout_policy_impl.hh"
 template class skdecide::DefaultRolloutPolicy<InstantiatedMCTSSolver>;
 #endif
 
-#define D_$                                                                    \
-  { TbackPropagator }
+#define D_${TbackPropagator}
 #if defined D_GraphBackup
 #include "${CMAKE_SOURCE_DIR}/src/hub/solver/mcts/impl/mcts_graph_backup_impl.hh"
 template struct skdecide::GraphBackup<InstantiatedMCTSSolver>;

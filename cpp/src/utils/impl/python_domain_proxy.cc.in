@@ -29,8 +29,7 @@ typedef skdecide::PythonDomainProxy<
 
 BOOST_PP_LIST_FOR_EACH(MACRO, , LIST)
 
-#define D_$                                                                    \
-  { Tagent }
+#define D_${Tagent}
 #if defined D_MultiAgent
 #define MMACRO(r, data, elem)                                                  \
   template class PDPB::PyObj<typename PDPB::elem, py::dict>;                   \
