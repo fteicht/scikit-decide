@@ -10,157 +10,94 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        template <typename Derived>
-        class ComparisonFormula : public Formula,
-                                  public BinaryExpression<Derived> {
-        public :
-            typedef std::shared_ptr<ComparisonFormula<Derived>> Ptr;
+template <typename Derived>
+class ComparisonFormula : public Formula, public BinaryExpression<Derived> {
+public:
+  typedef std::shared_ptr<ComparisonFormula<Derived>> Ptr;
 
-            ComparisonFormula() {}
+  ComparisonFormula();
+  ComparisonFormula(const Expression::Ptr &left_expression,
+                    const Expression::Ptr &right_expression);
+  ComparisonFormula(const ComparisonFormula &other);
+  ComparisonFormula &operator=(const ComparisonFormula &other);
 
-            ComparisonFormula(const Expression::Ptr& left_expression,
-                              const Expression::Ptr& right_expression)
-                : BinaryExpression<Derived>(left_expression, right_expression) {}
-            
-            ComparisonFormula(const ComparisonFormula& other)
-                : BinaryExpression<Derived>(other) {}
-            
-            ComparisonFormula& operator= (const ComparisonFormula& other) {
-                dynamic_cast<BinaryExpression<Derived>&>(*this) = other;
-                return *this;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
+  std::string print() const;
+};
 
-            virtual std::ostream& print(std::ostream& o) const {
-                return BinaryExpression<Derived>::print(o);
-            }
+class GreaterFormula : public ComparisonFormula<GreaterFormula> {
+public:
+  static constexpr char class_name[] = ">";
 
-            std::string print() const {
-                return Formula::print();
-            }
-        };
+  typedef std::shared_ptr<GreaterFormula> Ptr;
 
+  GreaterFormula();
+  GreaterFormula(const Expression::Ptr &left_expression,
+                 const Expression::Ptr &right_expression);
+  GreaterFormula(const GreaterFormula &other);
+  GreaterFormula &operator=(const GreaterFormula &other);
+  virtual ~GreaterFormula();
+};
 
-        class GreaterFormula : public ComparisonFormula<GreaterFormula> {
-        public :
-            static constexpr char class_name[] = ">";
+class GreaterEqFormula : public ComparisonFormula<GreaterEqFormula> {
+public:
+  static constexpr char class_name[] = ">=";
 
-            typedef std::shared_ptr<GreaterFormula> Ptr;
+  typedef std::shared_ptr<GreaterEqFormula> Ptr;
 
-            GreaterFormula() {}
+  GreaterEqFormula();
+  GreaterEqFormula(const Expression::Ptr &left_expression,
+                   const Expression::Ptr &right_expression);
+  GreaterEqFormula(const GreaterEqFormula &other);
+  GreaterEqFormula &operator=(const GreaterEqFormula &other);
+  virtual ~GreaterEqFormula();
+};
 
-            GreaterFormula(const Expression::Ptr& left_expression,
-                           const Expression::Ptr& right_expression)
-                : ComparisonFormula<GreaterFormula>(left_expression, right_expression) {}
-            
-            GreaterFormula(const GreaterFormula& other)
-                : ComparisonFormula<GreaterFormula>(other) {}
-            
-            GreaterFormula& operator= (const GreaterFormula& other) {
-                dynamic_cast<ComparisonFormula<GreaterFormula>&>(*this) = other;
-                return *this;
-            }
+class LessEqFormula : public ComparisonFormula<LessEqFormula> {
+public:
+  static constexpr char class_name[] = "<=";
 
-            virtual ~GreaterFormula() {}
-        };
+  typedef std::shared_ptr<LessEqFormula> Ptr;
 
+  LessEqFormula();
+  LessEqFormula(const Expression::Ptr &left_expression,
+                const Expression::Ptr &right_expression);
+  LessEqFormula(const LessEqFormula &other);
+  LessEqFormula &operator=(const LessEqFormula &other);
+  virtual ~LessEqFormula();
+};
 
-        class GreaterEqFormula : public ComparisonFormula<GreaterEqFormula> {
-        public :
-            static constexpr char class_name[] = ">=";
+class LessFormula : public ComparisonFormula<LessFormula> {
+public:
+  static constexpr char class_name[] = "<";
 
-            typedef std::shared_ptr<GreaterEqFormula> Ptr;
+  typedef std::shared_ptr<LessFormula> Ptr;
 
-            GreaterEqFormula() {}
+  LessFormula();
+  LessFormula(const Expression::Ptr &left_expression,
+              const Expression::Ptr &right_expression);
+  LessFormula(const LessFormula &other);
+  LessFormula &operator=(const LessFormula &other);
+  virtual ~LessFormula();
+};
 
-            GreaterEqFormula(const Expression::Ptr& left_expression,
-                             const Expression::Ptr& right_expression)
-                : ComparisonFormula<GreaterEqFormula>(left_expression, right_expression) {}
-            
-            GreaterEqFormula(const GreaterEqFormula& other)
-                : ComparisonFormula<GreaterEqFormula>(other) {}
-            
-            GreaterEqFormula& operator= (const GreaterEqFormula& other) {
-                dynamic_cast<ComparisonFormula<GreaterEqFormula>&>(*this) = other;
-                return *this;
-            }
+class EqFormula : public ComparisonFormula<EqFormula> {
+public:
+  static constexpr char class_name[] = "=";
 
-            virtual ~GreaterEqFormula() {}
-        };
+  typedef std::shared_ptr<EqFormula> Ptr;
 
+  EqFormula();
+  EqFormula(const Expression::Ptr &left_expression,
+            const Expression::Ptr &right_expression);
+  EqFormula(const EqFormula &other);
+  EqFormula &operator=(const EqFormula &other);
+  virtual ~EqFormula();
+};
 
-        class LessEqFormula : public ComparisonFormula<LessEqFormula> {
-        public :
-            static constexpr char class_name[] = "<=";
-
-            typedef std::shared_ptr<LessEqFormula> Ptr;
-
-            LessEqFormula() {}
-
-            LessEqFormula(const Expression::Ptr& left_expression,
-                          const Expression::Ptr& right_expression)
-                : ComparisonFormula<LessEqFormula>(left_expression, right_expression) {}
-            
-            LessEqFormula(const LessEqFormula& other)
-                : ComparisonFormula<LessEqFormula>(other) {}
-            
-            LessEqFormula& operator= (const LessEqFormula& other) {
-                dynamic_cast<ComparisonFormula<LessEqFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~LessEqFormula() {}
-        };
-
-
-        class LessFormula : public ComparisonFormula<LessFormula> {
-        public :
-            static constexpr char class_name[] = "<";
-
-            typedef std::shared_ptr<LessFormula> Ptr;
-
-            LessFormula() {}
-
-            LessFormula(const Expression::Ptr& left_expression,
-                        const Expression::Ptr& right_expression)
-                : ComparisonFormula<LessFormula>(left_expression, right_expression) {}
-            
-            LessFormula(const LessFormula& other)
-                : ComparisonFormula<LessFormula>(other) {}
-            
-            LessFormula& operator= (const LessFormula& other) {
-                dynamic_cast<ComparisonFormula<LessFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~LessFormula() {}
-        };
-
-        class EqFormula : public ComparisonFormula<EqFormula> {
-        public :
-            static constexpr char class_name[] = "=";
-
-            typedef std::shared_ptr<EqFormula> Ptr;
-
-            EqFormula() {}
-
-            EqFormula(const Expression::Ptr& left_expression,
-                      const Expression::Ptr& right_expression)
-                : ComparisonFormula<EqFormula>(left_expression, right_expression) {}
-            
-            EqFormula(const EqFormula& other)
-                : ComparisonFormula<EqFormula>(other) {}
-            
-            EqFormula& operator= (const EqFormula& other) {
-                dynamic_cast<ComparisonFormula<EqFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~EqFormula() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

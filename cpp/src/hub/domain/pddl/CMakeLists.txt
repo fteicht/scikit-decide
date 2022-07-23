@@ -62,6 +62,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Domain!Dom")
 
+generate_template_instantiation_files(
+        COMPARISON_FORMULA_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/comparison_formula.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "GreaterFormula!GFm;GreaterEqFormula!Gef;LessEqFormula!Lef;LessFormula!Lfm;EqFormula!Efm")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -83,6 +89,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${BINARY_FORMULA_TEMPLATE_FILES}
         ${CLASS_CONTAINER_TEMPLATE_FILES}
         impl/class.cc
+        ${COMPARISON_FORMULA_TEMPLATE_FILES}
+        impl/comparison_formula.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
