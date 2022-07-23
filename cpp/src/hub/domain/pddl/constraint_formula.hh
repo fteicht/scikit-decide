@@ -12,303 +12,167 @@
 
 namespace skdecide {
 
-    namespace pddl {
-        
-        class AlwaysFormula : public UnaryFormula<AlwaysFormula> {
-        public :
-            static constexpr char class_name[] = "always";
+namespace pddl {
 
-            typedef std::shared_ptr<AlwaysFormula> Ptr;
+class AlwaysFormula : public UnaryFormula<AlwaysFormula> {
+public:
+  static constexpr char class_name[] = "always";
 
-            AlwaysFormula() {}
+  typedef std::shared_ptr<AlwaysFormula> Ptr;
 
-            AlwaysFormula(const Formula::Ptr& formula)
-                : UnaryFormula<AlwaysFormula>(formula) {}
+  AlwaysFormula();
+  AlwaysFormula(const Formula::Ptr &formula);
+  AlwaysFormula(const AlwaysFormula &other);
+  AlwaysFormula &operator=(const AlwaysFormula &other);
+  virtual ~AlwaysFormula();
+};
 
-            AlwaysFormula(const AlwaysFormula& other)
-                : UnaryFormula<AlwaysFormula>(other) {}
-            
-            AlwaysFormula& operator= (const AlwaysFormula& other) {
-                dynamic_cast<UnaryFormula<AlwaysFormula>&>(*this) = other;
-                return *this;
-            }
+class SometimeFormula : public UnaryFormula<SometimeFormula> {
+public:
+  static constexpr char class_name[] = "sometime";
 
-            virtual ~AlwaysFormula() {}
-        };
+  typedef std::shared_ptr<SometimeFormula> Ptr;
 
+  SometimeFormula();
+  SometimeFormula(const Formula::Ptr &formula);
+  SometimeFormula(const SometimeFormula &other);
+  SometimeFormula &operator=(const SometimeFormula &other);
+  virtual ~SometimeFormula();
+};
 
-        class SometimeFormula : public UnaryFormula<SometimeFormula> {
-        public :
-            static constexpr char class_name[] = "sometime";
+class AtMostOnceFormula : public UnaryFormula<AtMostOnceFormula> {
+public:
+  static constexpr char class_name[] = "at-most-once";
 
-            typedef std::shared_ptr<SometimeFormula> Ptr;
+  typedef std::shared_ptr<AtMostOnceFormula> Ptr;
 
-            SometimeFormula() {}
+  AtMostOnceFormula();
+  AtMostOnceFormula(const Formula::Ptr &formula);
+  AtMostOnceFormula(const AtMostOnceFormula &other);
+  AtMostOnceFormula &operator=(const AtMostOnceFormula &other);
+  virtual ~AtMostOnceFormula();
+};
 
-            SometimeFormula(const Formula::Ptr& formula)
-                : UnaryFormula<SometimeFormula>(formula) {}
+class WithinFormula : public UnaryFormula<WithinFormula> {
+public:
+  static constexpr char class_name[] = "within";
 
-            SometimeFormula(const SometimeFormula& other)
-                : UnaryFormula<SometimeFormula>(other) {}
-            
-            SometimeFormula& operator= (const SometimeFormula& other) {
-                dynamic_cast<UnaryFormula<SometimeFormula>&>(*this) = other;
-                return *this;
-            }
+  typedef std::shared_ptr<WithinFormula> Ptr;
 
-            virtual ~SometimeFormula() {}
-        };
+  WithinFormula();
+  WithinFormula(const Formula::Ptr &formula, const Number::Ptr &deadline);
+  WithinFormula(const WithinFormula &other);
+  WithinFormula &operator=(const WithinFormula &other);
+  virtual ~WithinFormula();
 
+  void set_deadline(const Number::Ptr &deadline);
+  const Number::Ptr &get_deadline() const;
 
-        class AtMostOnceFormula : public UnaryFormula<AtMostOnceFormula> {
-        public :
-            static constexpr char class_name[] = "at-most-once";
+  virtual std::ostream &print(std::ostream &o) const;
 
-            typedef std::shared_ptr<AtMostOnceFormula> Ptr;
+private:
+  Number::Ptr _deadline;
+};
 
-            AtMostOnceFormula() {}
+class HoldAfterFormula : public UnaryFormula<HoldAfterFormula> {
+public:
+  static constexpr char class_name[] = "hold-after";
 
-            AtMostOnceFormula(const Formula::Ptr& formula)
-                : UnaryFormula<AtMostOnceFormula>(formula) {}
+  typedef std::shared_ptr<HoldAfterFormula> Ptr;
 
-            AtMostOnceFormula(const AtMostOnceFormula& other)
-                : UnaryFormula<AtMostOnceFormula>(other) {}
-            
-            AtMostOnceFormula& operator= (const AtMostOnceFormula& other) {
-                dynamic_cast<UnaryFormula<AtMostOnceFormula>&>(*this) = other;
-                return *this;
-            }
+  HoldAfterFormula();
+  HoldAfterFormula(const Formula::Ptr &formula, const Number::Ptr &from);
+  HoldAfterFormula(const HoldAfterFormula &other);
+  HoldAfterFormula &operator=(const HoldAfterFormula &other);
+  virtual ~HoldAfterFormula();
 
-            virtual ~AtMostOnceFormula() {}
-        };
+  void set_from(const Number::Ptr &from);
+  const Number::Ptr &get_from() const;
 
+  virtual std::ostream &print(std::ostream &o) const;
 
-        class WithinFormula : public UnaryFormula<WithinFormula> {
-        public :
-            static constexpr char class_name[] = "within";
+private:
+  Number::Ptr _from;
+};
 
-            typedef std::shared_ptr<WithinFormula> Ptr;
+class HoldDuringFormula : public UnaryFormula<HoldDuringFormula> {
+public:
+  static constexpr char class_name[] = "hold-during";
 
-            WithinFormula() {}
+  typedef std::shared_ptr<HoldDuringFormula> Ptr;
 
-            WithinFormula(const Formula::Ptr& formula, const Number::Ptr& deadline)
-                : UnaryFormula<WithinFormula>(formula), _deadline(deadline) {}
+  HoldDuringFormula();
+  HoldDuringFormula(const Formula::Ptr &formula, const Number::Ptr &from,
+                    const Number::Ptr &deadline);
+  HoldDuringFormula(const HoldDuringFormula &other);
+  HoldDuringFormula &operator=(const HoldDuringFormula &other);
+  virtual ~HoldDuringFormula();
 
-            WithinFormula(const WithinFormula& other)
-                : UnaryFormula<WithinFormula>(other),
-                  _deadline(other._deadline) {}
-            
-            WithinFormula& operator= (const WithinFormula& other) {
-                dynamic_cast<UnaryFormula<WithinFormula>&>(*this) = other;
-                this->_deadline = other._deadline;
-                return *this;
-            }
+  void set_from(const Number::Ptr &from);
+  const Number::Ptr &get_from() const;
 
-            virtual ~WithinFormula() {}
-
-            void set_deadline(const Number::Ptr& deadline) {
-                _deadline = deadline;
-            }
-
-            const Number::Ptr& get_deadline() const {
-                return _deadline;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(within " << *_deadline << " " << *_formula << ")";
-                return o;
-            }
-        
-        private :
-            Number::Ptr _deadline;
-        };
-
-
-        class HoldAfterFormula : public UnaryFormula<HoldAfterFormula> {
-        public :
-            static constexpr char class_name[] = "hold-after";
-
-            typedef std::shared_ptr<HoldAfterFormula> Ptr;
-
-            HoldAfterFormula() {}
-
-            HoldAfterFormula(const Formula::Ptr& formula, const Number::Ptr& from)
-                : UnaryFormula<HoldAfterFormula>(formula), _from(from) {}
-
-            HoldAfterFormula(const HoldAfterFormula& other)
-                : UnaryFormula<HoldAfterFormula>(other),
-                  _from(other._from) {}
-            
-            HoldAfterFormula& operator= (const HoldAfterFormula& other) {
-                dynamic_cast<UnaryFormula<HoldAfterFormula>&>(*this) = other;
-                this->_from = other._from;
-                return *this;
-            }
-
-            virtual ~HoldAfterFormula() {}
-
-            void set_from(const Number::Ptr& from) {
-                _from = from;
-            }
-
-            const Number::Ptr& get_from() const {
-                return _from;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(hold-after " << *_from << " " << *_formula << ")";
-                return o;
-            }
-        
-        private :
-            Number::Ptr _from;
-        };
-
-
-        class HoldDuringFormula : public UnaryFormula<HoldDuringFormula> {
-        public :
-            static constexpr char class_name[] = "hold-during";
-
-            typedef std::shared_ptr<HoldDuringFormula> Ptr;
-
-            HoldDuringFormula() {}
-
-            HoldDuringFormula(const Formula::Ptr& formula,
-                              const Number::Ptr& from,
-                              const Number::Ptr& deadline)
-                : UnaryFormula<HoldDuringFormula>(formula),
-                  _from(from), _deadline(deadline) {}
-
-            HoldDuringFormula(const HoldDuringFormula& other)
-                : UnaryFormula<HoldDuringFormula>(other),
-                  _from(other._from), _deadline(other._deadline) {}
-            
-            HoldDuringFormula& operator= (const HoldDuringFormula& other) {
-                dynamic_cast<UnaryFormula<HoldDuringFormula>&>(*this) = other;
-                this->_from = other._from;
-                this->_deadline = other._deadline;
-                return *this;
-            }
-
-            virtual ~HoldDuringFormula() {}
-
-            void set_from(const Number::Ptr& from) {
-                _from = from;
-            }
-
-            const Number::Ptr& get_from() const {
-                return _from;
-            }
-
-            void set_deadline(const Number::Ptr& deadline) {
-                _deadline = deadline;
-            }
-
-            const Number::Ptr& get_deadline() const {
-                return _deadline;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(hold-during " << *_from << " " << *_deadline << " " << *_formula << ")";
-                return o;
-            }
-        
-        private :
-            Number::Ptr _from;
-            Number::Ptr _deadline;
-        };
-
-
-        class SometimeAfterFormula : public BinaryFormula<SometimeAfterFormula> {
-        public :
-            static constexpr char class_name[] = "sometime-after";
-
-            typedef std::shared_ptr<SometimeAfterFormula> Ptr;
-
-            SometimeAfterFormula() {}
-
-            SometimeAfterFormula(const Formula::Ptr& left_formula,
-                                 const Formula::Ptr& right_formula)
-                : BinaryFormula<SometimeAfterFormula>(left_formula, right_formula) {}
-            
-            SometimeAfterFormula(const SometimeAfterFormula& other)
-                : BinaryFormula<SometimeAfterFormula>(other) {}
-            
-            SometimeAfterFormula& operator= (const SometimeAfterFormula& other) {
-                dynamic_cast<BinaryFormula<SometimeAfterFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~SometimeAfterFormula() {}
-        };
-
-
-        class SometimeBeforeFormula : public BinaryFormula<SometimeBeforeFormula> {
-        public :
-            static constexpr char class_name[] = "sometime-before";
-
-            typedef std::shared_ptr<SometimeBeforeFormula> Ptr;
-
-            SometimeBeforeFormula() {}
-
-            SometimeBeforeFormula(const Formula::Ptr& left_formula,
-                                  const Formula::Ptr& right_formula)
-                : BinaryFormula<SometimeBeforeFormula>(left_formula, right_formula) {}
-            
-            SometimeBeforeFormula(const SometimeBeforeFormula& other)
-                : BinaryFormula<SometimeBeforeFormula>(other) {}
-            
-            SometimeBeforeFormula& operator= (const SometimeBeforeFormula& other) {
-                dynamic_cast<BinaryFormula<SometimeBeforeFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~SometimeBeforeFormula() {}
-        };
-
-
-        class AlwaysWithinFormula : public BinaryFormula<AlwaysWithinFormula> {
-        public :
-            static constexpr char class_name[] = "always-within";
-
-            typedef std::shared_ptr<AlwaysWithinFormula> Ptr;
-
-            AlwaysWithinFormula() {}
-
-            AlwaysWithinFormula(const Formula::Ptr& left_formula,
-                                const Formula::Ptr& right_formula,
-                                const Number::Ptr& deadline)
-                : BinaryFormula<AlwaysWithinFormula>(left_formula, right_formula) {}
-            
-            AlwaysWithinFormula(const AlwaysWithinFormula& other)
-                : BinaryFormula<AlwaysWithinFormula>(other), _deadline(other._deadline) {}
-            
-            AlwaysWithinFormula& operator= (const AlwaysWithinFormula& other) {
-                dynamic_cast<BinaryFormula<AlwaysWithinFormula>&>(*this) = other;
-                this->_deadline = other._deadline;
-                return *this;
-            }
-
-            virtual ~AlwaysWithinFormula() {}
-
-            void set_deadline(const Number::Ptr& deadline) {
-                _deadline = deadline;
-            }
-
-            const Number::Ptr& get_deadline() const {
-                return _deadline;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(always-within " << *_deadline << " " << *_left_formula << *_right_formula << ")";
-                return o;
-            }
-        
-        private :
-            Number::Ptr _deadline;
-        };
-
-    } // namespace pddl
+  void set_deadline(const Number::Ptr &deadline);
+  const Number::Ptr &get_deadline() const;
+
+  virtual std::ostream &print(std::ostream &o) const;
+
+private:
+  Number::Ptr _from;
+  Number::Ptr _deadline;
+};
+
+class SometimeAfterFormula : public BinaryFormula<SometimeAfterFormula> {
+public:
+  static constexpr char class_name[] = "sometime-after";
+
+  typedef std::shared_ptr<SometimeAfterFormula> Ptr;
+
+  SometimeAfterFormula();
+  SometimeAfterFormula(const Formula::Ptr &left_formula,
+                       const Formula::Ptr &right_formula);
+  SometimeAfterFormula(const SometimeAfterFormula &other);
+  SometimeAfterFormula &operator=(const SometimeAfterFormula &other);
+  virtual ~SometimeAfterFormula();
+};
+
+class SometimeBeforeFormula : public BinaryFormula<SometimeBeforeFormula> {
+public:
+  static constexpr char class_name[] = "sometime-before";
+
+  typedef std::shared_ptr<SometimeBeforeFormula> Ptr;
+
+  SometimeBeforeFormula();
+  SometimeBeforeFormula(const Formula::Ptr &left_formula,
+                        const Formula::Ptr &right_formula);
+  SometimeBeforeFormula(const SometimeBeforeFormula &other);
+  SometimeBeforeFormula &operator=(const SometimeBeforeFormula &other);
+  virtual ~SometimeBeforeFormula();
+};
+
+class AlwaysWithinFormula : public BinaryFormula<AlwaysWithinFormula> {
+public:
+  static constexpr char class_name[] = "always-within";
+
+  typedef std::shared_ptr<AlwaysWithinFormula> Ptr;
+
+  AlwaysWithinFormula();
+  AlwaysWithinFormula(const Formula::Ptr &left_formula,
+                      const Formula::Ptr &right_formula,
+                      const Number::Ptr &deadline);
+  AlwaysWithinFormula(const AlwaysWithinFormula &other);
+  AlwaysWithinFormula &operator=(const AlwaysWithinFormula &other);
+  virtual ~AlwaysWithinFormula();
+
+  void set_deadline(const Number::Ptr &deadline);
+  const Number::Ptr &get_deadline() const;
+
+  virtual std::ostream &print(std::ostream &o) const;
+
+private:
+  Number::Ptr _deadline;
+};
+
+} // namespace pddl
 
 } // namespace skdecide
 

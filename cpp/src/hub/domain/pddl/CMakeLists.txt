@@ -92,6 +92,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${COMPARISON_FORMULA_TEMPLATE_FILES}
         impl/comparison_formula.cc
         impl/conditional_effect.cc
+        impl/constraint_formula.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
