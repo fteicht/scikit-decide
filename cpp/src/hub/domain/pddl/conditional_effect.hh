@@ -9,36 +9,22 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class ConditionalEffect : public Effect,
-                                  public BinaryEffect {
-        public :
-            typedef std::shared_ptr<ConditionalEffect> Ptr;
+class ConditionalEffect : public Effect, public BinaryEffect {
+public:
+  typedef std::shared_ptr<ConditionalEffect> Ptr;
 
-            ConditionalEffect() {}
+  ConditionalEffect();
+  ConditionalEffect(const Formula::Ptr &condition, const Effect::Ptr &effect);
+  ConditionalEffect(const ConditionalEffect &other);
+  ConditionalEffect &operator=(const ConditionalEffect &other);
+  virtual ~ConditionalEffect();
 
-            ConditionalEffect(const Formula::Ptr& condition,
-                              const Effect::Ptr& effect)
-                : BinaryEffect(condition, effect) {}
-            
-            ConditionalEffect(const ConditionalEffect& other)
-                : BinaryEffect(other) {}
-            
-            ConditionalEffect& operator= (const ConditionalEffect& other) {
-                dynamic_cast<BinaryEffect&>(*this) = other;
-                return *this;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
+};
 
-            virtual ~ConditionalEffect() {}
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(when " << *_condition << " " << *_effect << ")";
-                return o;
-            }
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
