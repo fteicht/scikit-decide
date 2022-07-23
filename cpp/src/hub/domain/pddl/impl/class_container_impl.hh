@@ -16,7 +16,7 @@ ClassContainer<Derived>::ClassContainer(const ClassContainer &other)
     : AssociativeContainer<Derived, Class>(other) {}
 
 template <typename Derived>
-ClassContainer &
+ClassContainer<Derived> &
 ClassContainer<Derived>::operator=(const ClassContainer<Derived> &other) {
   dynamic_cast<AssociativeContainer<Derived, Class> &>(*this) = other;
   return *this;

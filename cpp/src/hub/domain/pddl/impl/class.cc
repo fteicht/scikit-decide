@@ -4,6 +4,7 @@
  */
 
 #include "hub/domain/pddl/class.hh"
+#include "hub/domain/pddl/function.hh"
 
 namespace skdecide {
 

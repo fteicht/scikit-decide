@@ -52,7 +52,7 @@ const Formula::Ptr &BinaryFormula<Derived>::get_right_formula() const {
 }
 
 template <typename Derived>
-virtual std::ostream &BinaryFormula<Derived>::print(std::ostream &o) const {
+std::ostream &BinaryFormula<Derived>::print(std::ostream &o) const {
   o << "(" << Derived::class_name << " " << *_left_formula << " "
     << *_right_formula << ")";
   return o;

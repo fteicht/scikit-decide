@@ -33,6 +33,7 @@ BinaryExpression<Derived>::operator=(const BinaryExpression<Derived> &other) {
 
 template <typename Derived> BinaryExpression<Derived>::~BinaryExpression() {}
 
+template <typename Derived>
 void BinaryExpression<Derived>::set_left_expression(
     const Expression::Ptr &expression) {
   _left_expression = expression;

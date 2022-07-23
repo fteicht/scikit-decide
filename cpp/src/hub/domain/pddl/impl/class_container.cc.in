@@ -5,26 +5,29 @@
 
 template class skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>;
 
-template skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::add_class(
-    const AssociativeContainer<${Tderived}, Class>::SymbolPtr &cls);
+    const skdecide::pddl::AssociativeContainer<
+        skdecide::pddl::${Tderived}, skdecide::pddl::Class>::SymbolPtr &cls);
 
-template skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::add_class(
     const std::string &cls);
 
 template void
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::remove_class(
-    const AssociativeContainer<${Tderived}, Class>::SymbolPtr &cls);
+    const AssociativeContainer<skdecide::pddl::${Tderived},
+                               skdecide::pddl::Class>::SymbolPtr &cls);
 
 template void
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::remove_class(
     const std::string &cls);
 
-template skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::get_class(
-    const AssociativeContainer<${Tderived}, Class>::SymbolPtr &cls) const;
+    const AssociativeContainer<skdecide::pddl::${Tderived},
+                               skdecide::pddl::Class>::SymbolPtr &cls) const;
 
-template skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr
+template const skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::ClassPtr &
 skdecide::pddl::ClassContainer<skdecide::pddl::${Tderived}>::get_class(
     const std::string &cls) const;
