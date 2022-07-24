@@ -100,6 +100,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/constraint_formula.cc
         ${DERIVED_PREDICATE_CONTAINER_TEMPLATE_FILES}
         impl/domain.cc
+        impl/duration_effect.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
