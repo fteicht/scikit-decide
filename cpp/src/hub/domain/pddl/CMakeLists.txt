@@ -106,6 +106,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/effect.cc
         impl/equality_formula.cc
         impl/expression.cc
+        impl/formula.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
