@@ -21,6 +21,7 @@ public:
 
   ClassContainer(const ClassContainer &other);
   ClassContainer &operator=(const ClassContainer &other);
+  virtual ~ClassContainer();
 
   template <typename T> const ClassPtr &add_class(const T &cls);
   template <typename T> void remove_class(const T &cls);

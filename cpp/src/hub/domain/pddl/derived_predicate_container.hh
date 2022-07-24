@@ -24,6 +24,7 @@ public:
 
   DerivedPredicateContainer(const DerivedPredicateContainer &other);
   DerivedPredicateContainer &operator=(const DerivedPredicateContainer &other);
+  virtual ~DerivedPredicateContainer();
 
   template <typename T>
   const DerivedPredicatePtr &add_derived_predicate(const T &derived_predicate);
