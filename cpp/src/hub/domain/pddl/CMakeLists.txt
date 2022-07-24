@@ -74,6 +74,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Domain!Dom")
 
+generate_template_instantiation_files(
+        FUNCTION_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/function_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom;Class!Cls")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         problem.cc
@@ -107,6 +113,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/equality_formula.cc
         impl/expression.cc
         impl/formula.cc
+        ${FUNCTION_CONTAINER_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

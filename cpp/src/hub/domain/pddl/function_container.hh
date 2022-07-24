@@ -9,49 +9,42 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Function;
+class Function;
 
-        template <typename Derived>
-        class FunctionContainer : public AssociativeContainer<Derived, Function> {
-        public :
-            typedef typename AssociativeContainer<Derived, Function>::SymbolPtr FunctionPtr;
-            typedef typename AssociativeContainer<Derived, Function>::SymbolSet FunctionSet;
+template <typename Derived>
+class FunctionContainer : public AssociativeContainer<Derived, Function> {
+public:
+  typedef
+      typename AssociativeContainer<Derived, Function>::SymbolPtr FunctionPtr;
+  typedef
+      typename AssociativeContainer<Derived, Function>::SymbolSet FunctionSet;
 
-            FunctionContainer(const FunctionContainer& other)
-                : AssociativeContainer<Derived, Function>(other) {}
-            
-            FunctionContainer& operator=(const FunctionContainer& other) {
-                dynamic_cast<AssociativeContainer<Derived, Function>&>(*this) = other;
-                return *this;
-            }
+  FunctionContainer(const FunctionContainer &other);
+  FunctionContainer &operator=(const FunctionContainer &other);
+  virtual ~FunctionContainer();
 
-            template <typename T>
-            inline const FunctionPtr& add_function(const T& function) {
-                return AssociativeContainer<Derived, Function>::add(function);
-            }
+  template <typename T>
+  const FunctionPtr &add_function(const T &function);
 
-            template <typename T>
-            inline void remove_function(const T& function) {
-                AssociativeContainer<Derived, Function>::remove(function);
-            }
+  template <typename T> void remove_function(const T &function);
 
-            template <typename T>
-            inline const FunctionPtr& get_function(const T& function) const {
-                return AssociativeContainer<Derived, Function>::get(function);
-            }
+  template <typename T>
+  const FunctionPtr &get_function(const T &function) const;
 
-            inline const FunctionSet& get_functions() const {
-                return AssociativeContainer<Derived, Function>::get_container();
-            }
-        
-        protected :
-            FunctionContainer() {}
-        };     
+  const FunctionSet &get_functions() const;
 
-    } // namespace pddl
-    
+protected:
+  FunctionContainer();
+};
+
+} // namespace pddl
+
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/function_container_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_FUNCTION_CONTAINER_HH
