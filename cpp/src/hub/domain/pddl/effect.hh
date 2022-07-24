@@ -11,28 +11,22 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Effect {
-        public :
-            typedef std::shared_ptr<Effect> Ptr;
+class Effect {
+public:
+  typedef std::shared_ptr<Effect> Ptr;
 
-            virtual ~Effect() {}
-            virtual std::ostream& print(std::ostream& o) const =0;
+  virtual ~Effect();
 
-            std::string print() const {
-                std::ostringstream o;
-                print(o);
-                return o.str();
-            }
-        };
+  virtual std::ostream &print(std::ostream &o) const = 0;
+  std::string print() const;
+};
 
-        // Effect printing operator
-        inline std::ostream& operator<<(std::ostream& o, const Effect& f) {
-            return f.print(o);
-        }
+// Effect printing operator
+std::ostream &operator<<(std::ostream &o, const Effect &e);
 
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
