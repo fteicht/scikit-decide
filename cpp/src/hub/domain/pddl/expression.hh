@@ -11,28 +11,22 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Expression {
-        public :
-            typedef std::shared_ptr<Expression> Ptr;
+class Expression {
+public:
+  typedef std::shared_ptr<Expression> Ptr;
 
-            virtual ~Expression() {}
-            virtual std::ostream& print(std::ostream& o) const =0;
+  virtual ~Expression();
 
-            std::string print() const {
-                std::ostringstream o;
-                print(o);
-                return o.str();
-            }
-        };
+  virtual std::ostream &print(std::ostream &o) const = 0;
+  std::string print() const;
+};
 
-        // Expression printing operator
-        inline std::ostream& operator<<(std::ostream& o, const Expression& f) {
-            return f.print(o);
-        }
+// Expression printing operator
+std::ostream &operator<<(std::ostream &o, const Expression &e);
 
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
