@@ -27,6 +27,9 @@ DerivedPredicateContainer<Derived>::operator=(
 }
 
 template <typename Derived>
+DerivedPredicateContainer<Derived>::~DerivedPredicateContainer() {}
+
+template <typename Derived>
 template <typename T>
 const typename DerivedPredicateContainer<Derived>::DerivedPredicatePtr &
 DerivedPredicateContainer<Derived>::add_derived_predicate(

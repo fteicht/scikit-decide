@@ -22,6 +22,8 @@ ClassContainer<Derived>::operator=(const ClassContainer<Derived> &other) {
   return *this;
 }
 
+template <typename Derived> ClassContainer<Derived>::~ClassContainer() {}
+
 template <typename Derived>
 template <typename T>
 inline const typename ClassContainer<Derived>::ClassPtr &
