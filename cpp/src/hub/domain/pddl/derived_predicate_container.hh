@@ -9,49 +9,44 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class DerivedPredicate;
+class DerivedPredicate;
 
-        template <typename Derived>
-        class DerivedPredicateContainer : public AssociativeContainer<Derived, DerivedPredicate> {
-        public :
-            typedef typename AssociativeContainer<Derived, DerivedPredicate>::SymbolPtr DerivedPredicatePtr;
-            typedef typename AssociativeContainer<Derived, DerivedPredicate>::SymbolSet DerivedPredicateSet;
+template <typename Derived>
+class DerivedPredicateContainer
+    : public AssociativeContainer<Derived, DerivedPredicate> {
+public:
+  typedef typename AssociativeContainer<Derived, DerivedPredicate>::SymbolPtr
+      DerivedPredicatePtr;
+  typedef typename AssociativeContainer<Derived, DerivedPredicate>::SymbolSet
+      DerivedPredicateSet;
 
-            DerivedPredicateContainer(const DerivedPredicateContainer& other)
-                : AssociativeContainer<Derived, DerivedPredicate>(other) {}
-            
-            DerivedPredicateContainer& operator=(const DerivedPredicateContainer& other) {
-                dynamic_cast<AssociativeContainer<Derived, DerivedPredicate>&>(*this) = other;
-                return *this;
-            }
+  DerivedPredicateContainer(const DerivedPredicateContainer &other);
+  DerivedPredicateContainer &operator=(const DerivedPredicateContainer &other);
 
-            template <typename T>
-            inline const DerivedPredicatePtr& add_derived_predicate(const T& derived_predicate) {
-                return AssociativeContainer<Derived, DerivedPredicate>::add(derived_predicate);
-            }
+  template <typename T>
+  const DerivedPredicatePtr &add_derived_predicate(const T &derived_predicate);
 
-            template <typename T>
-            inline void remove_derived_predicate(const T& derived_predicate) {
-                AssociativeContainer<Derived, DerivedPredicate>::remove(derived_predicate);
-            }
+  template <typename T>
+  void remove_derived_predicate(const T &derived_predicate);
 
-            template <typename T>
-            inline const DerivedPredicatePtr& get_derived_predicate(const T& derived_predicate) const {
-                return AssociativeContainer<Derived, DerivedPredicate>::get(derived_predicate);
-            }
+  template <typename T>
+  const DerivedPredicatePtr &
+  get_derived_predicate(const T &derived_predicate) const;
 
-            inline const DerivedPredicateSet& get_derived_predicates() const {
-                return AssociativeContainer<Derived, DerivedPredicate>::get_container();
-            }
-        
-        protected :
-            DerivedPredicateContainer() {}
-        };     
+  const DerivedPredicateSet &get_derived_predicates() const;
 
-    } // namespace pddl
-    
+protected:
+  DerivedPredicateContainer();
+};
+
+} // namespace pddl
+
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/derived_predicate_container_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_DERIVED_PREDICATE_CONTAINER_HH

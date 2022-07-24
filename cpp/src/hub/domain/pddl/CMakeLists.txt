@@ -68,6 +68,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "GreaterFormula!GFm;GreaterEqFormula!Gef;LessEqFormula!Lef;LessFormula!Lfm;EqFormula!Efm")
 
+generate_template_instantiation_files(
+        DERIVED_PREDICATE_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/derived_predicate_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         domain.cc
@@ -93,6 +99,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/comparison_formula.cc
         impl/conditional_effect.cc
         impl/constraint_formula.cc
+        ${DERIVED_PREDICATE_CONTAINER_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
