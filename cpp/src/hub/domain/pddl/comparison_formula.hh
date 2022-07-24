@@ -101,4 +101,8 @@ public:
 
 } // namespace skdecide
 
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/comparison_formula_impl.hh"
+#endif
+
 #endif // SKDECIDE_PDDL_COMPARISON_FORMULA_HH
