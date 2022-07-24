@@ -10,42 +10,28 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class EqualityFormula : public Formula,
-                                public TermContainer<EqualityFormula> {
-        public :
-            static constexpr char class_name[] = "equality formula";
+class EqualityFormula : public Formula, public TermContainer<EqualityFormula> {
+public:
+  static constexpr char class_name[] = "equality formula";
 
-            typedef std::shared_ptr<EqualityFormula> Ptr;
-            typedef TermContainer<EqualityFormula>::TermPtr TermPtr;
-            typedef TermContainer<EqualityFormula>::TermVector TermVector;
+  typedef std::shared_ptr<EqualityFormula> Ptr;
+  typedef TermContainer<EqualityFormula>::TermPtr TermPtr;
+  typedef TermContainer<EqualityFormula>::TermVector TermVector;
 
-            EqualityFormula() {}
+  EqualityFormula();
+  EqualityFormula(const TermContainer<EqualityFormula> &terms);
+  EqualityFormula(const EqualityFormula &other);
+  EqualityFormula &operator=(const EqualityFormula &other);
+  virtual ~EqualityFormula();
 
-            EqualityFormula(const TermContainer<EqualityFormula>& terms)
-                : TermContainer<EqualityFormula>(terms) {}
-            
-            EqualityFormula(const EqualityFormula& other)
-                : TermContainer<EqualityFormula>(other) {}
-            
-            EqualityFormula& operator= (const EqualityFormula& other) {
-                dynamic_cast<TermContainer<EqualityFormula>&>(*this) = other;
-                return *this;
-            }
+  std::string get_name() const;
 
-            virtual ~EqualityFormula() {}
+  virtual std::ostream &print(std::ostream &o) const;
+};
 
-            std::string get_name() const {
-                return "=";
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                return TermContainer<EqualityFormula>::print(o);
-            }
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
