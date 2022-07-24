@@ -9,48 +9,31 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class DurativeAction;
+class DurativeAction;
 
-        class DurationFormula : Formula {
-        public :
-            typedef std::shared_ptr<DurationFormula> Ptr;
-            typedef std::shared_ptr<DurativeAction> DurativeActionPtr;
+class DurationFormula : Formula {
+public:
+  typedef std::shared_ptr<DurationFormula> Ptr;
+  typedef std::shared_ptr<DurativeAction> DurativeActionPtr;
 
-            DurationFormula() {}
+  DurationFormula();
+  DurationFormula(const DurativeActionPtr &durative_action);
+  DurationFormula(const DurationFormula &other);
+  DurationFormula &operator=(const DurationFormula &other);
+  virtual ~DurationFormula();
 
-            DurationFormula(const DurativeActionPtr& durative_action)
-                : _durative_action(durative_action) {}
-            
-            DurationFormula(const DurationFormula& other)
-                : _durative_action(other._durative_action) {}
-            
-            DurationFormula& operator= (const DurationFormula& other) {
-                this->_durative_action = other._durative_action;
-                return *this;
-            }
+  void set_durative_action(const DurativeActionPtr &durative_action);
+  const DurativeActionPtr &get_durative_action() const;
 
-            virtual ~DurationFormula() {}
+  virtual std::ostream &print(std::ostream &o) const;
 
-            void set_durative_action(const DurativeActionPtr& durative_action) {
-                _durative_action = durative_action;
-            }
+private:
+  DurativeActionPtr _durative_action;
+};
 
-            const DurativeActionPtr& get_durative_action() const {
-                return _durative_action;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "?duration";
-                return o;
-            }
-        
-        private :
-            DurativeActionPtr _durative_action;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
