@@ -9,23 +9,21 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class DurationExpression : public Expression {
-        public :
-            static constexpr char class_name[] = "?duration";
+class DurationExpression : public Expression {
+public:
+  static constexpr char class_name[] = "?duration";
 
-            typedef std::shared_ptr<DurationExpression> Ptr;
+  typedef std::shared_ptr<DurationExpression> Ptr;
 
-            DurationExpression() {}
+  DurationExpression();
+  virtual ~DurationExpression();
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "?duration";
-                return o;
-            }
-        };
+  virtual std::ostream &print(std::ostream &o) const;
+};
 
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
