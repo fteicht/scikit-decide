@@ -76,7 +76,6 @@ generate_template_instantiation_files(
 
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
-        domain.cc
         problem.cc
         requirements.cc
         type.cc
@@ -100,6 +99,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/conditional_effect.cc
         impl/constraint_formula.cc
         ${DERIVED_PREDICATE_CONTAINER_TEMPLATE_FILES}
+        impl/domain.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
