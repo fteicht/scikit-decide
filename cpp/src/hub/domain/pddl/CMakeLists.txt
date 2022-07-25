@@ -92,6 +92,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Domain!Dom;Problem!Pbm")
 
+generate_template_instantiation_files(
+        OPERATOR_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/operator.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         problem.cc
@@ -137,6 +143,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/number.cc
         impl/numerical_expression.cc
         ${OBJECT_CONTAINER_TEMPLATE_FILES}
+        ${OPERATOR_TEMPLATE_FILES}
+        impl/operator.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
