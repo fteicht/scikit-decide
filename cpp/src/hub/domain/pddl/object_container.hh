@@ -43,4 +43,8 @@ protected:
 
 } // namespace skdecide
 
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/object_container_impl.hh"
+#endif
+
 #endif // SKDECIDE_PDDL_OBJECT_CONTAINER_HH
