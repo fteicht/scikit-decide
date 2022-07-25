@@ -129,6 +129,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/negation_formula.cc
         ${NUMBER_TEMPLATE_FILES}
         impl/number.cc
+        impl/numerical_expression.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

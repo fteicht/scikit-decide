@@ -10,49 +10,28 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class NumericalExpression : public Expression {
-        public :
-            typedef std::shared_ptr<NumericalExpression> Ptr;
+class NumericalExpression : public Expression {
+public:
+  typedef std::shared_ptr<NumericalExpression> Ptr;
 
-            NumericalExpression() {}
+  NumericalExpression();
+  NumericalExpression(const Number::Ptr &number);
+  NumericalExpression(const NumericalExpression &other);
+  NumericalExpression &operator=(const NumericalExpression &other);
+  virtual ~NumericalExpression();
 
-            NumericalExpression(const Number::Ptr& number)
-                : _number(number) {}
-            
-            NumericalExpression(const NumericalExpression& other)
-                : _number(other._number) {}
-            
-            NumericalExpression& operator= (const NumericalExpression& other) {
-                this->_number = other._number;
-                return *this;
-            }
+  void set_number(const Number::Ptr &number);
+  const Number::Ptr &get_number() const;
 
-            virtual ~NumericalExpression() {}
+  virtual std::ostream &print(std::ostream &o) const;
 
-            void set_number(const Number::Ptr& number) {
-                _number = number;
-            }
+private:
+  Number::Ptr _number;
+};
 
-            const Number::Ptr& get_number() const {
-                return _number;
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                if (_number) {
-                    return _number->print(o);
-                } else {
-                    o << 0;
-                    return o;
-                }
-            }
-        
-        private :
-            Number::Ptr _number;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
