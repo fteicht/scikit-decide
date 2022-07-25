@@ -106,7 +106,7 @@ namespace skdecide {
                     s.requirements->set_durative_actions();
                     s.global_requirements->set_durative_actions();
                     try {
-                        s.domain->add_function("total-time");
+                        s.domain->add_function(std::string("total-time"));
                     } catch (...) {
                         // discard exception thrown when the 'total-time' function is already declared
                     }
@@ -120,7 +120,7 @@ namespace skdecide {
                     s.requirements->set_time();
                     s.global_requirements->set_time();
                     try {
-                        s.domain->add_function("total-time");
+                        s.domain->add_function(std::string("total-time"));
                     } catch (...) {
                         // discard exception thrown when the 'total-time' function is already declared
                     }
@@ -134,7 +134,7 @@ namespace skdecide {
                     s.requirements->set_action_costs();
                     s.global_requirements->set_action_costs();
                     try {
-                        s.domain->add_function("total-cost");
+                        s.domain->add_function(std::string("total-cost"));
                     } catch (...) {
                         // discard exception thrown when the 'total-cost' function is already declared
                     }
