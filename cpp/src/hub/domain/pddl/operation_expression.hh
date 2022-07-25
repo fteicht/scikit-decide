@@ -9,104 +9,65 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class AddExpression : public BinaryExpression<AddExpression> {
-        public :
-            static constexpr char class_name[] = "+";
+class AddExpression : public BinaryExpression<AddExpression> {
+public:
+  static constexpr char class_name[] = "+";
 
-            typedef std::shared_ptr<AddExpression> Ptr;
+  typedef std::shared_ptr<AddExpression> Ptr;
 
-            AddExpression() {}
+  AddExpression();
+  AddExpression(const Expression::Ptr &left_expression,
+                const Expression::Ptr &right_expression);
+  AddExpression(const AddExpression &other);
+  AddExpression &operator=(const AddExpression &other);
+  virtual ~AddExpression();
+};
 
-            AddExpression(const Expression::Ptr& left_expression,
-                          const Expression::Ptr& right_expression)
-                : BinaryExpression<AddExpression>(left_expression, right_expression) {}
-            
-            AddExpression(const AddExpression& other)
-                : BinaryExpression<AddExpression>(other) {}
-            
-            AddExpression& operator= (const AddExpression& other) {
-                dynamic_cast<BinaryExpression<AddExpression>&>(*this) = other;
-                return *this;
-            }
+class SubExpression : public BinaryExpression<SubExpression> {
+public:
+  static constexpr char class_name[] = "-";
 
-            virtual ~AddExpression() {}
-        };
+  typedef std::shared_ptr<SubExpression> Ptr;
 
+  SubExpression();
+  SubExpression(const Expression::Ptr &left_expression,
+                const Expression::Ptr &right_expression);
+  SubExpression(const SubExpression &other);
+  SubExpression &operator=(const SubExpression &other);
+  virtual ~SubExpression();
+};
 
-        class SubExpression : public BinaryExpression<SubExpression> {
-        public :
-            static constexpr char class_name[] = "-";
+class MulExpression : public BinaryExpression<MulExpression> {
+public:
+  static constexpr char class_name[] = "*";
 
-            typedef std::shared_ptr<SubExpression> Ptr;
+  typedef std::shared_ptr<MulExpression> Ptr;
 
-            SubExpression() {}
+  MulExpression();
+  MulExpression(const Expression::Ptr &left_expression,
+                const Expression::Ptr &right_expression);
+  MulExpression(const MulExpression &other);
+  MulExpression &operator=(const MulExpression &other);
+  virtual ~MulExpression();
+};
 
-            SubExpression(const Expression::Ptr& left_expression,
-                          const Expression::Ptr& right_expression)
-                : BinaryExpression<SubExpression>(left_expression, right_expression) {}
-            
-            SubExpression(const SubExpression& other)
-                : BinaryExpression<SubExpression>(other) {}
-            
-            SubExpression& operator= (const SubExpression& other) {
-                dynamic_cast<BinaryExpression<SubExpression>&>(*this) = other;
-                return *this;
-            }
+class DivExpression : public BinaryExpression<DivExpression> {
+public:
+  static constexpr char class_name[] = "/";
 
-            virtual ~SubExpression() {}
-        };
+  typedef std::shared_ptr<DivExpression> Ptr;
 
+  DivExpression();
+  DivExpression(const Expression::Ptr &left_expression,
+                const Expression::Ptr &right_expression);
+  DivExpression(const DivExpression &other);
+  DivExpression &operator=(const DivExpression &other);
+  virtual ~DivExpression();
+};
 
-        class MulExpression : public BinaryExpression<MulExpression> {
-        public :
-            static constexpr char class_name[] = "*";
-
-            typedef std::shared_ptr<MulExpression> Ptr;
-
-            MulExpression() {}
-
-            MulExpression(const Expression::Ptr& left_expression,
-                          const Expression::Ptr& right_expression)
-                : BinaryExpression<MulExpression>(left_expression, right_expression) {}
-            
-            MulExpression(const MulExpression& other)
-                : BinaryExpression<MulExpression>(other) {}
-            
-            MulExpression& operator= (const MulExpression& other) {
-                dynamic_cast<BinaryExpression<MulExpression>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~MulExpression() {}
-        };
-
-
-        class DivExpression : public BinaryExpression<DivExpression> {
-        public :
-            static constexpr char class_name[] = "/";
-
-            typedef std::shared_ptr<DivExpression> Ptr;
-
-            DivExpression() {}
-
-            DivExpression(const Expression::Ptr& left_expression,
-                          const Expression::Ptr& right_expression)
-                : BinaryExpression<DivExpression>(left_expression, right_expression) {}
-            
-            DivExpression(const DivExpression& other)
-                : BinaryExpression<DivExpression>(other) {}
-            
-            DivExpression& operator= (const DivExpression& other) {
-                dynamic_cast<BinaryExpression<DivExpression>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~DivExpression() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

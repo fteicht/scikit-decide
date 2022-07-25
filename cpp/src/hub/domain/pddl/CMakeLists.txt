@@ -144,6 +144,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/numerical_expression.cc
         ${OBJECT_CONTAINER_TEMPLATE_FILES}
         impl/object.cc
+        impl/operation_expression.cc
         ${OPERATOR_TEMPLATE_FILES}
         impl/operator.cc
         parser/parser.cc)
