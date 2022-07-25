@@ -80,6 +80,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Domain!Dom;Class!Cls")
 
+generate_template_instantiation_files(
+        NUMBER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/number.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tnumber" "long!long;long long!llong;int!int;unsigned int!uint;long int!lint;long unsigned int!luint;double!dbl;long double!ldbl;float!flt")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         pddl.cc
         problem.cc
@@ -121,6 +127,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/minus_expression.cc
         impl/negation_effect.cc
         impl/negation_formula.cc
+        ${NUMBER_TEMPLATE_FILES}
+        impl/number.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

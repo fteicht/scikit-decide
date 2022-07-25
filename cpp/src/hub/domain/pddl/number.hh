@@ -10,52 +10,50 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Number {
-        public :
-            typedef std::shared_ptr<Number> Ptr;
-            
-            template <typename T>
-            Number(const T& n) {
-                _impl = std::make_unique<Impl<T>>(n);
-            }
+class Number {
+public:
+  typedef std::shared_ptr<Number> Ptr;
 
-            bool is_double() const { return _impl->is_double(); }
-            double as_double() const { return _impl->as_double(); }
-            long as_long() const { return _impl->as_long(); }
-            std::ostream& print(std::ostream& o) const { return _impl->print(o); };
+  template <typename T> Number(const T &n);
 
-        private :
-            struct ImplBase {
-                virtual ~ImplBase() {}
-                virtual bool is_double() const =0;
-                virtual double as_double() const =0;
-                virtual long as_long() const =0;
-                virtual std::ostream& print(std::ostream& o) const =0;
-            };
+  bool is_double() const;
+  double as_double() const;
+  long as_long() const;
+  std::ostream &print(std::ostream &o) const;
 
-            template <typename T>
-            struct Impl : public ImplBase {
-                T _n;
-                Impl(const T& n) : _n(n) {}
-                virtual ~Impl() {}
-                virtual bool is_double() const { return std::is_floating_point<T>::value; }
-                virtual double as_double() const { return (double) _n; }
-                virtual long as_long() const { return (long) _n; }
-                virtual std::ostream& print(std::ostream& o) const { o << _n; return o; }
-            };
+private:
+  struct ImplBase {
+    virtual ~ImplBase();
+    virtual bool is_double() const = 0;
+    virtual double as_double() const = 0;
+    virtual long as_long() const = 0;
+    virtual std::ostream &print(std::ostream &o) const = 0;
+  };
 
-            std::unique_ptr<ImplBase> _impl;
-        };
+  template <typename T> struct Impl : public ImplBase {
+    T _n;
+    Impl(const T &n);
+    virtual ~Impl();
+    virtual bool is_double() const;
+    virtual double as_double() const;
+    virtual long as_long() const;
+    virtual std::ostream &print(std::ostream &o) const;
+  };
 
-        // Number printing operator
-        inline std::ostream& operator<<(std::ostream& o, const Number& n) {
-            return n.print(o);
-        }
+  std::unique_ptr<ImplBase> _impl;
+};
 
-    } // namespace pddl
+// Number printing operator
+std::ostream &operator<<(std::ostream &o, const Number &n);
+
+} // namespace pddl
 
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/number_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_NUMBER_HH
