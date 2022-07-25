@@ -27,6 +27,8 @@ namespace skdecide {
                 return *this;
             }
 
+            virtual ~TermContainer() {}
+
             // Terms cannot be created (we can only  create objects and
             // variables) so we just allow for passing shared pointers to terms
             inline const TermPtr& append_term(const TermPtr& term) {
