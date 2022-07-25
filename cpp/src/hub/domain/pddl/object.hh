@@ -10,43 +10,26 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Object : public Term,
-                       public Identifier,
-                       public TypeContainer<Object> {
-        public :
-            static constexpr char class_name[] = "object";
+class Object : public Term, public Identifier, public TypeContainer<Object> {
+public:
+  static constexpr char class_name[] = "object";
 
-            Object(const std::string& name)
-                : Identifier(name) {}
+  Object(const std::string &name);
+  Object(const Object &other);
+  Object &operator=(const Object &other);
+  virtual ~Object();
 
-            Object(const Object& other)
-                : Identifier(other), TypeContainer<Object>(other) {}
-            
-            virtual ~Object() {}
+  virtual const std::string &get_name() const;
 
-            Object& operator=(const Object& other) {
-                dynamic_cast<Identifier&>(*this) = other;
-                dynamic_cast<TypeContainer<Object>&>(*this) = other;
-                return *this;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
+};
 
-            virtual const std::string& get_name() const {
-                return Identifier::get_name();
-            }
+// Object printing operator
+std::ostream &operator<<(std::ostream &o, const Object &ob);
 
-            virtual std::ostream& print(std::ostream& o) const {
-                return TypeContainer<Object>::print(o);
-            }
-        };
-
-        // Object printing operator
-        inline std::ostream& operator<<(std::ostream& o, const Object& ob) {
-            return ob.print(o);
-        }
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
