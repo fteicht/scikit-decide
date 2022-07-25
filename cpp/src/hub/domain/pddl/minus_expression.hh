@@ -9,31 +9,22 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class MinusExpression : public UnaryExpression<MinusExpression> {
-        public :
-            static constexpr char class_name[] = "-";
+class MinusExpression : public UnaryExpression<MinusExpression> {
+public:
+  static constexpr char class_name[] = "-";
 
-            typedef std::shared_ptr<MinusExpression> Ptr;
+  typedef std::shared_ptr<MinusExpression> Ptr;
 
-            MinusExpression() {}
+  MinusExpression();
+  MinusExpression(const Expression::Ptr &expression);
+  MinusExpression(const MinusExpression &other);
+  MinusExpression &operator=(const MinusExpression &other);
+  virtual ~MinusExpression();
+};
 
-            MinusExpression(const Expression::Ptr& expression)
-                : UnaryExpression<MinusExpression>(expression) {}
-            
-            MinusExpression(const MinusExpression& other)
-                : UnaryExpression<MinusExpression>(other) {}
-            
-            MinusExpression& operator= (const MinusExpression& other) {
-                dynamic_cast<UnaryExpression<MinusExpression>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~MinusExpression() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
