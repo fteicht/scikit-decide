@@ -93,6 +93,19 @@ generate_template_instantiation_files(
         "Tderived" "Domain!Dom;Problem!Pbm")
 
 generate_template_instantiation_files(
+        OPERATOR_CONTAINER_BASE_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/operator_container_base.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom"
+        "Toperator" "Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
+
+generate_template_instantiation_files(
+        OPERATOR_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/operator_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom")
+
+generate_template_instantiation_files(
         OPERATOR_TEMPLATE_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/impl/operator.cc.in"
         "${CMAKE_CURRENT_BINARY_DIR}"
@@ -145,6 +158,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${OBJECT_CONTAINER_TEMPLATE_FILES}
         impl/object.cc
         impl/operation_expression.cc
+        ${OPERATOR_CONTAINER_BASE_TEMPLATE_FILES}
+        ${OPERATOR_CONTAINER_TEMPLATE_FILES}
         ${OPERATOR_TEMPLATE_FILES}
         impl/operator.cc
         parser/parser.cc)
