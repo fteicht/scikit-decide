@@ -10,31 +10,22 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class NegationEffect : public UnaryEffect<NegationEffect, PredicateEffect> {
-        public :
-            static constexpr char class_name[] = "not";
+class NegationEffect : public UnaryEffect<NegationEffect, PredicateEffect> {
+public:
+  static constexpr char class_name[] = "not";
 
-            typedef std::shared_ptr<NegationEffect> Ptr;
+  typedef std::shared_ptr<NegationEffect> Ptr;
 
-            NegationEffect() {}
+  NegationEffect();
+  NegationEffect(const PredicateEffect::Ptr &effect);
+  NegationEffect(const NegationEffect &other);
+  NegationEffect &operator=(const NegationEffect &other);
+  virtual ~NegationEffect();
+};
 
-            NegationEffect(const PredicateEffect::Ptr& effect)
-                : UnaryEffect<NegationEffect, PredicateEffect>(effect) {}
-            
-            NegationEffect(const NegationEffect& other)
-                : UnaryEffect<NegationEffect, PredicateEffect>(other) {}
-            
-            NegationEffect& operator= (const NegationEffect& other) {
-                dynamic_cast<UnaryEffect<NegationEffect, PredicateEffect>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~NegationEffect() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
