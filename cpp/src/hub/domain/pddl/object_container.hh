@@ -10,64 +10,37 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Object;
+class Object;
 
-        template <typename Derived>
-        class ObjectContainer : public AssociativeContainer<Derived, Object> {
-        public :
-            typedef typename AssociativeContainer<Derived, Object>::SymbolPtr ObjectPtr;
-            typedef typename AssociativeContainer<Derived, Object>::SymbolSet ObjectSet;
+template <typename Derived>
+class ObjectContainer : public AssociativeContainer<Derived, Object> {
+public:
+  typedef typename AssociativeContainer<Derived, Object>::SymbolPtr ObjectPtr;
+  typedef typename AssociativeContainer<Derived, Object>::SymbolSet ObjectSet;
 
-            ObjectContainer(const ObjectContainer& other)
-                : AssociativeContainer<Derived, Object>(other) {}
-            
-            ObjectContainer& operator=(const ObjectContainer& other) {
-                dynamic_cast<AssociativeContainer<Derived, Object>&>(*this) = other;
-                return *this;
-            }
+  ObjectContainer(const ObjectContainer &other);
+  ObjectContainer &operator=(const ObjectContainer &other);
+  virtual ~ObjectContainer();
 
-            template <typename T>
-            inline const ObjectPtr& add_object(const T& object) {
-                return AssociativeContainer<Derived, Object>::add(object);
-            }
+  template <typename T> const ObjectPtr &add_object(const T &object);
+  template <typename T> void remove_object(const T &object);
 
-            template <typename T>
-            inline void remove_object(const T& object) {
-                AssociativeContainer<Derived, Object>::remove(object);
-            }
+  template <typename T>
+  const ObjectPtr &get_object(const T &object) const;
 
-            template <typename T>
-            inline const ObjectPtr& get_object(const T& object) const {
-                return AssociativeContainer<Derived, Object>::get(object);
-            }
+  const ObjectSet &get_objects() const;
 
-            inline const ObjectSet& get_objects() const {
-                return AssociativeContainer<Derived, Object>::get_container();
-            }
+  virtual std::ostream &print(std::ostream &o) const;
+  virtual std::string print() const;
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << static_cast<const Derived*>(this)->get_name();
-                for (const auto & ob : get_objects()) {
-                    o << " " << *ob;
-                }
-                o << ")";
-                return o;
-            }
+protected:
+  ObjectContainer();
+};
 
-            virtual std::string print() const {
-                std::ostringstream o;
-                print(o);
-                return o.str();
-            }
-        
-        protected :
-            ObjectContainer() {}
-        };     
+} // namespace pddl
 
-    } // namespace pddl
-    
 } // namespace skdecide
 
 #endif // SKDECIDE_PDDL_OBJECT_CONTAINER_HH
