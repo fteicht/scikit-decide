@@ -11,55 +11,36 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class FunctionExpression : public Expression,
-                                   public TermContainer<FunctionExpression> {
-        public :
-            static constexpr char class_name[] = "function expression";
+class FunctionExpression : public Expression,
+                           public TermContainer<FunctionExpression> {
+public:
+  static constexpr char class_name[] = "function expression";
 
-            typedef std::shared_ptr<FunctionExpression> Ptr;
-            typedef typename TermContainer<FunctionExpression>::TermPtr TermPtr;
-            typedef typename TermContainer<FunctionExpression>::TermVector TermVector;
+  typedef std::shared_ptr<FunctionExpression> Ptr;
+  typedef typename TermContainer<FunctionExpression>::TermPtr TermPtr;
+  typedef typename TermContainer<FunctionExpression>::TermVector TermVector;
 
-            FunctionExpression() {}
+  FunctionExpression();
+  FunctionExpression(const Function::Ptr &function,
+                     const TermContainer<FunctionExpression> &terms);
+  FunctionExpression(const FunctionExpression &other);
+  FunctionExpression &operator=(const FunctionExpression &other);
+  virtual ~FunctionExpression();
 
-            FunctionExpression(const Function::Ptr& function,
-                               const TermContainer<FunctionExpression>& terms)
-                : TermContainer<FunctionExpression>(terms), _function(function) {}
-            
-            FunctionExpression(const FunctionExpression& other)
-                : TermContainer<FunctionExpression>(other), _function(other._function) {}
-            
-            FunctionExpression& operator= (const FunctionExpression& other) {
-                dynamic_cast<TermContainer<FunctionExpression>&>(*this) = other;
-                this->_function = other._function;
-                return *this;
-            }
+  void set_function(const Function::Ptr &function);
+  const Function::Ptr &get_function() const;
 
-            virtual ~FunctionExpression() {}
+  const std::string &get_name() const;
 
-            void set_function(const Function::Ptr& function) {
-                _function = function;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
 
-            const Function::Ptr& get_function() const {
-                return _function;
-            }
+private:
+  Function::Ptr _function;
+};
 
-            const std::string& get_name() const {
-                return _function->get_name();
-            }
-
-            virtual std::ostream& print(std::ostream& o) const {
-                return TermContainer<FunctionExpression>::print(o);
-            }
-        
-        private :
-            Function::Ptr _function;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

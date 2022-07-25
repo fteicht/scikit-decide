@@ -114,6 +114,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/expression.cc
         impl/formula.cc
         ${FUNCTION_CONTAINER_TEMPLATE_FILES}
+        impl/function_expression.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
