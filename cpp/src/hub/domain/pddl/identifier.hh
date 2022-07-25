@@ -10,38 +10,28 @@
 #include "utils/string_converter.hh"
 
 namespace skdecide {
-    
-    namespace pddl {
 
-        class Identifier {
-        public :
-            Identifier(const Identifier& other)
-                : _name(other._name) {}
-            
-            Identifier& operator=(const Identifier& other) {
-                this->_name = other._name;
-                return *this;
-            }
+namespace pddl {
 
-            const std::string& get_name() const {
-                return _name;
-            }
+class Identifier {
+public:
+  Identifier(const Identifier &other);
+  Identifier &operator=(const Identifier &other);
+  virtual ~Identifier();
 
-        protected :
-            std::string _name;
+  const std::string &get_name() const;
 
-            Identifier() {}
+protected:
+  std::string _name;
 
-            Identifier(const std::string& name)
-                : _name(StringConverter::tolower(name)) {}
-            
-            void set_name(const std::string& name) {
-                _name = StringConverter::tolower(name);
-            }
-        };
-        
-    } // namespace pddl
-    
+  Identifier();
+  Identifier(const std::string &name);
+
+  void set_name(const std::string &name);
+};
+
+} // namespace pddl
+
 } // namespace skdecide
 
 #endif // SKDECIDE_PDDL_IDENTIFIER_HH
