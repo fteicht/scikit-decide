@@ -10,39 +10,27 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Function : public Identifier,
-                         public VariableContainer<Function> {
-        public :
-            static constexpr char class_name[] = "function";
+class Function : public Identifier, public VariableContainer<Function> {
+public:
+  static constexpr char class_name[] = "function";
 
-            typedef std::shared_ptr<Function> Ptr;
+  typedef std::shared_ptr<Function> Ptr;
 
-            Function(const std::string& name)
-                : Identifier(name) {}
+  Function(const std::string &name);
+  Function(const Function &other);
+  Function &operator=(const Function &other);
+  virtual ~Function();
 
-            Function(const Function& other)
-                : Identifier(other), VariableContainer<Function>(other) {}
+  typedef VariableContainer<Function>::VariablePtr VariablePtr;
+  typedef VariableContainer<Function>::VariableVector VariableVector;
+};
 
-            Function& operator=(const Function& other) {
-                dynamic_cast<Identifier&>(*this) = other;
-                dynamic_cast<VariableContainer<Function>&>(*this) = other;
-                return *this;
-            }
+// Object printing operator
+std::ostream &operator<<(std::ostream &o, const Function &f);
 
-            virtual ~Function() {}
-
-            typedef VariableContainer<Function>::VariablePtr VariablePtr;
-            typedef VariableContainer<Function>::VariableVector VariableVector;
-        };
-
-        // Object printing operator
-        inline std::ostream& operator<<(std::ostream& o, const Function& f) {
-            return f.print(o);
-        }
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
