@@ -1,0 +1,6 @@
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/domain.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/quantified_formula.hh"
+#include "${CMAKE_SOURCE_DIR}/src/hub/domain/pddl/impl/quantified_formula_impl.hh"
+#include "quantified_formula.hh"
+
+template class skdecide::pddl::QuantifiedFormula<skdecide::pddl::${Tderived}>;

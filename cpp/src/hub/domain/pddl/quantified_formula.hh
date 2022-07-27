@@ -10,113 +10,71 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        template <typename Derived>
-        class QuantifiedFormula : public Formula,
-                                  public VariableContainer<Derived> {
-        public :
-            typedef std::shared_ptr<QuantifiedFormula<Derived>> Ptr;
-            typedef typename VariableContainer<Derived>::VariablePtr VariablePtr;
-            typedef typename VariableContainer<Derived>::VariableVector VariableVector;
+template <typename Derived>
+class QuantifiedFormula : public Formula, public VariableContainer<Derived> {
+public:
+  typedef std::shared_ptr<QuantifiedFormula<Derived>> Ptr;
+  typedef typename VariableContainer<Derived>::VariablePtr VariablePtr;
+  typedef typename VariableContainer<Derived>::VariableVector VariableVector;
 
-            QuantifiedFormula() {}
+  QuantifiedFormula();
+  QuantifiedFormula(const Formula::Ptr &formula,
+                    const VariableContainer<Derived> &variables);
+  QuantifiedFormula(const QuantifiedFormula &other);
+  QuantifiedFormula &operator=(const QuantifiedFormula &other);
+  virtual ~QuantifiedFormula();
 
-            QuantifiedFormula(const Formula::Ptr& formula,
-                              const VariableContainer<Derived>& variables)
-                : VariableContainer<Derived>(variables),
-                  _formula(formula) {}
-            
-            QuantifiedFormula(const QuantifiedFormula& other)
-                : VariableContainer<Derived>(other),
-                  _formula(other._formula) {}
-            
-            QuantifiedFormula& operator= (const QuantifiedFormula& other) {
-                dynamic_cast<VariableContainer<Derived>&>(*this) = other;
-                this->_formula = other._formula;
-                return *this;
-            }
+  QuantifiedFormula &set_formula(const Formula::Ptr &formula);
+  const Formula::Ptr &get_formula() const;
 
-            virtual ~QuantifiedFormula() {}
+  static const char *get_name();
 
-            QuantifiedFormula& set_formula(const Formula::Ptr& formula) {
-                _formula = formula;
-                return *this;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
 
-            const Formula::Ptr& get_formula() const {
-                return _formula;
-            }
+private:
+  Formula::Ptr _formula;
+};
 
-            static const char* get_name() {
-                return Derived::class_name;
-            }
+class UniversalFormula : public QuantifiedFormula<UniversalFormula> {
+public:
+  static constexpr char class_name[] = "forall";
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << Derived::class_name << " (";
-                for (const auto& v : this->get_variables()) {
-                    o << " " << *v;
-                }
-                o << ") " << *_formula << ")";
-                return o;
-            }
-        
-        private :
-            Formula::Ptr _formula;
-        };
+  typedef std::shared_ptr<UniversalFormula> Ptr;
+  typedef QuantifiedFormula<UniversalFormula> VariablePtr;
+  typedef QuantifiedFormula<UniversalFormula> VariableVector;
 
+  UniversalFormula();
+  UniversalFormula(const Formula::Ptr &formula,
+                   const VariableContainer<UniversalFormula> &variables);
+  UniversalFormula(const UniversalFormula &other);
+  UniversalFormula &operator=(const UniversalFormula &other);
+  virtual ~UniversalFormula();
+};
 
-        class UniversalFormula : public QuantifiedFormula<UniversalFormula> {
-        public :
-            static constexpr char class_name[] = "forall";
+class ExistentialFormula : public QuantifiedFormula<ExistentialFormula> {
+public:
+  static constexpr char class_name[] = "exists";
 
-            typedef std::shared_ptr<UniversalFormula> Ptr;
-            typedef QuantifiedFormula<UniversalFormula> VariablePtr;
-            typedef QuantifiedFormula<UniversalFormula> VariableVector;
+  typedef std::shared_ptr<ExistentialFormula> Ptr;
+  typedef QuantifiedFormula<ExistentialFormula> VariablePtr;
+  typedef QuantifiedFormula<ExistentialFormula> VariableVector;
 
-            UniversalFormula() {}
+  ExistentialFormula();
+  ExistentialFormula(const Formula::Ptr &formula,
+                     const VariableContainer<ExistentialFormula> &variables);
+  ExistentialFormula(const ExistentialFormula &other);
+  ExistentialFormula &operator=(const ExistentialFormula &other);
+  virtual ~ExistentialFormula();
+};
 
-            UniversalFormula(const Formula::Ptr& formula,
-                             const VariableContainer<UniversalFormula>& variables)
-                : QuantifiedFormula<UniversalFormula>(formula, variables) {}
-            
-            UniversalFormula(const UniversalFormula& other)
-                : QuantifiedFormula<UniversalFormula>(other) {}
-            
-            UniversalFormula& operator= (const UniversalFormula& other) {
-                dynamic_cast<QuantifiedFormula<UniversalFormula>&>(*this) = other;
-                return *this;
-            }
-        };
-
-
-        class ExistentialFormula : public QuantifiedFormula<ExistentialFormula> {
-        public :
-            static constexpr char class_name[] = "exists";
-
-            typedef std::shared_ptr<ExistentialFormula> Ptr;
-            typedef QuantifiedFormula<ExistentialFormula> VariablePtr;
-            typedef QuantifiedFormula<ExistentialFormula> VariableVector;
-
-            ExistentialFormula() {}
-
-            ExistentialFormula(const Formula::Ptr& formula,
-                               const VariableContainer<ExistentialFormula>& variables)
-                : QuantifiedFormula<ExistentialFormula>(formula, variables) {}
-            
-            ExistentialFormula(const ExistentialFormula& other)
-                : QuantifiedFormula<ExistentialFormula>(other) {}
-            
-            ExistentialFormula& operator= (const ExistentialFormula& other) {
-                dynamic_cast<QuantifiedFormula<ExistentialFormula>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~ExistentialFormula() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/quantified_formula_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_QUANTIFIED_FORMULA_HH

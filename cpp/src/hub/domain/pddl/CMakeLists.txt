@@ -123,6 +123,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "UniversalEffect!Uef;ExistentialEffect!Eef")
 
+generate_template_instantiation_files(
+        QUANTIFIED_FORMULA_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/quantified_formula.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "UniversalFormula!Ufo;ExistentialFormula!Efo")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         requirements.cc
         type.cc
@@ -180,6 +186,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/problem.cc
         ${QUANTIFIED_EFFECT_TEMPLATE_FILES}
         impl/quantified_effect.cc
+        ${QUANTIFIED_FORMULA_TEMPLATE_FILES}
+        impl/quantified_formula.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
