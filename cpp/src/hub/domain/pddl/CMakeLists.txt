@@ -130,7 +130,6 @@ generate_template_instantiation_files(
         "Tderived" "UniversalFormula!Ufo;ExistentialFormula!Efo")
 
 ADD_LIBRARY(skdecide_pddl STATIC
-        requirements.cc
         type.cc
         ${AGGREGATION_EFFECT_TEMPLATE_FILES}
         impl/aggregation_effect.cc
@@ -188,6 +187,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/quantified_effect.cc
         ${QUANTIFIED_FORMULA_TEMPLATE_FILES}
         impl/quantified_formula.cc
+        impl/requirements.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
