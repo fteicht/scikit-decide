@@ -111,6 +111,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
 
+generate_template_instantiation_files(
+        PREDICATE_CONTAINER_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/predicate_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Domain!Dom")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         problem.cc
         requirements.cc
@@ -164,6 +170,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/operator.cc
         impl/optimization_expression.cc
         impl/pddl.cc
+        ${PREDICATE_CONTAINER_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
