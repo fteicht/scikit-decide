@@ -129,6 +129,20 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "UniversalFormula!Ufo;ExistentialFormula!Efo")
 
+generate_template_instantiation_files(
+        SEQUENCE_CONTAINER_TERM_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/sequence_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "EqualityFormula!Eqf;FunctionExpression!Fex;PredicateEffect!Pef;PredicateFormula!Pfm"
+        "Tsymbol" "Term!Trm")
+
+generate_template_instantiation_files(
+        SEQUENCE_CONTAINER_VARIABLE_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/sequence_container.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "Function!Fun;Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc;Predicate!Prd;UniversalEffect!Uef;ExistentialEffect!Eef;UniversalFormula!Ufo;ExistentialFormula!Efo"
+        "Tsymbol" "Variable!Var")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         type.cc
         ${AGGREGATION_EFFECT_TEMPLATE_FILES}
@@ -188,6 +202,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${QUANTIFIED_FORMULA_TEMPLATE_FILES}
         impl/quantified_formula.cc
         impl/requirements.cc
+        ${SEQUENCE_CONTAINER_TERM_TEMPLATE_FILES}
+        ${SEQUENCE_CONTAINER_VARIABLE_TEMPLATE_FILES}
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
