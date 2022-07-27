@@ -10,64 +10,69 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Preference;
+class Preference;
 
-        template <typename Derived>
-        class PreferenceContainer : public AssociativeContainer<Derived, Preference> {
-        public :
-            typedef typename AssociativeContainer<Derived, Preference>::SymbolPtr PreferencePtr;
-            typedef typename AssociativeContainer<Derived, Preference>::SymbolSet PreferenceSet;
+template <typename Derived>
+class PreferenceContainer : public AssociativeContainer<Derived, Preference> {
+public:
+  typedef typename AssociativeContainer<Derived, Preference>::SymbolPtr
+      PreferencePtr;
+  typedef typename AssociativeContainer<Derived, Preference>::SymbolSet
+      PreferenceSet;
 
-            PreferenceContainer(const PreferenceContainer& other)
-                : AssociativeContainer<Derived, Preference>(other) {}
-            
-            PreferenceContainer& operator=(const PreferenceContainer& other) {
-                dynamic_cast<AssociativeContainer<Derived, Preference>&>(*this) = other;
-                return *this;
-            }
+  PreferenceContainer(const PreferenceContainer &other)
+      : AssociativeContainer<Derived, Preference>(other) {}
 
-            template <typename T>
-            inline const PreferencePtr& add_preference(const T& preference) {
-                return AssociativeContainer<Derived, Preference>::add(preference);
-            }
+  PreferenceContainer &operator=(const PreferenceContainer &other) {
+    dynamic_cast<AssociativeContainer<Derived, Preference> &>(*this) = other;
+    return *this;
+  }
 
-            template <typename T>
-            inline void remove_preference(const T& preference) {
-                AssociativeContainer<Derived, Preference>::remove(preference);
-            }
+  template <typename T>
+  inline const PreferencePtr &add_preference(const T &preference) {
+    return AssociativeContainer<Derived, Preference>::add(preference);
+  }
 
-            template <typename T>
-            inline const PreferencePtr& get_preference(const T& preference) const {
-                return AssociativeContainer<Derived, Preference>::get(preference);
-            }
+  template <typename T> inline void remove_preference(const T &preference) {
+    AssociativeContainer<Derived, Preference>::remove(preference);
+  }
 
-            inline const PreferenceSet& get_preferences() const {
-                return AssociativeContainer<Derived, Preference>::get_container();
-            }
+  template <typename T>
+  inline const PreferencePtr &get_preference(const T &preference) const {
+    return AssociativeContainer<Derived, Preference>::get(preference);
+  }
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(" << static_cast<const Derived*>(this)->get_name();
-                for (const auto & ob : get_preferences()) {
-                    o << " " << *ob;
-                }
-                o << ")";
-                return o;
-            }
+  inline const PreferenceSet &get_preferences() const {
+    return AssociativeContainer<Derived, Preference>::get_container();
+  }
 
-            virtual std::string print() const {
-                std::ostringstream o;
-                print(o);
-                return o.str();
-            }
-        
-        protected :
-            PreferenceContainer() {}
-        };     
+  virtual std::ostream &print(std::ostream &o) const {
+    o << "(" << static_cast<const Derived *>(this)->get_name();
+    for (const auto &ob : get_preferences()) {
+      o << " " << *ob;
+    }
+    o << ")";
+    return o;
+  }
 
-    } // namespace pddl
-    
+  virtual std::string print() const {
+    std::ostringstream o;
+    print(o);
+    return o.str();
+  }
+
+protected:
+  PreferenceContainer() {}
+};
+
+} // namespace pddl
+
 } // namespace skdecide
+
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/preference_container_impl.hh"
+#endif
 
 #endif // SKDECIDE_PDDL_PREFERENCE_CONTAINER_HH

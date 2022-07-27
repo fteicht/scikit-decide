@@ -73,4 +73,8 @@ public:
 
 } // namespace skdecide
 
+#ifdef SKDECIDE_HEADERS_ONLY
+#include "impl/quantified_effect_impl.hh"
+#endif
+
 #endif // SKDECIDE_PDDL_QUANTIFIED_EFFECT_HH
