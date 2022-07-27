@@ -117,6 +117,12 @@ generate_template_instantiation_files(
         "${CMAKE_CURRENT_BINARY_DIR}"
         "Tderived" "Domain!Dom")
 
+generate_template_instantiation_files(
+        QUANTIFIED_EFFECT_TEMPLATE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/impl/quantified_effect.cc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "Tderived" "UniversalEffect!Uef;ExistentialEffect!Eef")
+
 ADD_LIBRARY(skdecide_pddl STATIC
         requirements.cc
         type.cc
@@ -172,6 +178,8 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${PREDICATE_CONTAINER_TEMPLATE_FILES}
         impl/preference.cc
         impl/problem.cc
+        ${QUANTIFIED_EFFECT_TEMPLATE_FILES}
+        impl/quantified_effect.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
