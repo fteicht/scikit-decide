@@ -24,68 +24,72 @@
 
 namespace skdecide {
 
-    namespace pddl {
-        
-        class Domain : public Identifier,
-                       public TypeContainer<Domain>,
-                       public ObjectContainer<Domain>,
-                       public PredicateContainer<Domain>,
-                       public FunctionContainer<Domain>,
-                       public DerivedPredicateContainer<Domain>,
-                       public ClassContainer<Domain>,
-                       public PreferenceContainer<Domain>,
-                       public ActionContainer<Domain>,
-                       public DurativeActionContainer<Domain>,
-                       public EventContainer<Domain>,
-                       public ProcessContainer<Domain> {
-        public :
-            static constexpr char class_name[] = "domain";
+namespace pddl {
 
-            typedef std::shared_ptr<Domain> Ptr;
-            
-            Domain(const std::string& name);
-            virtual ~Domain();
-            
-            void set_requirements(const Requirements::Ptr& requirements);
-            const Requirements::Ptr& get_requirements() const;
+class Domain : public Identifier,
+               public TypeContainer<Domain>,
+               public ObjectContainer<Domain>,
+               public PredicateContainer<Domain>,
+               public FunctionContainer<Domain>,
+               public DerivedPredicateContainer<Domain>,
+               public ClassContainer<Domain>,
+               public PreferenceContainer<Domain>,
+               public ActionContainer<Domain>,
+               public DurativeActionContainer<Domain>,
+               public EventContainer<Domain>,
+               public ProcessContainer<Domain> {
+public:
+  static constexpr char class_name[] = "domain";
 
-            void set_constraints(const Formula::Ptr& constraints);
-            const Formula::Ptr& get_constraints() const;
+  typedef std::shared_ptr<Domain> Ptr;
 
-            virtual std::string print() const;
+  Domain(const std::string &name);
+  virtual ~Domain();
 
-            typedef TypeContainer<Domain>::TypePtr TypePtr;
-            typedef TypeContainer<Domain>::TypeSet TypeSet;
-            typedef ObjectContainer<Domain>::ObjectPtr ObjectPtr;
-            typedef ObjectContainer<Domain>::ObjectSet ObjectSet;
-            typedef PredicateContainer<Domain>::PredicatePtr PredicatePtr;
-            typedef PredicateContainer<Domain>::PredicateSet PredicateSet;
-            typedef DerivedPredicateContainer<Domain>::DerivedPredicatePtr DerivedPredicatePtr;
-            typedef DerivedPredicateContainer<Domain>::DerivedPredicateSet DerivedPredicateSet;
-            typedef FunctionContainer<Domain>::FunctionPtr FunctionPtr;
-            typedef FunctionContainer<Domain>::FunctionSet FunctionSet;
-            typedef ClassContainer<Domain>::ClassPtr ClassPtr;
-            typedef ClassContainer<Domain>::ClassSet ClassSet;
-            typedef PreferenceContainer<Domain>::PreferenceSet PreferenceSet;
-            typedef PreferenceContainer<Domain>::PreferencePtr PreferencePtr;
-            typedef OperatorContainer<Domain, Action>::OperatorPtr ActionPtr;
-            typedef OperatorContainer<Domain, Action>::OperatorSet ActionSet;
-            typedef OperatorContainer<Domain, DurativeAction>::OperatorPtr DurativeActionPtr;
-            typedef OperatorContainer<Domain, DurativeAction>::OperatorSet DurativeActionSet;
-            typedef OperatorContainer<Domain, Event>::OperatorPtr EventPtr;
-            typedef OperatorContainer<Domain, Event>::OperatorSet EventSet;
-            typedef OperatorContainer<Domain, Process>::OperatorPtr ProcessPtr;
-            typedef OperatorContainer<Domain, Process>::OperatorSet ProcessSet;
+  void set_requirements(const Requirements::Ptr &requirements);
+  const Requirements::Ptr &get_requirements() const;
 
-        private :
-            Requirements::Ptr _requirements;
-            Formula::Ptr _constraints;
-        };
+  void set_constraints(const Formula::Ptr &constraints);
+  const Formula::Ptr &get_constraints() const;
 
-        // Domain printing operator
-        std::ostream& operator<<(std::ostream& o, const Domain& d);
+  virtual std::string print() const;
 
-    } // namespace pddl
+  typedef TypeContainer<Domain>::TypePtr TypePtr;
+  typedef TypeContainer<Domain>::TypeSet TypeSet;
+  typedef ObjectContainer<Domain>::ObjectPtr ObjectPtr;
+  typedef ObjectContainer<Domain>::ObjectSet ObjectSet;
+  typedef PredicateContainer<Domain>::PredicatePtr PredicatePtr;
+  typedef PredicateContainer<Domain>::PredicateSet PredicateSet;
+  typedef DerivedPredicateContainer<Domain>::DerivedPredicatePtr
+      DerivedPredicatePtr;
+  typedef DerivedPredicateContainer<Domain>::DerivedPredicateSet
+      DerivedPredicateSet;
+  typedef FunctionContainer<Domain>::FunctionPtr FunctionPtr;
+  typedef FunctionContainer<Domain>::FunctionSet FunctionSet;
+  typedef ClassContainer<Domain>::ClassPtr ClassPtr;
+  typedef ClassContainer<Domain>::ClassSet ClassSet;
+  typedef PreferenceContainer<Domain>::PreferenceSet PreferenceSet;
+  typedef PreferenceContainer<Domain>::PreferencePtr PreferencePtr;
+  typedef OperatorContainer<Domain, Action>::OperatorPtr ActionPtr;
+  typedef OperatorContainer<Domain, Action>::OperatorSet ActionSet;
+  typedef OperatorContainer<Domain, DurativeAction>::OperatorPtr
+      DurativeActionPtr;
+  typedef OperatorContainer<Domain, DurativeAction>::OperatorSet
+      DurativeActionSet;
+  typedef OperatorContainer<Domain, Event>::OperatorPtr EventPtr;
+  typedef OperatorContainer<Domain, Event>::OperatorSet EventSet;
+  typedef OperatorContainer<Domain, Process>::OperatorPtr ProcessPtr;
+  typedef OperatorContainer<Domain, Process>::OperatorSet ProcessSet;
+
+private:
+  Requirements::Ptr _requirements;
+  Formula::Ptr _constraints;
+};
+
+// Domain printing operator
+std::ostream &operator<<(std::ostream &o, const Domain &d);
+
+} // namespace pddl
 
 } // namespace skdecide
 

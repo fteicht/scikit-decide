@@ -50,27 +50,27 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class PDDL {
-        public :
-            /**
-             * Constructs a PDDL object (domain and problem) from PDDL files
-             * @param @param files List of files containing domain and problem descriptions
-             * @param debug_logs Activates parsing traces
-             */
-            void load(const std::list<std::string>& files,
-                      bool debug_logs = false);
-            
-            const std::list<Domain::Ptr>& get_domains();
-            const std::list<Problem::Ptr>& get_problems();
-            
-        private :
-            std::list<Domain::Ptr> _domains;
-            std::list<Problem::Ptr> _problems;
-        };
+class PDDL {
+public:
+  /**
+   * Constructs a PDDL object (domain and problem) from PDDL files
+   * @param @param files List of files containing domain and problem
+   * descriptions
+   * @param debug_logs Activates parsing traces
+   */
+  void load(const std::list<std::string> &files, bool debug_logs = false);
 
-    } // namespace pddl
+  const std::list<Domain::Ptr> &get_domains();
+  const std::list<Problem::Ptr> &get_problems();
+
+private:
+  std::list<Domain::Ptr> _domains;
+  std::list<Problem::Ptr> _problems;
+};
+
+} // namespace pddl
 
 } // namespace skdecide
 

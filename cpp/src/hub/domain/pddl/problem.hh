@@ -17,57 +17,57 @@
 
 namespace skdecide {
 
-    namespace pddl {
-        
-        class Problem : public Identifier,
-                        public ObjectContainer<Problem>,
-                        public PreferenceContainer<Problem> {
-        public :
-            static constexpr char class_name[] = "problem";
+namespace pddl {
 
-            typedef std::shared_ptr<Problem> Ptr;
-            
-            Problem(const std::string& name);
-            virtual ~Problem();
+class Problem : public Identifier,
+                public ObjectContainer<Problem>,
+                public PreferenceContainer<Problem> {
+public:
+  static constexpr char class_name[] = "problem";
 
-            void set_domain(const Domain::Ptr& domain);
-            const Domain::Ptr& get_domain() const;
+  typedef std::shared_ptr<Problem> Ptr;
 
-            void set_requirements(const Requirements::Ptr& requirements);
-            const Requirements::Ptr& get_requirements() const;
+  Problem(const std::string &name);
+  virtual ~Problem();
 
-            void set_initial_effect(const ConjunctionEffect::Ptr& initial_effect);
-            const ConjunctionEffect::Ptr& get_initial_effect() const;
+  void set_domain(const Domain::Ptr &domain);
+  const Domain::Ptr &get_domain() const;
 
-            void set_goal(const Formula::Ptr& goal);
-            const Formula::Ptr& get_goal() const;
+  void set_requirements(const Requirements::Ptr &requirements);
+  const Requirements::Ptr &get_requirements() const;
 
-            void set_constraints(const Formula::Ptr& constraints);
-            const Formula::Ptr& get_constraints() const;
+  void set_initial_effect(const ConjunctionEffect::Ptr &initial_effect);
+  const ConjunctionEffect::Ptr &get_initial_effect() const;
 
-            void set_metric(const Expression::Ptr& metric);
-            const Expression::Ptr& get_metric() const;
+  void set_goal(const Formula::Ptr &goal);
+  const Formula::Ptr &get_goal() const;
 
-            virtual std::string print() const;
+  void set_constraints(const Formula::Ptr &constraints);
+  const Formula::Ptr &get_constraints() const;
 
-            typedef ObjectContainer<Problem>::ObjectPtr ObjectPtr;
-            typedef ObjectContainer<Problem>::ObjectSet ObjectSet;
-            typedef PreferenceContainer<Problem>::PreferenceSet PreferenceSet;
-            typedef PreferenceContainer<Problem>::PreferencePtr PreferencePtr;
+  void set_metric(const Expression::Ptr &metric);
+  const Expression::Ptr &get_metric() const;
 
-        private :
-            Domain::Ptr _domain;
-            Requirements::Ptr _requirements;
-            ConjunctionEffect::Ptr _initial_effect;
-            Formula::Ptr _goal;
-            Formula::Ptr _constraints;
-            Expression::Ptr _metric;
-        };
+  virtual std::string print() const;
 
-        // Problem printing operator
-        std::ostream& operator<<(std::ostream& o, const Problem& p);
+  typedef ObjectContainer<Problem>::ObjectPtr ObjectPtr;
+  typedef ObjectContainer<Problem>::ObjectSet ObjectSet;
+  typedef PreferenceContainer<Problem>::PreferenceSet PreferenceSet;
+  typedef PreferenceContainer<Problem>::PreferencePtr PreferencePtr;
 
-    } // namespace pddl
+private:
+  Domain::Ptr _domain;
+  Requirements::Ptr _requirements;
+  ConjunctionEffect::Ptr _initial_effect;
+  Formula::Ptr _goal;
+  Formula::Ptr _constraints;
+  Expression::Ptr _metric;
+};
+
+// Problem printing operator
+std::ostream &operator<<(std::ostream &o, const Problem &p);
+
+} // namespace pddl
 
 } // namespace skdecide
 
