@@ -10,58 +10,35 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class DerivedPredicate : public Predicate {
-        public :
-            static constexpr char class_name[] = "derived predicate";
+class DerivedPredicate : public Predicate {
+public:
+  static constexpr char class_name[] = "derived predicate";
 
-            typedef std::shared_ptr<DerivedPredicate> Ptr;
+  typedef std::shared_ptr<DerivedPredicate> Ptr;
 
-            DerivedPredicate(const std::string& name)
-            : Predicate(name) {}
+  DerivedPredicate(const std::string &name);
+  DerivedPredicate(const std::string &name, const Formula::Ptr &formula);
+  DerivedPredicate(const Predicate::Ptr &predicate,
+                   const Formula::Ptr &formula);
+  DerivedPredicate(const DerivedPredicate &other);
+  DerivedPredicate &operator=(const DerivedPredicate &other);
+  virtual ~DerivedPredicate();
 
-            DerivedPredicate(const std::string& name,
-                             const Formula::Ptr& formula)
-            : Predicate(name), _formula(formula) {}
-            
-            DerivedPredicate(const Predicate::Ptr& predicate,
-                             const Formula::Ptr& formula)
-                : Predicate(*predicate), _formula(formula) {}
-            
-            DerivedPredicate(const DerivedPredicate& other)
-            : Predicate(other),
-              _formula(other._formula) {}
-            
-            DerivedPredicate& operator= (const DerivedPredicate& other) {
-                dynamic_cast<Predicate&>(*this) = other;
-                this->_formula = other._formula;
-                return *this;
-            }
+  void set_formula(const Formula::Ptr &formula);
+  const Formula::Ptr &get_formula() const;
 
-            void set_formula(const Formula::Ptr& formula) {
-                _formula = formula;
-            }
+  std::ostream &print(std::ostream &o) const;
 
-            const Formula::Ptr& get_formula() const {
-                return _formula;
-            }
+private:
+  Formula::Ptr _formula;
+};
 
-            std::ostream& print(std::ostream& o) const {
-                o << "(:derived " << dynamic_cast<const Predicate&>(*this) << " " << *_formula << ")";
-                return o;
-            }
+// Derived predicate printing operator
+std::ostream &operator<<(std::ostream &o, const DerivedPredicate &d);
 
-        private :
-            Formula::Ptr _formula;
-        };
-
-        // Derived predicate printing operator
-        inline std::ostream& operator<<(std::ostream& o, const DerivedPredicate& d) {
-            return d.print(o);
-        }
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

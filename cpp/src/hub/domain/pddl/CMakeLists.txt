@@ -136,6 +136,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/conditional_effect.cc
         impl/constraint_formula.cc
         ${DERIVED_PREDICATE_CONTAINER_TEMPLATE_FILES}
+        impl/derived_predicate.cc
         impl/domain.cc
         impl/duration_effect.cc
         impl/duration_expression.cc
