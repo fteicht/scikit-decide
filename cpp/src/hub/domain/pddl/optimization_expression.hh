@@ -9,54 +9,35 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class MinimizeExpression : public UnaryExpression<MinimizeExpression> {
-        public :
-            static constexpr char class_name[] = "minimize";
+class MinimizeExpression : public UnaryExpression<MinimizeExpression> {
+public:
+  static constexpr char class_name[] = "minimize";
 
-            typedef std::shared_ptr<MinimizeExpression> Ptr;
+  typedef std::shared_ptr<MinimizeExpression> Ptr;
 
-            MinimizeExpression() {}
+  MinimizeExpression();
+  MinimizeExpression(const Expression::Ptr &expression);
+  MinimizeExpression(const MinimizeExpression &other);
+  MinimizeExpression &operator=(const MinimizeExpression &other);
+  virtual ~MinimizeExpression();
+};
 
-            MinimizeExpression(const Expression::Ptr& expression)
-                : UnaryExpression<MinimizeExpression>(expression) {}
-            
-            MinimizeExpression(const MinimizeExpression& other)
-                : UnaryExpression<MinimizeExpression>(other) {}
-            
-            MinimizeExpression& operator= (const MinimizeExpression& other) {
-                dynamic_cast<UnaryExpression<MinimizeExpression>&>(*this) = other;
-                return *this;
-            }
+class MaximizeExpression : public UnaryExpression<MaximizeExpression> {
+public:
+  static constexpr char class_name[] = "maximize";
 
-            virtual ~MinimizeExpression() {}
-        };
+  typedef std::shared_ptr<MaximizeExpression> Ptr;
 
+  MaximizeExpression();
+  MaximizeExpression(const Expression::Ptr &expression);
+  MaximizeExpression(const MaximizeExpression &other);
+  MaximizeExpression &operator=(const MaximizeExpression &other);
+  virtual ~MaximizeExpression();
+};
 
-        class MaximizeExpression : public UnaryExpression<MaximizeExpression> {
-        public :
-            static constexpr char class_name[] = "maximize";
-
-            typedef std::shared_ptr<MaximizeExpression> Ptr;
-
-            MaximizeExpression() {}
-
-            MaximizeExpression(const Expression::Ptr& expression)
-                : UnaryExpression<MaximizeExpression>(expression) {}
-            
-            MaximizeExpression(const MaximizeExpression& other)
-                : UnaryExpression<MaximizeExpression>(other) {}
-            
-            MaximizeExpression& operator= (const MaximizeExpression& other) {
-                dynamic_cast<UnaryExpression<MaximizeExpression>&>(*this) = other;
-                return *this;
-            }
-
-            virtual ~MaximizeExpression() {}
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 

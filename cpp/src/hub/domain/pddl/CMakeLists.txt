@@ -163,6 +163,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${OPERATOR_CONTAINER_TEMPLATE_FILES}
         ${OPERATOR_TEMPLATE_FILES}
         impl/operator.cc
+        impl/optimization_expression.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
