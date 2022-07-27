@@ -118,7 +118,6 @@ generate_template_instantiation_files(
         "Tderived" "Domain!Dom")
 
 ADD_LIBRARY(skdecide_pddl STATIC
-        problem.cc
         requirements.cc
         type.cc
         ${AGGREGATION_EFFECT_TEMPLATE_FILES}
@@ -172,6 +171,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/pddl.cc
         ${PREDICATE_CONTAINER_TEMPLATE_FILES}
         impl/preference.cc
+        impl/problem.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
