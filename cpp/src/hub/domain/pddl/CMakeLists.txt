@@ -171,6 +171,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         impl/optimization_expression.cc
         impl/pddl.cc
         ${PREDICATE_CONTAINER_TEMPLATE_FILES}
+        impl/preference.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}

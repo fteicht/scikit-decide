@@ -10,59 +10,34 @@
 
 namespace skdecide {
 
-    namespace pddl {
+namespace pddl {
 
-        class Preference : public Formula,
-                           public Identifier {
-        public :
-            static constexpr char class_name[] = "preference";
-            
-            typedef std::shared_ptr<Preference> Ptr;
+class Preference : public Formula, public Identifier {
+public:
+  static constexpr char class_name[] = "preference";
 
-            Preference()
-                : Identifier("anonymous") {}
-            
-            Preference(const std::string& name)
-                : Identifier(name) {}
+  typedef std::shared_ptr<Preference> Ptr;
 
-            Preference(const Formula::Ptr& formula,
-                       const std::string& name = "anonymous")
-                : Identifier(name), _formula(formula) {}
-            
-            Preference(const Preference& other)
-                : Identifier(other), _formula(other._formula) {}
-            
-            Preference& operator= (const Preference& other) {
-                dynamic_cast<Identifier&>(*this) = other;
-                this->_formula = other._formula;
-                return *this;
-            }
+  Preference();
+  Preference(const std::string &name);
+  Preference(const Formula::Ptr &formula,
+             const std::string &name = "anonymous");
+  Preference(const Preference &other);
+  Preference &operator=(const Preference &other);
+  virtual ~Preference();
 
-            virtual ~Preference() {}
+  void set_name(const std::string &name);
 
-            void set_name(const std::string& name) {
-                Identifier::set_name(name);
-            }
+  Preference &set_formula(const Formula::Ptr &formula);
+  const Formula::Ptr &get_formula() const;
 
-            Preference& set_formula(const Formula::Ptr& formula) {
-                _formula = formula;
-                return *this;
-            }
+  virtual std::ostream &print(std::ostream &o) const;
 
-            const Formula::Ptr& get_formula() const {
-                return _formula;
-            }
+private:
+  Formula::Ptr _formula;
+};
 
-            virtual std::ostream& print(std::ostream& o) const {
-                o << "(preference " << ((_name != "anonymous ")?_name:"") << *_formula << ")";
-                return o;
-            }
-        
-        private :
-            Formula::Ptr _formula;
-        };
-
-    } // namespace pddl
+} // namespace pddl
 
 } // namespace skdecide
 
