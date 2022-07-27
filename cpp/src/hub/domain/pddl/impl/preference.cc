@@ -13,8 +13,7 @@ Preference::Preference() : Identifier("anonymous") {}
 
 Preference::Preference(const std::string &name) : Identifier(name) {}
 
-Preference::Preference(const Formula::Ptr &formula,
-                       const std::string &name = "anonymous")
+Preference::Preference(const Formula::Ptr &formula, const std::string &name)
     : Identifier(name), _formula(formula) {}
 
 Preference::Preference(const Preference &other)
