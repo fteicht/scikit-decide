@@ -112,7 +112,6 @@ generate_template_instantiation_files(
         "Tderived" "Action!Act;DurativeAction!Dac;Event!Evt;Process!Prc")
 
 ADD_LIBRARY(skdecide_pddl STATIC
-        pddl.cc
         problem.cc
         requirements.cc
         type.cc
@@ -164,6 +163,7 @@ ADD_LIBRARY(skdecide_pddl STATIC
         ${OPERATOR_TEMPLATE_FILES}
         impl/operator.cc
         impl/optimization_expression.cc
+        impl/pddl.cc
         parser/parser.cc)
 TARGET_INCLUDE_DIRECTORIES(skdecide_pddl PRIVATE
         ${INCLUDE_DIRS}
