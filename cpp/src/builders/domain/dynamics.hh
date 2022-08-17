@@ -11,33 +11,90 @@
 
 namespace skdecide {
 
-template <typename Tstate, typename Tobservation, typename Tevent,
-          TransitionType TT, typename Tvalue, typename Tinfo,
-          typename TstateSpace = Space<Tstate>,
-          typename TobservationSpace = Space<Tobservation>,
-          typename TobservationDistribution = Distribution<Tobservation>,
+/**
+ * @brief A domain must inherit this class if agents interact with it like a
+ * black-box environment.
+ * Black-box environment examples include: the real world, compiled ATARI
+ * games, etc.
+ * !!! Tip.
+ * Environment domains are typically stateful: they must keep the current
+ * state or history in their memory to compute next steps (automatically done by
+ * default in the #_memory attribute).
+ * @tparam Tagent Type of agents (MultiAgent or SingleAgent)
+ * @tparam Tstate Type of states (any kind of type)
+ * @tparam Tobservation Type of observations for each agent (any kind of type)
+ * @tparam Tconcurrency Type of concurrency (Parallel or Sequential)
+ * @tparam Tevent Type of event for each agent (any kind of type)
+ * @tparam VT Value type (either ValueType::REWARD or ValueType::COST)
+ * @tparam Tvalue Floating point type for values (usually double)
+ * @tparam Tpredicate Boolean test type (usually bool)
+ * @tparam Tinfo Transition info type (any kind of type)
+ * @tparam TstateSpace Type of state space for each agent (any kind of type
+ * containing Tstate elements)
+ * @tparam TobservationSpace Type of observation space for each agent (any kind
+ * of type containing Tobservation elements)
+ * @tparam TobservationDistribution Type of observation distribution for each
+ * agent (any kind of distribution type containing Tobservation random elements)
+ * @tparam TsmartPointer (any kind of std-like smart pointer)
+ */
+template <typename Tagent, typename Tstate, typename Tobservation,
+          typename Tconcurrency, typename Tevent, ValueType VT, typename Tvalue,
+          typename Tpredicate, typename Tinfo,
+          template <typename...> class TstateSpace = Space,
+          template <typename...> class TobservationSpace = Space,
+          template <typename...> class TobservationDistribution = Distribution,
           template <typename...> class TsmartPointer = std::unique_ptr>
 class EnvironmentDomain
     : public virtual PartiallyObservableDomain<
-          Tstate, Tobservation, Tevent, TstateSpace, TobservationSpace,
-          TobservationDistribution, TsmartPointer>,
+          Tagent, Tstate, Tobservation, Tconcurrency, Tevent, TstateSpace,
+          TobservationSpace, TobservationDistribution, TsmartPointer>,
       public virtual HistoryDomain<Tstate> {
 public:
-  typedef Tstate State;
-  typedef Tobservation Observation;
-  typedef Tvalue Value;
-  typedef Tinfo Info;
-  typedef EnvironmentOutcome<Observation, TT, Value, Info>
+  typedef typename Tagent::template Proxy<Tstate> State;
+  typedef typename Tagent::template Proxy<Tobservation> Observation;
+  typedef typename Tagent::template Proxy<Tvalue> Value;
+  typedef typename Tagent::template Proxy<Tpredicate> Predicate;
+  typedef typename Tagent::template Proxy<Tinfo> Info;
+  typedef EnvironmentOutcome<Observation, VT, Value, Predicate, Info>
       EnvironmentOutcomeReturn;
-  typedef TransitionOutcome<State, TT, Value, Info> TransitionOutcomeReturn;
+  typedef TransitionOutcome<State, VT, Value, Predicate, Info>
+      TransitionOutcomeReturn;
   typedef TsmartPointer<TransitionOutcomeReturn> TransitionOutcomePtr;
-  typedef Tevent Event;
+  typedef typename Tagent::template Proxy<
+      typename Tconcurrency::template Proxy<Tevent>>
+      Event;
 
+  /**
+   * @brief Run one step of the environment's dynamics.
+   *
+   *     By default, Environment::step() provides some boilerplate code and
+   * internally calls Environment::make_step() (which returns a transition
+   * outcome).
+   * The boilerplate code automatically stores next state into the #_memory
+   * attribute and samples a corresponding observation.
+   *
+   * !!! Tip.
+   *        Whenever an existing environment needs to be wrapped instead of
+   * implemented fully in scikit-decide (e.g. compiled ATARI games), it is
+   * recommended to overwrite Environment::step() to call the external
+   * environment
+   * and not use the Environment.make_step() helper function.
+   *
+   * !!! Warning.
+   *         Before calling Environment::step() the first time or when the end
+   * of an episode is reached, Initializable::reset() must be called to reset
+   * the environment's state.
+   *
+   * @param event The action taken in the current memory (state or history)
+   * triggering the transition.
+   * @return EnvironmentOutcomeReturn The environment outcome of this step.
+   */
   EnvironmentOutcomeReturn step(const Event &event) {
-    const TransitionOutcomeReturn &transition_outcome = *(make_step(event));
+    const TransitionOutcomeReturn &transition_outcome =
+        *(this->make_step(event));
     const State &next_state = transition_outcome.state;
     Observation observation =
-        get_observation_distribution(next_state, event).sample();
+        this->get_observation_distribution(next_state, event).sample();
     if (this->get_memory_maxlen() > 0) {
       this->_memory.push_back(next_state);
     }
@@ -47,29 +104,46 @@ public:
   }
 
 protected:
+  /**
+   * @brief Compute one step of the transition's dynamics.
+   *
+   * This is a helper function called by default from #Environment._step().
+   * It focuses on the state level, as opposed to the observation one for the
+   * latter.
+   *
+   * @param event The action taken in the current memory (state or history)
+   * triggering the transition.
+   * @return TransitionOutcomePtr The transition outcome of this step.
+   */
   virtual TransitionOutcomePtr make_step(const Event &event) = 0;
 };
 
-template <typename Tstate, typename Tobservation, typename Tevent,
-          TransitionType TT, typename Tvalue, typename Tinfo,
-          typename TstateSpace = Space<Tstate>,
-          typename TobservationSpace = Space<Tobservation>,
-          typename TobservationDistribution = Distribution<Tobservation>,
+template <typename Tagent, typename Tstate, typename Tobservation,
+          typename Tconcurrency, typename Tevent, ValueType VT, typename Tvalue,
+          typename Tpredicate, typename Tinfo,
+          template <typename...> class TstateSpace = Space,
+          template <typename...> class TobservationSpace = Space,
+          template <typename...> class TobservationDistribution = Distribution,
           template <typename...> class TsmartPointer = std::unique_ptr>
 class SimulationDomain
-    : public EnvironmentDomain<Tstate, Tobservation, Tevent, TT, Tvalue, Tinfo,
+    : public EnvironmentDomain<Tagent, Tstate, Tobservation, Tconcurrency,
+                               Tevent, VT, Tvalue, Tpredicate, Tinfo,
                                TstateSpace, TobservationSpace,
                                TobservationDistribution, TsmartPointer> {
 public:
-  typedef Tstate State;
-  typedef Tobservation Observation;
-  typedef Tvalue Value;
-  typedef Tinfo Info;
-  typedef EnvironmentOutcome<Observation, TT, Value, Info>
+  typedef typename Tagent::template Proxy<Tstate> State;
+  typedef typename Tagent::template Proxy<Tobservation> Observation;
+  typedef typename Tagent::template Proxy<Tvalue> Value;
+  typedef typename Tagent::template Proxy<Tpredicate> Predicate;
+  typedef typename Tagent::template Proxy<Tinfo> Info;
+  typedef EnvironmentOutcome<Observation, VT, Value, Predicate, Info>
       EnvironmentOutcomeReturn;
-  typedef TransitionOutcome<State, TT, Value, Info> TransitionOutcomeReturn;
+  typedef TransitionOutcome<State, VT, Value, Predicate, Info>
+      TransitionOutcomeReturn;
   typedef TsmartPointer<TransitionOutcomeReturn> TransitionOutcomePtr;
-  typedef Tevent Event;
+  typedef typename Tagent::template Proxy<
+      typename Tconcurrency::template Proxy<Tevent>>
+      Event;
   typedef Memory<Tstate> StateMemory;
 
   EnvironmentOutcomeReturn sample(const StateMemory &memory,
