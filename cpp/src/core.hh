@@ -6,6 +6,7 @@
 #define SKDECIDE_CORE_HH
 
 #include <functional>
+#include <memory>
 #include <random>
 #include <vector>
 #include <deque>
@@ -256,12 +257,11 @@ private:
   T m_value;
 };
 
-enum class TransitionType { REWARD, COST };
+enum class ValueType { REWARD, COST };
 
-template <TransitionType TT = TransitionType::REWARD, typename T = double>
-class Value;
+template <ValueType TT = ValueType::REWARD, typename T = double> class Value;
 
-template <typename T> class Value<TransitionType::REWARD, T> {
+template <typename T> class Value<ValueType::REWARD, T> {
 public:
   Value(const T &value) : m_value(value) {}
 
@@ -272,7 +272,7 @@ private:
   T m_value;
 };
 
-template <typename T> class Value<TransitionType::COST, T> {
+template <typename T> class Value<ValueType::COST, T> {
 public:
   Value(const T &value) : m_value(value) {}
 
@@ -283,30 +283,30 @@ private:
   T m_value;
 };
 
-template <typename Tobservation, TransitionType TT, typename Tvalue,
-          typename Tinfo = std::nullptr_t>
+template <typename Tobservation, ValueType TT, typename Tvalue,
+          typename Tpredicate, typename Tinfo = std::nullptr_t>
 struct EnvironmentOutcome {
   EnvironmentOutcome(const Tobservation &observation, const Tvalue &value,
-                     bool termination, const Tinfo &info = Tinfo())
+                     const Tpredicate &termination, const Tinfo &info = Tinfo())
       : observation(observation), value(value), termination(termination),
         info(info) {}
 
   Tobservation observation;
   Value<TT, Tvalue> value;
-  bool termination;
+  Tpredicate termination;
   Tinfo info;
 };
 
-template <typename Tstate, TransitionType TT, typename Tvalue,
+template <typename Tstate, ValueType TT, typename Tvalue, typename Tpredicate,
           typename Tinfo = std::nullptr_t>
 struct TransitionOutcome {
-  TransitionOutcome(const Tstate &state, const Tvalue &value, bool termination,
-                    const Tinfo &info = Tinfo())
+  TransitionOutcome(const Tstate &state, const Tvalue &value,
+                    const Tpredicate &termination, const Tinfo &info = Tinfo())
       : state(state), value(value), termination(termination), info(info) {}
 
   Tstate state;
   Value<TT, Tvalue> value;
-  bool termination;
+  Tpredicate termination;
   Tinfo info;
 };
 
@@ -381,6 +381,283 @@ public:
 
 protected:
   std::size_t _maxlen;
+};
+
+// === CONSTRAINTS ===
+
+/**
+ * @brief A constraint.
+ * @tparam Tmemory Type of memory
+ * @tparam Tstate Type of states
+ * @tparam Tevent Type of events/actions
+ */
+template <typename Tmemory, typename Tstate, typename Tevent> class Constraint {
+public:
+  typedef Tmemory Memory;
+  typedef Tstate State;
+  typedef std::unique_ptr<State> StatePtr;
+  typedef Tevent Event;
+
+  virtual ~Constraint() {}
+
+  /**
+   * @brief Check this constraint.
+   * !!! tip.
+   * If this function never depends on the next_state parameter for its
+   * computation, it is recommended to indicate it by overriding
+   * Constraint::check_constraint_dependency_on_next_state() to return False.
+   * This information can then be exploited by solvers to avoid computing next
+   * state to evaluate the constraint (more efficient).
+   * @param memory The source memory (state or history) of the transition.
+   * @param event The action taken in the given memory (state or history)
+   * triggering the transition.
+   * @param next_state The next state in which the transition ends (if needed
+   * for the computation).
+   * @return true The constraint is satisfied.
+   * @return false The constraint is violated.
+   */
+  virtual bool check(const Memory &memory, const Event &event,
+                     const StatePtr &next_state = StatePtr()) const = 0;
+
+  /**
+   * @brief Indicate whether this constraint requires the next_state parameter
+   * for its computation (cached).
+   * By default, Constraint::is_constraint_dependent_on_next_state() internally
+   * calls Constraint::check_constraint_dependency_on_next_state_() the first
+   * time and automatically caches its value to make future calls more efficient
+   * (since the returned value is assumed to be constant).
+   * @return true The constraint computation depends on next_state.
+   * @return false The constraint computation does not depend on next_state.
+   */
+  bool is_constraint_dependent_on_next_state() const {
+    if (!_constraint_dependent_on_next_state) {
+      _constraint_dependent_on_next_state = std::make_unique<bool>(
+          this->check_constraint_dependency_on_next_state());
+    }
+    return *_constraint_dependent_on_next_state;
+  }
+
+protected:
+  mutable std::unique_ptr<bool> _constraint_dependent_on_next_state;
+
+  /**
+   * @brief Indicate whether this constraint requires the next_state parameter
+   * for its computation.
+   * This is a helper function called by default from
+   * Constraint::is_constraint_dependent_on_next_state(), the difference being
+   * that the result is not cached here.
+   * !!! tip.
+   * The underscore at the end of this function's name is a convention to remind
+   * that its result should be constant.
+   * @return true The constraint computation depends on next_state.
+   * @return false The constraint computation does not depend on next_state.
+   */
+  virtual bool check_constraint_dependency_on_next_state() const {
+    return true;
+  }
+};
+
+/**
+ * @brief A constraint formalized implicitly, i.e. by a black-box check()
+ * function.
+ * @tparam Tmemory Type of memory
+ * @tparam Tstate Type of states
+ * @tparam Tevent Type of events/actions
+ */
+template <typename Tmemory, typename Tstate, typename Tevent>
+class ImplicitConstraint : public Constraint<Tmemory, Tstate, Tevent> {
+public:
+  typedef Tmemory Memory;
+  typedef Tstate State;
+  typedef std::unique_ptr<State> StatePtr;
+  typedef Tevent Event;
+  typedef std::function<bool(const Memory &, const Event &, const StatePtr &)>
+      CheckFunction;
+
+  /**
+   * @brief Construct a new Implicit Constraint object
+   *
+   * @param check_function The check() function to use.
+   * @param depends_on_next_state  Whether the check() function requires the
+   * next_state parameter for its computation.
+   */
+  ImplicitConstraint(const CheckFunction &check_function,
+                     bool depends_on_next_state = true)
+      : _check_function(check_function),
+        _depends_on_next_state(depends_on_next_state) {}
+
+  virtual ~ImplicitConstraint() {}
+
+  /**
+   * @brief Check this constraint.
+   * !!! tip.
+   * If this function never depends on the next_state parameter for its
+   * computation, it is recommended to indicate it by overriding
+   * Constraint::check_constraint_dependency_on_next_state() to return False.
+   * This information can then be exploited by solvers to avoid computing next
+   * state to evaluate the constraint (more efficient).
+   * @param memory The source memory (state or history) of the transition.
+   * @param event The action taken in the given memory (state or history)
+   * triggering the transition.
+   * @param next_state The next state in which the transition ends (if needed
+   * for the computation).
+   * @return true The constraint is satisfied.
+   * @return false The constraint is violated.
+   */
+  virtual bool check(const Memory &memory, const Event &event,
+                     const StatePtr &next_state = StatePtr()) const {
+    return this->_check_function(memory, event, next_state);
+  }
+
+protected:
+  const CheckFunction &_check_function;
+  bool _depends_on_next_state;
+
+  /**
+   * @brief Indicate whether this constraint requires the next_state parameter
+   * for its computation.
+   * This is a helper function called by default from
+   * Constraint::is_constraint_dependent_on_next_state(), the difference being
+   * that the result is not cached here.
+   * !!! tip.
+   * The underscore at the end of this function's name is a convention to remind
+   * that its result should be constant.
+   * @return true The constraint computation depends on next_state.
+   * @return false The constraint computation does not depend on next_state.
+   */
+  virtual bool check_constraint_dependency_on_next_state() const {
+    return this->_depends_on_next_state;
+  }
+};
+
+/**
+ * @brief A constraint characterized by an evaluation function, an inequality
+ * and a bound.
+ * # Example.
+ * A BoundConstraint with inequality '>=' is checked if (and only if) its
+ * BoundConstraint::evaluate() function returns a float greater than or equal to
+ * its bound.
+ * @tparam Tmemory Type of memory
+ * @tparam Tstate Type of states
+ * @tparam Tevent Type of events/actions
+ */
+template <typename Tmemory, typename Tstate, typename Tevent>
+class BoundConstraint : public Constraint<Tmemory, Tstate, Tevent> {
+public:
+  typedef Tmemory Memory;
+  typedef Tstate State;
+  typedef std::unique_ptr<State> StatePtr;
+  typedef Tevent Event;
+  typedef std::function<double(const Memory &, const Event &, const StatePtr &)>
+      EvaluateFunction;
+
+  typedef enum { LESS, LESS_EQ, GREATER, GREATER_EQ } InequalityType;
+
+  /**
+   * @brief Construct a new Bound Constraint object
+   *
+   * @param evaluate_function The evaluate() function to use.
+   * @param inequality_type The BoundConstraint::InequalityType enum describing
+   * the constraint inequality.
+   * @param bound The bound of the constraint.
+   * @param depends_on_next_state Whether the evaluate() function requires the
+   * next_state parameter for its computation.
+   */
+  BoundConstraint(const EvaluateFunction &evaluate_function,
+                  InequalityType inequality_type, double bound,
+                  bool depends_on_next_state = true)
+      : _evaluate_function(evaluate_function),
+        _inequality_type(inequality_type), _bound(bound),
+        _depends_on_next_state(depends_on_next_state) {}
+
+  virtual ~BoundConstraint() {}
+
+  /**
+   * @brief Check this constraint.
+   * !!! tip.
+   * If this function never depends on the next_state parameter for its
+   * computation, it is recommended to indicate it by overriding
+   * Constraint::check_constraint_dependency_on_next_state() to return False.
+   * This information can then be exploited by solvers to avoid computing next
+   * state to evaluate the constraint (more efficient).
+   * @param memory The source memory (state or history) of the transition.
+   * @param event The action taken in the given memory (state or history)
+   * triggering the transition.
+   * @param next_state The next state in which the transition ends (if needed
+   * for the computation).
+   * @return true The constraint is satisfied.
+   * @return false The constraint is violated.
+   */
+  virtual bool check(const Memory &memory, const Event &event,
+                     const StatePtr &next_state = StatePtr()) const {
+    switch (_inequality_type) {
+    case BoundConstraint<Memory, State, Event>::LESS:
+      return this->_evaluate_function(memory, event, next_state) < this->_bound;
+    case BoundConstraint<Memory, State, Event>::LESS_EQ:
+      return this->_evaluate_function(memory, event, next_state) <=
+             this->_bound;
+    case BoundConstraint<Memory, State, Event>::GREATER:
+      return this->_evaluate_function(memory, event, next_state) > this->_bound;
+    case BoundConstraint<Memory, State, Event>::GREATER_EQ:
+      return this->_evaluate_function(memory, event, next_state) >=
+             this->_bound;
+    }
+  }
+
+  /**
+   * @brief Evaluate the left side of this BoundConstraint.
+   * !!! tip
+   * If this function never depends on the next_state parameter for its
+   * computation, it is recommended to indicate it by overriding
+   * Constraint::check_constraint_dependency_on_next_state() to return False.
+   * This information can then be exploited by solvers to avoid computing next
+   * state to evaluate the constraint (more efficient).
+   * @param memory The source memory (state or history) of the transition.
+   * @param event The action taken in the given memory (state or history)
+   * triggering the transition.
+   * @param next_state The next state in which the transition ends (if needed
+   * for the computation).
+   * @return double Value resulting from the evaluation.
+   */
+  double evaluate(const Memory &memory, const Event &event,
+                  const StatePtr &next_state = StatePtr()) const {
+    return this->_evaluate_function(memory, event, next_state);
+  }
+
+  /**
+   * @brief Get the inequality type describing the constraint inequality.
+   * @return InequalityType The type of inequality: see
+   * BoundConstraint::InequalityType
+   */
+  InequalityType get_inequality() const { return this->_inequality_type; }
+
+  /**
+   * @brief Get the bound of the constraint.
+   * @return double The constraint bound.
+   */
+  double get_bound() const { return this->_bound; }
+
+protected:
+  const EvaluateFunction &_evaluate_function;
+  InequalityType _inequality_type;
+  double _bound;
+  bool _depends_on_next_state;
+
+  /**
+   * @brief Indicate whether this constraint requires the next_state parameter
+   * for its computation.
+   * This is a helper function called by default from
+   * Constraint::is_constraint_dependent_on_next_state(), the difference being
+   * that the result is not cached here.
+   * !!! tip.
+   * The underscore at the end of this function's name is a convention to remind
+   * that its result should be constant.
+   * @return true The constraint computation depends on next_state.
+   * @return false The constraint computation does not depend on next_state.
+   */
+  virtual bool check_constraint_dependency_on_next_state() {
+    return this->_depends_on_next_state;
+  }
 };
 
 } // namespace skdecide

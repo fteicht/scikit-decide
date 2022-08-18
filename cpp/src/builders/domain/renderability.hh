@@ -6,15 +6,41 @@
 #define SKDECIDE_RENDERABILITY_HH
 
 #include "core.hh"
+#include "memory.hh"
 
 namespace skdecide {
 
-template <typename Tstate>
-class RenderableDomain : public virtual HistoryDomain<Tstate> {
-public:
-  virtual void render(const Memory<Tstate> &memory) = 0;
+/**
+ * @brief A domain must inherit this class if it can be rendered with any kind
+ * of visualization.
+ *
+ * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ */
+template <typename DerivedCompoundDomain> class RenderableDomain {
+  static_assert(std::is_base_of<HistoryDomain<DerivedCompoundDomain>,
+                                DerivedCompoundDomain>::value,
+                "DerivedCompoundDomain must be derived from "
+                "skdecide::HistoryDomain<DerivedCompoundDomain>");
 
-  inline void render() { render(_memory); }
+public:
+  typedef typename DerivedCompoundDomain::template AgentProxy<
+      typename DerivedCompoundDomain::RawState>
+      CompoundState;
+  typedef typename DerivedCompoundDomain::template MemoryProxy<CompoundState>
+      CompoundMemory;
+
+  /**
+   * @brief Compute a visual render of the given memory (state or history).
+   *
+   * @param memory The memory to consider.
+   */
+  virtual void render(const CompoundMemory &memory) = 0;
+
+  /**
+   * @brief Compute a visual render of the internal memory (state or history).
+   */
+  inline void render() { render(this->_memory); }
 };
 
 } // namespace skdecide

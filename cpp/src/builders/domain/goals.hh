@@ -9,38 +9,85 @@
 
 namespace skdecide {
 
-template <typename Tobservation,
-          typename TobservationSpace = Space<Tobservation>,
-          template <typename...> class TsmartPointer = std::unique_ptr>
+/**
+ * @brief A domain must inherit this class if it has formalized goals.
+ *
+ * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ * @tparam GoalSpace The type of goal spaces
+ */
+template <typename DerivedCompoundDomain,
+          template <typename...> class GoalSpace = ImplicitSpace>
 class GoalDomain {
-  static_assert(std::is_same<typename TobservationSpace::element_type,
-                             Tobservation>::value,
-                "Observation space elements must be of type Tobservation");
-  static_assert(std::is_base_of<Space<Tobservation>, TobservationSpace>::value,
-                "Observation space type must be derived from "
-                "skdecide::Space<Tobservation>");
-
 public:
-  typedef Tobservation Observation;
-  typedef TobservationSpace ObservationSpace;
-  typedef TsmartPointer<ObservationSpace> ObservationSpacePtr;
+  template <typename... T> using RawGoalSpace = GoalSpace<T...>;
 
-  const ObservationSpace &get_goals() {
+  typedef typename DerivedCompoundDomain::template AgentProxy<
+      typename DerivedCompoundDomain::RawObservation>
+      CompoundObservation;
+  typedef typename DerivedCompoundDomain::template AgentProxy<
+      typename DerivedCompoundDomain::template RawGoalSpace<
+          typename DerivedCompoundDomain::RawObservation>>
+      CompoundGoalSpace;
+  typedef
+      typename DerivedCompoundDomain::template SmartPointer<CompoundGoalSpace>
+          CompoundGoalSpacePtr;
+
+  /**
+   * @brief Get the (cached) domain goals space (finite or infinite set).
+   *
+   *    By default, GoalDomain::get_goals() internally calls
+   * GoalDomain.make_goals() the first time and automatically caches its value
+   * to make future calls more efficient (since the goals space is assumed to be
+   * constant).
+   *
+   * !!! Warning.
+   *        Goal states are assumed to be fully observable (i.e. observation =
+   * state) so that there is never uncertainty about whether the goal has been
+   * reached or not. This assumption guarantees that any policy that does not
+   * reach the goal with certainty incurs in infinite expected cost.
+   * - Geffner, 2013: A Concise Introduction to Models and Methods for Automated
+   * Planning
+   *
+   * @return The goals space.
+   */
+  const CompoundGoalSpace &get_goals() {
     if (!_goals) {
       _goals = make_goals();
     }
     return *_goals;
   }
 
-  inline bool is_goal(const Observation &observation) {
+  /**
+   * @brief Indicate whether an observation belongs to the goals.
+   *
+   * !!! Tip.
+   *        By default, this function is implemented using the
+   * skdecide::Space::contains() function on the domain goals space provided
+   * by GoalDomain::get_goals(), but it can be overridden for faster
+   * implementations.
+   *
+   * @param observation The observation to consider.
+   * @return True if the observation is a goal (False otherwise).
+   */
+  inline virtual bool is_goal(const CompoundObservation &observation) {
     return get_goals().contains(observation);
   }
 
 protected:
-  virtual ObservationSpacePtr make_goals() = 0;
+  /**
+   * @brief Get the domain goals space (finite or infinite set).
+   *
+   *    This is a helper function called by default from
+   * GoalDomain::get_goals(), the difference being that the result is not cached
+   * here.
+   *
+   * @return The goals space.
+   */
+  virtual CompoundGoalSpacePtr make_goals() = 0;
 
 private:
-  ObservationSpacePtr _goals;
+  CompoundGoalSpacePtr _goals;
 };
 
 } // namespace skdecide

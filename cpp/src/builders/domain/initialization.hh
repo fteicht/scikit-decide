@@ -11,59 +11,107 @@
 
 namespace skdecide {
 
-template <typename Tstate, typename Tobservation, typename Tevent,
-          typename TstateSpace = Space<Tstate>,
-          typename TobservationSpace = Space<Tobservation>,
-          typename TobservationDistribution = Distribution<Tobservation>,
-          template <typename...> class TsmartPointer = std::unique_ptr>
-class InitializableDomain
-    : public virtual PartiallyObservableDomain<
-          Tstate, Tobservation, Tevent, TstateSpace, TobservationSpace,
-          TobservationDistribution, TsmartPointer>,
-      public virtual HistoryDomain<Tstate> {
-public:
-  typedef Tobservation Observation;
-  typedef TobservationSpace ObservationSpace;
-  typedef TobservationDistribution ObservationDistribution;
-  typedef TsmartPointer<ObservationDistribution> ObservationDistributionPtr;
-  typedef Tstate State;
-  typedef TstateSpace StateSpace;
-  typedef Tevent Event;
+/**
+ * @brief A domain must inherit this class if it can be initialized.
+ *
+ * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ */
+template <typename DerivedCompoundDomain> class InitializableDomain {
+  static_assert(
+      std::is_base_of<
+          PartiallyObservableDomain<
+              DerivedCompoundDomain, typename DerivedCompoundDomain::RawState,
+              typename DerivedCompoundDomain::RawObservation,
+              DerivedCompoundDomain::template RawStateSpace,
+              DerivedCompoundDomain::template RawObservationSpace,
+              DerivedCompoundDomain::template RawObservationDistribution>,
+          DerivedCompoundDomain>::value,
+      "DerivedCompoundDomain must be derived from "
+      "skdecide::PartiallyObservableDomain<DerivedCompoundDomain>");
+  static_assert(std::is_base_of<HistoryDomain<DerivedCompoundDomain>,
+                                DerivedCompoundDomain>::value,
+                "DerivedCompoundDomain must be derived from "
+                "skdecide::HistoryDomain<DerivedCompoundDomain>");
 
-  Observation reset() {
-    State initial_state = _reset();
-    Observation initial_observation =
+public:
+  typedef typename DerivedCompoundDomain::template AgentProxy<
+      typename DerivedCompoundDomain::RawObservation>
+      CompoundObservation;
+  typedef typename DerivedCompoundDomain::template AgentProxy<
+      typename DerivedCompoundDomain::RawState>
+      CompoundState;
+
+  /**
+   * @brief Reset the state of the environment and return an initial
+   * observation.
+   *
+   *    By default, InitializableDomain::reset() provides some boilerplate code
+   * and internally calls InitializableDomain::make_reset() (which returns an
+   * initial state). The boilerplate code automatically stores the initial state
+   * into the _memory attribute and samples a corresponding observation.
+   *
+   * @return An initial observation.
+   */
+  CompoundObservation reset() {
+    CompoundState initial_state = make_reset();
+    CompoundObservation initial_observation =
         this->get_observation_distribution(initial_state, nullptr)->sample();
     auto _memory = this->_init_memory({initial_state});
     return initial_observation;
   }
 
 protected:
-  virtual State _reset() = 0;
+  /**
+   * @brief Reset the state of the environment and return an initial state.
+   *
+   *    This is a helper function called by default from
+   * InitializableDomain::reset(). It focuses on the state level, as opposed to
+   * the observation one for the latter.
+   *
+   * @return An initial state.
+   */
+  virtual CompoundState make_reset() = 0;
 };
 
-template <typename Tstate, typename Tobservation, typename Tevent,
-          typename TinitialStateDistribution = Distribution<Tstate>,
-          typename TstateSpace = Space<Tstate>,
-          typename TobservationSpace = Space<Tobservation>,
-          typename TobservationDistribution = Distribution<Tobservation>,
-          template <typename...> class TsmartPointer = std::unique_ptr>
+/**
+ * @brief A domain must inherit this class if its states are initialized
+ according to a probability distribution known as white-box.
+ *
+ * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ * @tparam InitialStateDistribution The type of an agent's initial state
+ distribution
+ */
+template <typename DerivedCompoundDomain, template <typename...>
+                                          class InitialStateDistribution =
+                                              ImplicitDistribution>
 class UncertainInitializedDomain
-    : public InitializableDomain<Tstate, Tobservation, Tevent, TstateSpace,
-                                 TobservationSpace, TobservationDistribution,
-                                 TsmartPointer> {
+    : public InitializableDomain<DerivedCompoundDomain> {
 public:
-  typedef Tobservation Observation;
-  typedef TobservationSpace ObservationSpace;
-  typedef TobservationDistribution ObservationDistribution;
-  typedef TsmartPointer<ObservationDistribution> ObservationDistributionPtr;
-  typedef Tstate State;
-  typedef TstateSpace StateSpace;
-  typedef Tevent Event;
-  typedef TinitialStateDistribution InitialStateDistribution;
-  typedef TsmartPointer<InitialStateDistribution> InitialStateDistributionPtr;
+  template <typename... T>
+  using RawInitialStateDistribution = InitialStateDistribution<T...>;
 
-  InitialStateDistribution &get_initial_state_distribution() {
+  typedef typename InitializableDomain<DerivedCompoundDomain>::CompoundState
+      CompoundState;
+  typedef RawInitialStateDistribution<CompoundState>
+      CompoundInitialStateDistribution;
+  typedef typename DerivedCompoundDomain::template SmartPointer<
+      CompoundInitialStateDistribution>
+      CompoundInitialStateDistributionPtr;
+
+  /**
+   * @brief Get the (cached) probability distribution of initial states.
+   *
+   *    By default, UncertainInitializedDomain::get_initial_state_distribution()
+   * internally calls
+   * UncertainInitializedDomain::make_initial_state_distribution() the first
+   * time and automatically caches its value to make future calls more efficient
+   * (since the initial state distribution is assumed to be constant).
+   *
+   * @return The probability distribution of initial states.
+   */
+  CompoundInitialStateDistribution &get_initial_state_distribution() {
     if (!_initial_state_distribution) {
       _initial_state_distribution = make_initial_state_distribution();
     }
@@ -71,37 +119,70 @@ public:
   }
 
 protected:
-  virtual InitialStateDistributionPtr make_initial_state_distribution() = 0;
+  /**
+   * @brief Get the probability distribution of initial states.
+   *
+   *    This is a helper function called by default from
+   * UncertainInitializedDomain::get_initial_state_distribution(), the
+   * difference being that the result is not cached here.
+   *
+   * @return The probability distribution of initial states.
+   */
+  virtual CompoundInitialStateDistributionPtr
+  make_initial_state_distribution() = 0;
 
-  virtual State _reset() { return get_initial_state_distribution().sample(); }
+  /**
+   * @brief Reset the state of the environment and return an initial state.
+   *
+   *    This is a helper function called by default from
+   * InitializableDomain::reset(). It focuses on the state level, as opposed to
+   * the observation one for the latter.
+   *
+   * @return An initial state.
+   */
+  virtual CompoundState make_reset() {
+    return get_initial_state_distribution().sample();
+  }
 
 private:
-  InitialStateDistributionPtr _initial_state_distribution;
+  CompoundInitialStateDistributionPtr _initial_state_distribution;
 };
 
-template <typename Tstate, typename Tobservation, typename Tevent,
-          typename TinitialStateDistribution = Distribution<Tobservation>,
-          typename TstateSpace = Space<Tstate>,
-          typename TobservationSpace = Space<Tobservation>,
-          typename TobservationDistribution = Distribution<Tobservation>,
-          template <typename...> class TsmartPointer = std::unique_ptr>
+/**
+ * @brief A domain must inherit this class if it has a deterministic initial
+ * state known as white-box.
+ *
+ * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ */
+template <typename DerivedCompoundDomain>
 class DeterministicInitializedDomain
-    : public UncertainInitializedDomain<
-          Tstate, Tobservation, Tevent, TinitialStateDistribution, TstateSpace,
-          TobservationSpace, TobservationDistribution, TsmartPointer> {
+    : public UncertainInitializedDomain<DerivedCompoundDomain,
+                                        SingleValueDistribution> {
 public:
-  typedef Tobservation Observation;
-  typedef TobservationSpace ObservationSpace;
-  typedef TobservationDistribution ObservationDistribution;
-  typedef TsmartPointer<ObservationDistribution> ObservationDistributionPtr;
-  typedef Tstate State;
-  typedef TsmartPointer<State> StatePtr;
-  typedef TstateSpace StateSpace;
-  typedef Tevent Event;
-  typedef TinitialStateDistribution InitialStateDistribution;
-  typedef TsmartPointer<InitialStateDistribution> InitialStateDistributionPtr;
+  typedef typename UncertainInitializedDomain<
+      DerivedCompoundDomain, SingleValueDistribution>::CompoundState
+      CompoundState;
+  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundState>
+      CompoundStatePtr;
+  typedef typename UncertainInitializedDomain<DerivedCompoundDomain,
+                                              SingleValueDistribution>::
+      CompoundInitialStateDistribution CompoundInitialStateDistribution;
+  typedef typename UncertainInitializedDomain<DerivedCompoundDomain,
+                                              SingleValueDistribution>::
+      CompoundInitialStateDistributionPtr CompoundInitialStateDistributionPtr;
 
-  const State &get_initial_state() {
+  /**
+   * @brief Get the (cached) initial state.
+   *
+   *    By default, DeterministicInitializedDomain::get_initial_state()
+   * internally calls DeterministicInitializedDomain::make_initial_state() the
+   * first time and automatically caches its value to make future calls more
+   * efficient (since the initial state is assumed to be constant).
+   *
+   * @return The initial state.
+   */
+  const CompoundState &get_initial_state() {
     if (!_initial_state) {
       _initial_state = make_initial_state();
     }
@@ -109,14 +190,33 @@ public:
   }
 
 protected:
-  virtual StatePtr make_initial_state() = 0;
+  /**
+   * @brief Get the initial state.
+   *
+   *    This is a helper function called by default from
+   * DeterministicInitializedDomain::get_initial_state(), the difference being
+   * that the result is not cached here.
+   *
+   * @return The initial state.
+   */
+  virtual CompoundStatePtr make_initial_state() = 0;
 
 private:
-  StatePtr _initial_state;
+  CompoundStatePtr _initial_state;
 
-  virtual InitialStateDistributionPtr make_initial_state_distribution() {
-    return std::make_unique<SingleValueDistribution<State>>(
-        get_initial_state());
+  /**
+   * @brief Get the probability distribution of initial states.
+   *
+   *    This is a helper function called by default from
+   * UncertainInitializedDomain::get_initial_state_distribution(), the
+   * difference being that the result is not cached here.
+   *
+   * @return The probability distribution of initial states.
+   */
+  virtual CompoundInitialStateDistributionPtr
+  make_initial_state_distribution() {
+    return CompoundInitialStateDistributionPtr(
+        new SingleValueDistribution<CompoundState>(get_initial_state()));
   }
 };
 
