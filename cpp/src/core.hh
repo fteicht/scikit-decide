@@ -5,6 +5,7 @@
 #ifndef SKDECIDE_CORE_HH
 #define SKDECIDE_CORE_HH
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <random>
@@ -18,6 +19,14 @@ using json = nlohmann::json;
 
 namespace skdecide {
 
+/**
+ * @brief A space representing a finite or infinite set.
+ *
+ * This class (or any of its descendant) is typically used to specify action,
+ * observation or goal spaces.
+ *
+ * @tparam T Type of elements of the space
+ */
 template <typename T> class Space {
 public:
   /**
@@ -31,11 +40,20 @@ public:
   virtual ~Space() {}
 
   /**
-   * Return boolean specifying if x is a valid member of this space
+   * @brief Check whether x is a valid member of this space.
+   *
+   * @param x The member to consider.
+   * @return True if x is a valid member of this space (False otherwise).
    */
   virtual bool contains(const T &x) const = 0;
 };
 
+/**
+ * @brief A space formalized implicitly, i.e. by a black-box contains()
+ * function.
+ *
+ * @tparam T Type of elements of the space
+ */
 template <typename T> class ImplicitSpace : public Space<T> {
 public:
   /**
@@ -53,7 +71,10 @@ public:
       : m_containsFunctor(containsFunctor) {}
 
   /**
-   * Return boolean specifying if x is a valid member of this space
+   * @brief Check whether x is a valid member of this space.
+   *
+   * @param x The member to consider.
+   * @return True if x is a valid member of this space (False otherwise).
    */
   virtual bool contains(const T &x) const { return m_containsFunctor(x); }
 
@@ -61,8 +82,14 @@ private:
   std::function<bool(const T &)> m_containsFunctor;
 };
 
+/**
+ * @brief A space which elements can be enumerated.
+ *
+ * @tparam T Type of elements of the space
+ * @tparam Container Type of container used to store the elements of the space
+ */
 template <typename T,
-          template <typename...> class Tcontainer = std::unordered_set>
+          template <typename...> class Container = std::unordered_set>
 class EnumerableSpace : public Space<T> {
 public:
   /**
@@ -71,11 +98,59 @@ public:
   typedef T element_type;
 
   /**
-   * Return the elements of this space
+   * Type of container used to store the elements of the space
    */
-  virtual const Tcontainer<T> &get_elements() const = 0;
+  template <typename... TT> using container_class = Container<TT...>;
+
+  /**
+   * @brief Get the elements of this space.
+   *
+   * @return The elements of this space.
+   */
+  virtual const Container<T> &get_elements() const = 0;
 };
 
+/**
+ * @brief A space without elements.
+ *
+ * @tparam T Type of elements of the space
+ * @tparam Container Type of container used to store the elements of the space
+ */
+template <typename T = std::nullptr_t,
+          template <typename...> class Container = std::unordered_set>
+class EmptySpace : public EnumerableSpace<T> {
+public:
+  /**
+   * Type of elements of the space
+   */
+  typedef T element_type;
+
+  /**
+   * Type of container used to store the elements of the space
+   */
+  template <typename... TT> using container_class = Container<TT...>;
+
+  /**
+   * @brief Construct a new Empty Space object
+   */
+  EmptySpace() {}
+
+  /**
+   * @brief Get the elements of this space.
+   *
+   * @return The elements of this space.
+   */
+  virtual const Container<T> &get_elements() const { return _container; }
+
+private:
+  Container<T> _container;
+};
+
+/**
+ * @brief A space which can be sampled (uniformly randomly).
+ *
+ * @tparam T Type of elements of the space
+ */
 template <typename T> class SamplableSpace : public Space<T> {
 public:
   /**
@@ -84,11 +159,20 @@ public:
   typedef T element_type;
 
   /**
-   * Uniformly randomly sample a random element of this space
+   * @brief Uniformly randomly sample a random element of this space.
+   *
+   * @return T The sampled element.
    */
   virtual T sample() const = 0;
 };
 
+/**
+ * @brief A space which can be serialized (to/from JSON).
+ *
+ * @tparam T Type of elements of the space
+ * @tparam Container Type of container used to store the (de)serialized elements
+ * of the space
+ */
 template <typename T,
           template <typename...> class Container = std::unordered_set>
 class SerializableSpace : public Space<T> {
@@ -99,7 +183,15 @@ public:
   typedef T element_type;
 
   /**
-   * Convert a batch of samples from this space to a JSONable data type
+   * Type of container used to store the (de)serialized elements of the space
+   */
+  template <typename... TT> using container_class = Container<TT...>;
+
+  /**
+   * @brief Convert a batch of samples from this space to a JSONable data type.
+   *
+   * @param sample_n The batch of samples to convert.
+   * @return The resulting JSONable data type.
    */
   virtual json to_jsonable(const Container<T> &sample_n) const {
     // By default, assume identity is JSONable
@@ -108,7 +200,10 @@ public:
   }
 
   /**
-   * Convert a JSONable data type to a batch of samples from this space
+   * @brief Convert a JSONable data type to a batch of samples from this space.
+   *
+   * @param sample_n The JSONable data type to convert.
+   * @return The resulting batch of samples.
    */
   virtual Container<T> from_jsonable(const json &sample_n) const {
     // By default, assume identity is JSONable
@@ -117,6 +212,11 @@ public:
   }
 };
 
+/**
+ * @brief A probability distribution.
+ *
+ * @tparam T Type of elements of the distribution
+ */
 template <typename T> class Distribution {
 public:
   /**
@@ -130,11 +230,19 @@ public:
   virtual ~Distribution() {}
 
   /**
-   * Returning a sample from the distribution
+   * @brief Sample from this distribution.
+   *
+   * @return T The sampled element.
    */
   virtual T sample() = 0;
 };
 
+/**
+ * @brief A probability distribution formalized implicitly, i.e. by a black-box
+ * sample() function.
+ *
+ * @tparam T Type of elements of the distribution
+ */
 template <typename T> class ImplicitDistribution : public Distribution<T> {
 public:
   /**
@@ -151,7 +259,9 @@ public:
       : m_sampleFunctor(sampleFunctor) {}
 
   /**
-   * Returning a sample from the distribution
+   * @brief Sample from this distribution.
+   *
+   * @return T The sampled element.
    */
   virtual T sample() { return m_sampleFunctor(); }
 
@@ -159,6 +269,15 @@ private:
   std::function<T()> m_sampleFunctor;
 };
 
+/**
+ * @brief A discrete probability distribution.
+ *
+ * @tparam T Type of elements of the distribution
+ * @tparam Container Type of container used to map the elements to their
+ * probabilities
+ * @tparam Generator Type of the sample generator
+ * @tparam IntType Type of integers
+ */
 template <typename T,
           template <typename...> class Container = std::unordered_map,
           typename Generator = std::mt19937, typename IntType = int>
@@ -168,6 +287,11 @@ public:
    * Type of elements of the distribution
    */
   typedef T element_type;
+
+  /**
+   * Type of container used to map the elements to their probabilities
+   */
+  template <typename... TT> using container_class = Container<TT...>;
 
   /**
    * Constructor
@@ -213,12 +337,16 @@ public:
       : DiscreteDistribution(iList.begin(), iList.end()) {}
 
   /**
-   * Returning a sample from the distribution
+   * @brief Sample from this distribution.
+   *
+   * @return T The sampled element.
    */
   virtual T sample() { return m_indexes[m_distribution(m_generator)]->first; }
 
   /**
-   * Get the list of (element, probability) values
+   * @brief Get the list of (element, probability) pairs.
+   *
+   * @return The (element, probability) pairs.
    */
   const Container<T, double> &get_values() const { return m_values; }
 
@@ -229,6 +357,11 @@ private:
   std::discrete_distribution<IntType> m_distribution;
 };
 
+/**
+ * @brief A single value distribution (i.e. Dirac distribution).
+ *
+ * @tparam T Type of elements of the distribution
+ */
 template <typename T>
 class SingleValueDistribution : public DiscreteDistribution<T> {
 public:
@@ -244,12 +377,16 @@ public:
       : DiscreteDistribution<T>({{value, 1.0}}), m_value(value) {}
 
   /**
-   * Returning a sample from the distribution
+   * @brief Sample from this distribution.
+   *
+   * @return T The sampled element.
    */
   virtual T sample() { return m_value; }
 
   /**
-   * Returning the value
+   * @brief Get the single value of this distribution.
+   *
+   * @return The single value of this distribution.
    */
   const T &get_value() const { return m_value; }
 
@@ -257,32 +394,103 @@ private:
   T m_value;
 };
 
+/**
+ * @brief Type of values: either rewards or costs
+ */
 enum class ValueType { REWARD, COST };
 
+/**
+ * @brief A value (reward or cost).
+ *
+ * !!! Warning.
+ *      It is recommended to use either the reward or the cost parameter. If no
+ * one is used, a reward/cost of 0 is assumed. If both are used, reward will be
+ * considered and cost ignored. In any case, both reward and cost attributes
+ * will be defined after initialization.
+ *
+ * @tparam TT Type (enum) of values: either rewards or costs
+ * @tparam T Type of floats used to encode values
+ */
 template <ValueType TT = ValueType::REWARD, typename T = double> class Value;
 
+/**
+ * @brief Specialized value class for reward values
+ *
+ * @tparam T Type of floats used to encode values
+ */
 template <typename T> class Value<ValueType::REWARD, T> {
 public:
+  /**
+   * @brief Construct a new Value object
+   *
+   * @param value Value considered as a reward
+   */
   Value(const T &value) : m_value(value) {}
 
+  /**
+   * @brief Returns the value as a reward
+   *
+   * @return T The reward value.
+   */
   inline virtual T reward() const { return m_value; }
+
+  /**
+   * @brief Return the value as a cost
+   *
+   * @return T The cost value.
+   */
   inline virtual T cost() const { return -m_value; }
 
 private:
   T m_value;
 };
 
+/**
+ * @brief Specialized value class for cost values
+ *
+ * @tparam T Type of floats used to encode values
+ */
 template <typename T> class Value<ValueType::COST, T> {
 public:
+  /**
+   * @brief Construct a new Value object
+   *
+   * @param value Value considered as a cost
+   */
   Value(const T &value) : m_value(value) {}
 
+  /**
+   * @brief Returns the value as a reward
+   *
+   * @return T The reward value.
+   */
   inline virtual T reward() const { return -m_value; }
+
+  /**
+   * @brief Return the value as a cost
+   *
+   * @return T The cost value.
+   */
   inline virtual T cost() const { return m_value; }
 
 private:
   T m_value;
 };
 
+/**
+ * @brief An environment outcome for an internal transition.
+ *
+ * @tparam Tobservation Type of the agent's observation of the current
+ * environment.
+ * @tparam TT Type (enum) of values (either rewards or costs) returned after
+ * previous action.
+ * @tparam Tvalue Type of floats used to encode values returned after previous
+ * action.
+ * @tparam Tpredicate Type of predicates used to check whether the episode has
+ * ended, in which case further step() calls will return undefined results.
+ * @tparam Tinfo Type of optional auxiliary diagnostic information (helpful for
+ * debugging, and sometimes learning).
+ */
 template <typename Tobservation, ValueType TT, typename Tvalue,
           typename Tpredicate, typename Tinfo = std::nullptr_t>
 struct EnvironmentOutcome {
@@ -297,6 +505,19 @@ struct EnvironmentOutcome {
   Tinfo info;
 };
 
+/**
+ * @brief A transition outcome.
+ *
+ * @tparam Tstate Type of the new state after the transition.
+ * @tparam TT Type (enum) of values (either rewards or costs) returned after
+ * previous action.
+ * @tparam Tvalue Type of floats used to encode values returned after previous
+ * action.
+ * @tparam Tpredicate Type of predicates used to check whether the episode has
+ * ended, in which case further step() calls will return undefined results.
+ * @tparam Tinfo Type of optional auxiliary diagnostic information (helpful for
+ * debugging, and sometimes learning).
+ */
 template <typename Tstate, ValueType TT, typename Tvalue, typename Tpredicate,
           typename Tinfo = std::nullptr_t>
 struct TransitionOutcome {
