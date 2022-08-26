@@ -85,7 +85,7 @@ TEST_CASE("Single-Value distribution", "[single-value-distribution]") {
 
 
 TEST_CASE("Transition value", "[transition-value]") {
-    skdecide::Value<skdecide::TransitionType::COST> tv(8.0);
+    skdecide::Value<skdecide::ValueType::COST> tv(8.0);
     REQUIRE( tv.reward() + tv.cost() == Approx(0.0) );
 }
 
