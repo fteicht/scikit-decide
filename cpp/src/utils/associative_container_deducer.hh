@@ -23,6 +23,17 @@ template <typename T> struct has_hash {
   static const bool value = sizeof(test<T>(nullptr)) == sizeof(yes);
 };
 
+template <typename T> struct is_default_hashable {
+  typedef char yes[1];
+  typedef char no[2];
+
+  template <typename C>
+  static yes &test(decltype(std::declval<std::hash<C>>()(std::declval<C>())));
+  template <typename> static no &test(...);
+
+  static const bool value = sizeof(test<T>(true)) == sizeof(yes);
+};
+
 template <typename T> struct has_equal {
   typedef char yes[1];
   typedef char no[2];
@@ -33,6 +44,17 @@ template <typename T> struct has_equal {
   static const bool value = sizeof(test<T>(nullptr)) == sizeof(yes);
 };
 
+template <typename T> struct is_default_equality_comparable {
+  typedef char yes[1];
+  typedef char no[2];
+
+  template <typename C>
+  static yes &test(decltype(std::declval<C>() == std::declval<C>()));
+  template <typename> static no &test(...);
+
+  static const bool value = sizeof(test<T>(true)) == sizeof(yes);
+};
+
 template <typename T> struct has_less {
   typedef char yes[1];
   typedef char no[2];
@@ -41,6 +63,17 @@ template <typename T> struct has_less {
   template <typename> static no &test(...);
 
   static const bool value = sizeof(test<T>(nullptr)) == sizeof(yes);
+};
+
+template <typename T> struct is_default_less_comparable {
+  typedef char yes[1];
+  typedef char no[2];
+
+  template <typename C>
+  static yes &test(decltype(std::declval<C>() < std::declval<C>()));
+  template <typename> static no &test(...);
+
+  static const bool value = sizeof(test<T>(true)) == sizeof(yes);
 };
 
 template <typename T> struct has_key {
@@ -55,59 +88,151 @@ template <typename T> struct has_key {
 
 template <typename T> struct Hash {
   template <typename U>
-  typename std::enable_if<has_key<U>::value, std::size_t>::type
+  typename std::enable_if<has_key<U>::value && has_hash<T>::value,
+                          std::size_t>::type
   operator()(const U &u) const {
     return typename T::Hash()(typename U::Key()(u));
   }
 
   template <typename U>
-  typename std::enable_if<!has_key<U>::value, std::size_t>::type
+  typename std::enable_if<has_key<U>::value && !has_hash<T>::value &&
+                              has_hash<decltype(std::declval<typename U::Key>()(
+                                  std::declval<const U &>()))>::value,
+                          std::size_t>::type
+  operator()(const U &u) const {
+    return typename U::Key::Hash()(typename U::Key()(u));
+  }
+
+  template <typename U>
+  typename std::enable_if<
+      has_key<U>::value && !has_hash<T>::value &&
+          is_default_hashable<decltype(std::declval<typename U::Key>()(
+              std::declval<const U &>()))>::value,
+      std::size_t>::type
+  operator()(const U &u) const {
+    return std::hash<decltype(std::declval<typename U::Key>()(
+        std::declval<const U &>()))>()(typename U::Key()(u));
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && has_hash<U>::value,
+                          std::size_t>::type
   operator()(const U &u) const {
     return typename U::Hash()(u);
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && !has_hash<U>::value &&
+                              is_default_hashable<U>::value,
+                          std::size_t>::type
+  operator()(const U &u) const {
+    return std::hash<typename U::Hash>()(u);
   }
 };
 
 template <typename T> struct Equal {
   template <typename U>
-  typename std::enable_if<has_key<U>::value, bool>::type
+  typename std::enable_if<has_key<U>::value && has_equal<T>::value, bool>::type
   operator()(const U &ul, const U &ur) const {
     return typename T::Equal()(typename U::Key()(ul), typename U::Key()(ur));
   }
 
   template <typename U>
-  typename std::enable_if<!has_key<U>::value, bool>::type
+  typename std::enable_if<
+      has_key<U>::value && !has_equal<T>::value &&
+          has_equal<decltype(std::declval<typename U::Key>()(
+              std::declval<const U &>()))>::value,
+      bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return
+        typename U::Key::Equal()(typename U::Key()(ul), typename U::Key()(ur));
+  }
+
+  template <typename U>
+  typename std::enable_if<has_key<U>::value && !has_equal<T>::value &&
+                              is_default_equality_comparable<
+                                  decltype(std::declval<typename U::Key>()(
+                                      std::declval<const U &>()))>::value,
+                          bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return typename U::Key()(ul) == typename U::Key()(ur);
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && has_equal<U>::value, bool>::type
   operator()(const U &ul, const U &ur) const {
     return typename U::Equal()(ul, ur);
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && !has_equal<U>::value &&
+                              is_default_equality_comparable<U>::value,
+                          bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return ul == ur;
   }
 };
 
 template <typename T> struct Less {
   template <typename U>
-  typename std::enable_if<has_key<U>::value, bool>::type
+  typename std::enable_if<has_key<U>::value && has_less<T>::value, bool>::type
   operator()(const U &ul, const U &ur) const {
     return typename T::Less()(typename U::Key()(ul), typename U::Key()(ur));
   }
 
   template <typename U>
-  typename std::enable_if<!has_key<U>::value, bool>::type
+  typename std::enable_if<has_key<U>::value && !has_less<T>::value &&
+                              has_less<decltype(std::declval<typename U::Key>()(
+                                  std::declval<const U &>()))>::value,
+                          bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return
+        typename U::Key::Less()(typename U::Key()(ul), typename U::Key()(ur));
+  }
+
+  template <typename U>
+  typename std::enable_if<
+      has_key<U>::value && !has_less<T>::value &&
+          is_default_less_comparable<decltype(std::declval<typename U::Key>()(
+              std::declval<const U &>()))>::value,
+      bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return typename U::Key()(ul) < typename U::Key()(ur);
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && has_less<U>::value, bool>::type
   operator()(const U &ul, const U &ur) const {
     return typename U::Less()(ul, ur);
+  }
+
+  template <typename U>
+  typename std::enable_if<!has_key<U>::value && !has_less<U>::value &&
+                              is_default_less_comparable<U>::value,
+                          bool>::type
+  operator()(const U &ul, const U &ur) const {
+    return ul < ur;
   }
 };
 
 template <typename Key, typename RealKey = Key> struct SetTypeDeducer {
   typedef typename std::conditional<
-      has_hash<RealKey>::value && has_equal<RealKey>::value,
+      (has_hash<RealKey>::value || is_default_hashable<RealKey>::value) &&
+          (has_equal<RealKey>::value ||
+           is_default_equality_comparable<RealKey>::value),
       std::unordered_set<Key, Hash<RealKey>, Equal<RealKey>>,
-      typename std::conditional<has_less<RealKey>::value,
+      typename std::conditional<has_less<RealKey>::value ||
+                                    is_default_less_comparable<RealKey>::value,
                                 std::set<Key, Less<RealKey>>, void>::type>::type
       Set;
   static_assert(std::is_same<Key, RealKey>::value || has_key<Key>::value,
                 "Key must contain a 'struct Key {...}' accessing type if Key "
                 "is different from RealKey");
-  static_assert(!std::is_void<Set>::value,
-                "Key type given to SetTypeDeducer must contain either 'Hash "
-                "and Equal' types or 'Less' type");
+  static_assert(
+      !std::is_void<Set>::value,
+      "Key type given to SetTypeDeducer must contain either 'Hash' "
+      "and 'Equal' types or 'Less' type, or must be hashable and equality "
+      "comparable by default, or less than comparable by default");
 };
 
 template <typename Key, typename Value, typename RealKey = Key>
@@ -116,17 +241,22 @@ struct MapTypeDeducer {
   // "Key must contain a 'struct Key {...}' accessing type if Key is different
   // from RealKey");
   typedef typename std::conditional<
-      has_hash<RealKey>::value && has_equal<RealKey>::value,
+      (has_hash<RealKey>::value || is_default_hashable<RealKey>::value) &&
+          (has_equal<RealKey>::value ||
+           is_default_equality_comparable<RealKey>::value),
       std::unordered_map<Key, Value, Hash<RealKey>, Equal<RealKey>>,
-      typename std::conditional<has_less<RealKey>::value,
+      typename std::conditional<has_less<RealKey>::value ||
+                                    is_default_less_comparable<RealKey>::value,
                                 std::map<Key, Value, Less<RealKey>>,
                                 void>::type>::type Map;
   static_assert(std::is_same<Key, RealKey>::value || has_key<Key>::value,
                 "Key must contain a 'struct Key {...}' accessing type if Key "
                 "is different from RealKey");
-  static_assert(!std::is_void<Map>::value,
-                "Key type given to MapTypeDeducer must contain either 'Hash "
-                "and Equal' types or 'Less' type");
+  static_assert(
+      !std::is_void<Map>::value,
+      "Key type given to MapTypeDeducer must contain either 'Hash' "
+      "and 'Equal' types or 'Less' type, or must be hashable and equality "
+      "comparable by default, or less than comparable by default");
 };
 
 } // namespace skdecide
