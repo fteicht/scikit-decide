@@ -18,66 +18,200 @@ namespace skdecide {
  * Additionally, according to literature, a partially observable domain must
  * provide the probability distribution of the observation given a state and
  * action.
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam State Type of an agent's states
- * @tparam Observation Type of an agent's observations
- * @tparam StateSpace Type of an agent's state space
- * @tparam ObservationSpace Type of an agent's observation space
- * @tparam ObservationDistribution Type of observation distributions
  */
-template <typename DerivedCompoundDomain, typename State, typename Observation,
-          template <typename...> class StateSpace = ImplicitSpace,
-          template <typename...> class ObservationSpace = ImplicitSpace,
-          template <typename...> class ObservationDistribution =
-              ImplicitDistribution>
-class PartiallyObservableDomain {
-  static_assert(std::is_base_of<Space<State>, StateSpace<State>>::value,
-                "StateSpace must be derived from skdecide::Space<...>");
-  static_assert(
-      std::is_base_of<Space<Observation>, ObservationSpace<Observation>>::value,
-      "ObservationSpace type must be derived from "
-      "skdecide::Space<...>");
-  static_assert(std::is_base_of<Distribution<Observation>,
-                                ObservationDistribution<Observation>>::value,
-                "ObservationDistribution must be derived from "
-                "skdecide::Distribution<...>");
+template <typename CompoundDomain> class PartiallyObservableDomain {
+private:
+  template <class T, class = void> struct define_state_type {
+    static_assert(!std::is_same_v<typename CompoundDomain::Types, T>,
+                  "The domain types must define AgentState.");
+  };
+
+  template <class T>
+  struct define_state_type<T, std::void_t<typename T::AgentState>> {
+    typedef typename T::AgentState result;
+  };
 
 public:
-  typedef State RawState;
-  typedef Observation RawObservation;
-  template <typename... T> using RawStateSpace = StateSpace<T...>;
-  template <typename... T> using RawObservationSpace = ObservationSpace<T...>;
-  template <typename... T>
-  using RawObservationDistribution = ObservationDistribution<T...>;
+  /**
+   * @brief Type of an agent's states
+   */
+  typedef typename define_state_type<typename CompoundDomain::Types>::result
+      AgentState;
 
-  typedef typename DerivedCompoundDomain::template AgentProxy<RawObservation>
-      CompoundObservation;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawObservationSpace<RawObservation>>
-      CompoundObservationSpace;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundObservationSpace>
-      CompoundObservationSpacePtr;
-  typedef RawObservationDistribution<CompoundObservation>
-      CompoundObservationDistribution;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundObservationDistribution>
-      CompoundObservationDistributionPtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<RawState>
+private:
+  template <class T, class = void> struct define_state_space_type {
+    template <typename... Args> using result = ImplicitSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_state_space_type<
+      T, std::void_t<typename T::template AgentStateSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentStateSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's state space
+   *
+   * @tparam Args Type of states
+   */
+  template <typename... Args>
+  using AgentStateSpace = typename define_state_space_type<
+      typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  template <class T, class D, class = void> struct define_observation_type {
+    template <class, class = void> struct check_observability_domain;
+
+    template <class DD>
+    struct check_observability_domain<
+        DD, std::enable_if_t<std::is_same_v<
+                PartiallyObservableDomain<CompoundDomain>, DD>>> {
+      static_assert(
+          !std::is_same_v<PartiallyObservableDomain<CompoundDomain>, DD>,
+          "The domain types must define AgentObservation when the "
+          "observability domain feature is "
+          "skdecide::PartiallyObservableDomain");
+    };
+
+    template <class DD>
+    struct check_observability_domain<
+        DD, std::enable_if_t<!std::is_same_v<
+                PartiallyObservableDomain<CompoundDomain>, DD>>> {
+      typedef AgentState result;
+    };
+
+    typedef typename check_observability_domain<D>::result result;
+  };
+
+  template <class T, class D>
+  struct define_observation_type<T, D,
+                                 std::void_t<typename T::AgentObservation>> {
+    typedef typename T::AgentObservation result;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's observations
+   */
+  typedef typename define_observation_type<
+      typename CompoundDomain::Types,
+      typename CompoundDomain::Features::template ObservabilityDomain<
+          CompoundDomain>>::result AgentObservation;
+
+private:
+  template <class T, class = void> struct define_observation_space_type {
+    template <typename... Args> using result = AgentStateSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_observation_space_type<
+      T, std::void_t<typename T::template AgentObservationSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentObservationSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's observation space
+   */
+  template <typename... Args>
+  using AgentObservationSpace = typename define_observation_space_type<
+      typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  template <class, class, class = void>
+  struct define_observation_distribution_type;
+
+  template <class D, class T>
+  struct define_observation_distribution_type<
+      D, T,
+      std::enable_if_t<
+          std::is_same_v<PartiallyObservableDomain<CompoundDomain>, D>>> {
+
+    template <class, class = void> struct try_import_from_domain_types {
+      template <typename... Args> using result = ImplicitDistribution<Args...>;
+    };
+
+    template <class TT>
+    struct try_import_from_domain_types<
+        TT,
+        std::void_t<typename TT::template AgentObservationDistribution<char>>> {
+      template <typename... Args>
+      using result =
+          typename TT::template AgentObservationDistribution<Args...>;
+    };
+
+    template <typename... Args>
+    using result =
+        typename try_import_from_domain_types<T>::template result<Args...>;
+  };
+
+  template <class D, class T>
+  struct define_observation_distribution_type<
+      D, T,
+      std::enable_if_t<
+          !std::is_same_v<PartiallyObservableDomain<CompoundDomain>, D>>> {
+    template <typename... Args> using result = SingleValueDistribution<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's observation distribution
+   */
+  template <typename... Args>
+  using AgentObservationDistribution =
+      typename define_observation_distribution_type<
+          typename CompoundDomain::Features::template ObservabilityDomain<
+              CompoundDomain>,
+          typename CompoundDomain::Types>::template result<Args...>;
+
+public:
+  typedef typename CompoundDomain::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentState>
       CompoundState;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawStateSpace<RawState>>
+  typedef typename CompoundDomain::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentStateSpace<AgentState>>
       CompoundStateSpace;
-  typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundStateSpace>
-          CompoundStateSpacePtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::template ConcurrencyProxy<
-          typename DerivedCompoundDomain::RawEvent>>
-      CompoundEvent;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundEvent>
-      CompoundEventPtr;
+  typedef std::unique_ptr<CompoundStateSpace> CompoundStateSpacePtr;
+  typedef typename CompoundDomain::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentObservation>
+      CompoundObservation;
+  typedef typename CompoundDomain::template AgentDomain<CompoundDomain>::
+      template AgentProxy<AgentObservationSpace<AgentObservation>>
+          CompoundObservationSpace;
+  typedef std::unique_ptr<CompoundObservationSpace> CompoundObservationSpacePtr;
+  typedef AgentObservationDistribution<std::shared_ptr<CompoundObservation>>
+      CompoundObservationDistribution;
+  typedef std::unique_ptr<CompoundObservationDistribution>
+      CompoundObservationDistributionPtr;
+  typedef typename CompoundDomain::template AgentDomain<CompoundDomain>::
+      template AgentProxy<
+          typename CompoundDomain::template ConcurrencyDomain<CompoundDomain>::
+              template ConcurrencyProxy<
+                  typename CompoundDomain::template ActivityDomain<
+                      CompoundDomain>::AgentEvent>>
+          CompoundEvent;
+  typedef std::unique_ptr<CompoundEvent> CompoundEventPtr;
+
+  virtual ~PartiallyObservableDomain() {
+    static_assert(
+        std::is_base_of<Space<AgentState>, AgentStateSpace<AgentState>>::value,
+        "AgentStateSpace<...> must be derived from skdecide::Space<...>");
+    static_assert(
+        std::is_base_of<Space<AgentObservation>,
+                        AgentObservationSpace<AgentObservation>>::value,
+        "AgentObservationSpace<...> type must be derived from "
+        "skdecide::Space<...>");
+    static_assert(
+        std::is_base_of<Distribution<AgentObservation>,
+                        AgentObservationDistribution<AgentObservation>>::value,
+        "AgentObservationDistribution<...> must be derived from "
+        "skdecide::Distribution<...>");
+  }
 
   /**
    * @brief Get the (cached) observation space (finite or infinite set).
@@ -179,47 +313,79 @@ private:
 };
 
 /**
- * @brief A domain must inherit this class if it is fully observable.
- * "Fully observable" means that the observation provided to the agent is equal
- * to the internal state of the domain.
- * !!! warning.
- * In the case of fully observable domains, make sure that the observation
- * type D.T_observation is equal to the state type D.T_state.
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @brief A domain must inherit this class if it is transformed observable.
+ *
+ *  "Transformed observable" means that the observation provided to the agent is
+ * deterministically computed from (but generally not equal to) the internal
+ * state of the domain.
+ *
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam State Type of an agent's states
- * @tparam StateSpace Type of an agent's state space
  */
-template <typename DerivedCompoundDomain, typename State,
-          template <typename...> class StateSpace = ImplicitSpace>
-class FullyObservableDomain
-    : public virtual PartiallyObservableDomain<DerivedCompoundDomain, State,
-                                               State, StateSpace, StateSpace,
-                                               SingleValueDistribution> {
+template <typename CompoundDomain>
+class TransformedObservableDomain
+    : public PartiallyObservableDomain<CompoundDomain> {
 public:
-  typedef State RawState;
-  template <typename... T> using RawStateSpace = StateSpace<T...>;
-
-  typedef typename DerivedCompoundDomain::template AgentProxy<RawState>
-      CompoundState;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawStateSpace<RawState>>
-      CompoundStateSpace;
+  /**
+   * @brief Type of an agent's states
+   */
   typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundStateSpace>
-          CompoundStateSpacePtr;
-  typedef SingleValueDistribution<CompoundState>
-      CompoundObservationDistribution;
+      typename PartiallyObservableDomain<CompoundDomain>::AgentState AgentState;
 
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundObservationDistribution>
-      CompoundObservationDistributionPtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::template ConcurrencyProxy<
-          typename DerivedCompoundDomain::RawEvent>>
-      CompoundEvent;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundEvent>
+  /**
+   * @brief Type of an agent's state space
+   *
+   * @tparam Args Type of states
+   */
+  template <typename... Args>
+  using AgentStateSpace = typename PartiallyObservableDomain<
+      CompoundDomain>::template AgentStateSpace<Args...>;
+
+  /**
+   * @brief Type of an agent's observation space
+   */
+  template <typename... Args>
+  using AgentObservationSpace = typename PartiallyObservableDomain<
+      CompoundDomain>::template AgentObservationSpace<Args...>;
+
+private:
+  template <class, class = void>
+  struct check_observation_distribution : std::true_type {};
+
+  template <class T>
+  struct check_observation_distribution<
+      T, std::void_t<typename T::AgentObservationDistribution>>
+      : std::conditional<
+            std::is_same_v<
+                SingleValueDistribution<char>,
+                typename T::template AgentObservationDistribution<char>>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_observation_distribution<typename CompoundDomain::Types>::value,
+      "The domain type AgentObservationDistribution must be equal to "
+      "skdecide::SingleValueDistirbution when the agent domain feature is "
+      "skdecide::TransformedObservableDomain");
+
+public:
+  /**
+   * @brief Type of an agent's observation distribution
+   */
+  template <typename... Args>
+  using AgentObservationDistribution = SingleValueDistribution<Args...>;
+
+  typedef typename PartiallyObservableDomain<CompoundDomain>::CompoundState
+      CompoundState;
+  typedef typename PartiallyObservableDomain<CompoundDomain>::CompoundEventPtr
       CompoundEventPtr;
+  typedef
+      typename PartiallyObservableDomain<CompoundDomain>::CompoundObservation
+          CompoundObservation;
+  typedef typename std::unique_ptr<CompoundObservation> CompoundObservationPtr;
+  typedef SingleValueDistribution<std::shared_ptr<CompoundObservation>>
+      CompoundObservationDistribution;
+  typedef std::unique_ptr<CompoundObservationDistribution>
+      CompoundObservationDistributionPtr;
 
   /**
    * @brief Get the probability distribution of the observation given a state
@@ -232,12 +398,116 @@ public:
    * @return ObservationDistributionPtr The probability distribution of the
    * observation.
    */
-  inline virtual CompoundObservationDistributionPtr
-  get_observation_distribution(
+  virtual CompoundObservationDistributionPtr get_observation_distribution(
       const CompoundState &state,
       const CompoundEventPtr &event = CompoundEventPtr()) {
-    return CompoundObservationDistributionPtr(
-        new CompoundObservationDistribution(state));
+    return std::make_unique<
+        SingleValueDistribution<std::shared_ptr<CompoundObservation>>>(
+        get_observation(state, event));
+  }
+
+  /**
+   * @brief Get the deterministic observation given a state and action.
+   *
+   * @param state The state to be observed.
+   * @param event The last applied action (or None if the state is an initial
+   * state).
+   * @return The observation given the state and action.
+   */
+  virtual CompoundObservationPtr
+  get_observation(const CompoundState &state,
+                  const CompoundEventPtr &event = CompoundEventPtr()) = 0;
+};
+
+/**
+ * @brief A domain must inherit this class if it is fully observable.
+ * "Fully observable" means that the observation provided to the agent is
+ * equal to the internal state of the domain.
+ * !!! warning.
+ * In the case of fully observable domains, make sure that the observation
+ * type D.T_observation is equal to the state type D.T_state.
+ * @tparam CompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ */
+template <typename CompoundDomain>
+class FullyObservableDomain
+    : public virtual TransformedObservableDomain<CompoundDomain> {
+public:
+  typedef typename TransformedObservableDomain<CompoundDomain>::AgentState
+      AgentState;
+  template <typename... Args>
+  using AgentStateSpace = typename TransformedObservableDomain<
+      CompoundDomain>::template AgentStateSpace<Args...>;
+  template <typename... Args>
+  using AgentObservationDistribution = typename TransformedObservableDomain<
+      CompoundDomain>::template AgentObservationDistribution<Args...>;
+
+private:
+  template <class, class = void>
+  struct check_observation_type : std::true_type {};
+
+  template <class T>
+  struct check_observation_type<T, std::void_t<typename T::AgentObservation>>
+      : std::conditional<
+            std::is_same_v<AgentState, typename T::AgentObservation>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_observation_type<typename CompoundDomain::Types>::value,
+      "The domain type AgentObservation must be equal to AgentState "
+      "when the agent domain feature is skdecide::FullyObservableDomain");
+
+public:
+  /**
+   * @brief Type of an agent's observations
+   */
+  typedef AgentState AgentObservation;
+
+private:
+  template <class, class = void>
+  struct check_observation_space_type : std::true_type {};
+
+  template <class T>
+  struct check_observation_space_type<
+      T, std::void_t<typename T::template AgentObservationSpace<char>>>
+      : std::conditional<
+            std::is_same_v<AgentStateSpace<char>,
+                           typename T::template AgentObservationSpace<char>>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_observation_space_type<typename CompoundDomain::Types>::value,
+      "The domain type AgentObservationSpace must be equal to AgentStateSpace "
+      "when the agent domain feature is skdecide::FullyObservableDomain");
+
+public:
+  /**
+   * @brief Type of an agent's observation space
+   */
+  template <typename... Args>
+  using AgentObservationSpace = AgentStateSpace<Args...>;
+
+public:
+  typedef typename TransformedObservableDomain<CompoundDomain>::CompoundState
+      CompoundState;
+  typedef typename TransformedObservableDomain<CompoundDomain>::CompoundEventPtr
+      CompoundEventPtr;
+  typedef std::unique_ptr<CompoundState> CompoundObservationPtr;
+  typedef typename TransformedObservableDomain<
+      CompoundDomain>::CompoundStateSpacePtr CompoundStateSpacePtr;
+
+  /**
+   * @brief Get the deterministic observation given a state and action.
+   *
+   * @param state The state to be observed.
+   * @param event The last applied action (or None if the state is an
+   * initial state).
+   * @return The observation given the state and action.
+   */
+  virtual CompoundObservationPtr
+  get_observation(const CompoundState &state,
+                  const CompoundEventPtr &event = CompoundEventPtr()) {
+    return std::make_unique<CompoundState>(state);
   }
 
 protected:

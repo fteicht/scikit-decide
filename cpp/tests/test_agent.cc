@@ -3,9 +3,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 #include <catch.hpp>
-#include <cstddef>
-#include <memory>
-#include <set>
 #include "builders/domain/agent.hh"
 
 class TestCompoundDomain1 {
