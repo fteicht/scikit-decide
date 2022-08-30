@@ -16,79 +16,222 @@ namespace skdecide {
  * @brief A domain must inherit this class if it handles events (controllable or
  * not not by the agents).
  *
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam Event The type of events for one agent
- * @tparam EventSpace The type of event spaces
- * @tparam ActionSpace The type of action spaces
- * @tparam EnabledEventSpace The type of enabled event spaces
- * @tparam ApplicableActionSpace The of applicable action spaces
  */
-template <typename DerivedCompoundDomain, typename Event,
-          template <typename...> class EventSpace = ImplicitSpace,
-          template <typename...> class ActionSpace = EventSpace,
-          template <typename...> class EnabledEventSpace = EventSpace,
-          template <typename...> class ApplicableActionSpace = ActionSpace>
-class EventDomain : public virtual HistoryDomain<DerivedCompoundDomain> {
-  static_assert(std::is_base_of<Space<Event>, EventSpace<Event>>::value,
-                "Event space type must be derived from skdecide::Space<...>");
-  static_assert(std::is_base_of<Space<Event>, ActionSpace<Event>>::value,
-                "Action space type must be derived from skdecide::Space<...>");
-  static_assert(
-      std::is_base_of<Space<Event>, EnabledEventSpace<Event>>::value,
-      "Enabled event space type must be derived from skdecide::Space<...>");
-  static_assert(
-      std::is_base_of<Space<Event>, ApplicableActionSpace<Event>>::value,
-      "Applicable action space type must be derived from "
-      "skdecide::Space<...>");
+template <typename CompoundDomain> class EventDomain {
+private:
+  template <class T, class D, class = void> struct define_event_type {
+    template <class, class = void> struct check_event_domain;
+
+    template <class DD>
+    struct check_event_domain<
+        DD, std::enable_if_t<std::is_same_v<EventDomain<CompoundDomain>, DD>>> {
+      static_assert(!std::is_same_v<EventDomain<CompoundDomain>, DD>,
+                    "The domain types must define AgentEvent when the "
+                    "agent domain feature is skdecide::EventDomain");
+    };
+
+    template <class DD>
+    struct check_event_domain<
+        DD,
+        std::enable_if_t<!std::is_same_v<EventDomain<CompoundDomain>, DD>>> {
+      template <class TT, class = void> struct try_import_action_type {
+        static_assert(
+            std::is_same_v<EventDomain<CompoundDomain>, DD>,
+            "The domain types must define either AgentEvent or AgentAction "
+            "when "
+            "the agent domain feature is different from skdecide::EventDomain");
+      };
+
+      template <class TT>
+      struct try_import_action_type<TT, std::void_t<typename TT::AgentAction>> {
+        typedef typename TT::AgentAction result;
+      };
+
+      typedef typename try_import_action_type<T>::result result;
+    };
+
+    typedef typename check_event_domain<D>::result result;
+  };
+
+  template <class T, class D>
+  struct define_event_type<T, D, std::void_t<typename T::AgentEvent>> {
+    template <class TT, class = void> struct try_import_action_type {
+      typedef typename T::AgentEvent result;
+    };
+
+    template <class TT>
+    struct try_import_action_type<TT, std::void_t<typename TT::AgentAction>> {
+      static_assert(
+          std::is_same_v<typename TT::AgentAction, typename T::AgentEvent>,
+          "The domain types AgentEvent and AgentAction must be the same.");
+      typedef typename TT::AgentAction result;
+    };
+
+    typedef typename try_import_action_type<T>::result result;
+  };
 
 public:
-  typedef Event RawEvent;
-  template <typename... T> using RawEventSpace = EventSpace<T...>;
-  template <typename... T> using RawActionSpace = ActionSpace<T...>;
-  template <typename... T> using RawEnabledEventSpace = EnabledEventSpace<T...>;
-  template <typename... T>
-  using RawApplicableActionSpace = ApplicableActionSpace<T...>;
+  /**
+   * @brief Type of an agent's events
+   */
+  typedef typename define_event_type<
+      typename CompoundDomain::Types,
+      typename CompoundDomain::Features::template ActivityDomain<
+          CompoundDomain>>::result AgentEvent;
 
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawState>
-      CompoundState;
-  typedef typename DerivedCompoundDomain::template MemoryProxy<CompoundState>
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef AgentEvent AgentAction;
+
+private:
+  template <class T, class = void> struct define_action_space_type {
+    template <typename... Args> using result = ImplicitSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_action_space_type<
+      T, std::void_t<typename T::template AgentActionSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentActionSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentActionSpace = typename define_action_space_type<
+      typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  template <class T, class = void> struct define_event_space_type {
+    template <typename... Args> using result = AgentActionSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_event_space_type<
+      T, std::void_t<typename T::template AgentEventSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentEventSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEventSpace = typename define_event_space_type<
+      typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  template <class T, class = void> struct define_applicable_action_space_type {
+    template <typename... Args> using result = AgentActionSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_applicable_action_space_type<
+      T, std::void_t<typename T::template AgentApplicableActionSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentApplicableActionSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's applicable action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace =
+      typename define_applicable_action_space_type<
+          typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  template <class T, class = void> struct define_enabled_event_space_type {
+    template <typename... Args>
+    using result = AgentApplicableActionSpace<Args...>;
+  };
+
+  template <class T>
+  struct define_enabled_event_space_type<
+      T, std::void_t<typename T::template AgentEnabledEventSpace<char>>> {
+    template <typename... Args>
+    using result = typename T::template AgentEnabledEventSpace<Args...>;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's enabled event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace = typename define_enabled_event_space_type<
+      typename CompoundDomain::Types>::template result<Args...>;
+
+private:
+  static_assert(
+      std::is_base_of<HistoryDomain<CompoundDomain>,
+                      typename CompoundDomain::Features::template MemoryDomain<
+                          CompoundDomain>>::value,
+      "The memory domain feature must be derived from "
+      "skdecide::HistoryDomain<CompoundDomain>");
+  static_assert(
+      std::is_base_of<Space<AgentEvent>, AgentEventSpace<AgentEvent>>::value,
+      "AgentEventSpace<...> must be derived from skdecide::Space<...>");
+  static_assert(
+      std::is_base_of<Space<AgentAction>, AgentActionSpace<AgentAction>>::value,
+      "AgentActionSpace<...> must be derived from skdecide::Space<...>");
+  static_assert(std::is_base_of<Space<AgentEvent>,
+                                AgentEnabledEventSpace<AgentEvent>>::value,
+                "AgentEnabledEventSpace<...> must be derived from "
+                "skdecide::Space<...>");
+  static_assert(std::is_base_of<Space<AgentAction>,
+                                AgentApplicableActionSpace<AgentAction>>::value,
+                "AgentApplicableActionSpace<...> must be derived from "
+                "skdecide::Space<...>");
+
+public:
+  typedef typename CompoundDomain::Features::
+      template AgentDomain<CompoundDomain>::template AgentProxy<
+          typename CompoundDomain::Features::template ObservabilityDomain<
+              CompoundDomain>::AgentState>
+          CompoundState;
+  typedef typename CompoundDomain::Features::template MemoryDomain<
+      CompoundDomain>::template MemoryProxy<CompoundState>
       CompoundMemory;
-  typedef typename DerivedCompoundDomain::template AgentProxy<RawEvent>
+  typedef typename CompoundDomain::Features::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentEvent>
       CompoundEvent;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawEventSpace<RawEvent>>
+  typedef typename CompoundDomain::Features::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentEventSpace<AgentEvent>>
       CompoundEventSpace;
-  typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundEventSpace>
-          CompoundEventSpacePtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawEnabledEventSpace<RawEvent>>
+  typedef std::unique_ptr<CompoundEventSpace> CompoundEventSpacePtr;
+  typedef typename CompoundDomain::Features::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentEnabledEventSpace<AgentEvent>>
       CompoundEnabledEventSpace;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundEnabledEventSpace>
+  typedef std::unique_ptr<CompoundEnabledEventSpace>
       CompoundEnabledEventSpacePtr;
-  typedef RawEvent RawAction;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawActionSpace<RawAction>>
+  typedef typename CompoundDomain::Features::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentActionSpace<AgentAction>>
       CompoundActionSpace;
+  typedef std::unique_ptr<CompoundActionSpace> CompoundActionSpacePtr;
   typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundActionSpace>
-          CompoundActionSpacePtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawApplicableActionSpace<RawAction>>
-      CompoundApplicableActionSpace;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundApplicableActionSpace>
+      typename CompoundDomain::Features::template AgentDomain<CompoundDomain>::
+          template AgentProxy<AgentApplicableActionSpace<AgentAction>>
+              CompoundApplicableActionSpace;
+  typedef std::unique_ptr<CompoundApplicableActionSpace>
       CompoundApplicableActionSpacePtr;
 
   /**
    * @brief Get the (cached) domain event space (finite or infinite set).
    *
    * By default, EventDomain::get_event_space() internally calls
-   * EventDomain::make_event_space() the first time and automatically caches its
-   * value to make future calls more efficient (since the event space is
+   * EventDomain::make_event_space() the first time and automatically caches
+   * its value to make future calls more efficient (since the event space is
    * assumed to be constant).
    *
    * @return The event space.
@@ -174,13 +317,13 @@ public:
    * @param event The event to consider.
    * @return True if the event is an action (False otherwise).
    */
-  inline virtual bool is_action(const RawEvent &event) {
+  inline virtual bool is_action(const AgentEvent &event) {
     return get_action_space().contains(event);
   }
 
   /**
-   * @brief Get the space (finite or infinite set) of applicable actions in the
-   * given memory (state or history).
+   * @brief Get the space (finite or infinite set) of applicable actions in
+   * the given memory (state or history).
    *
    * @param memory The memory to consider.
    * @return The space of applicable actions.
@@ -189,8 +332,8 @@ public:
   get_applicable_actions(const CompoundMemory &memory) = 0;
 
   /**
-   * @brief Get the space (finite or infinite set) of applicable actions in the
-   * internal memory (state or history).
+   * @brief Get the space (finite or infinite set) of applicable actions in
+   * the internal memory (state or history).
    *
    * @return The space of applicable actions.
    */
@@ -199,8 +342,8 @@ public:
   }
 
   /**
-   * @brief Indicate whether an action is applicable in the given memory (state
-   * or history).
+   * @brief Indicate whether an action is applicable in the given memory
+   * (state or history).
    *
    * @param event The event to consider.
    * @param memory The memory to consider.
@@ -208,7 +351,7 @@ public:
    */
   inline bool is_applicable_action(const CompoundEvent &event,
                                    const CompoundMemory &memory) {
-    return get_applicable_actions(memory).contains(event);
+    return get_applicable_actions(memory)->contains(event);
   }
 
   /**
@@ -227,8 +370,8 @@ protected:
    * @brief Get the domain event space (finite or infinite set).
    *
    *    This is a helper function called by default from
-   * EventDomain::get_event_space(), the difference being that the result is not
-   * cached here.
+   * EventDomain::get_event_space(), the difference being that the result is
+   * not cached here.
    *
    * @return The event space.
    */
@@ -254,49 +397,134 @@ private:
  * @brief A domain must inherit this class if it handles only actions (i.e.
  * controllable events).
  *
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam Action The type of actions for one agent
- * @tparam ActionSpace The type of action spaces
- * @tparam ApplicableActionSpace The of applicable action spaces
  */
-template <typename DerivedCompoundDomain, typename Action,
-          template <typename...> class ActionSpace = ImplicitSpace,
-          template <typename...> class ApplicableActionSpace = ActionSpace>
-class ActionDomain
-    : public EventDomain<DerivedCompoundDomain, Action, ActionSpace,
-                         ActionSpace, ApplicableActionSpace,
-                         ApplicableActionSpace> {
-public:
-  typedef Action RawAction;
-  template <typename... T> using RawActionSpace = ActionSpace<T...>;
-  template <typename... T>
-  using RawApplicableActionSpace = ApplicableActionSpace<T...>;
+template <typename CompoundDomain>
+class ActionDomain : public EventDomain<CompoundDomain> {
+private:
+  template <class T, class = void> struct define_action_type {
+    static_assert(std::is_void_v<T>,
+                  "The domain type must define AgentAction when the event "
+                  "domain feature is skdecide::ActionDomain");
+  };
 
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawState>
-      CompoundState;
-  typedef typename DerivedCompoundDomain::template MemoryProxy<CompoundState>
-      CompoundMemory;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawActionSpace<RawAction>>
+  template <class T>
+  struct define_action_type<T, std::void_t<typename T::AgentAction>> {
+    template <class TT, class = void> struct try_import_event_type {
+      typedef typename T::AgentAction result;
+    };
+
+    template <class TT>
+    struct try_import_event_type<TT, std::void_t<typename TT::AgentEvent>> {
+      static_assert(
+          std::is_same_v<typename TT::AgentEvent, typename T::AgentAction>,
+          "The domain types AgentEvent and AgentAction must be the same.");
+      typedef typename TT::AgentEvent result;
+    };
+
+    typedef typename try_import_event_type<T>::result result;
+  };
+
+public:
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef typename define_action_type<typename CompoundDomain::Types>::result
+      AgentAction;
+
+  /**
+   * @brief Type of an agent's events
+   */
+  typedef AgentAction AgentEvent;
+
+public:
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentActionSpace =
+      typename EventDomain<CompoundDomain>::template AgentActionSpace<Args...>;
+
+private:
+  template <class, class = void>
+  struct check_event_space_type : std::true_type {};
+
+  template <class T>
+  struct check_event_space_type<
+      T, std::void_t<typename T::template AgentEventSpace<char>>>
+      : std::conditional<
+            std::is_same_v<AgentActionSpace<char>,
+                           typename T::template AgentEventSpace<char>>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_event_space_type<typename CompoundDomain::Types>::value,
+      "The domain type AgentEventSpace must be equal to AgentActionSpace "
+      "when the event domain feature derives from skdecide::ActionDomain");
+
+public:
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args> using AgentEventSpace = AgentActionSpace<Args...>;
+
+  /**
+   * @brief Type of an agent's applicable action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace = typename EventDomain<
+      CompoundDomain>::template AgentApplicableActionSpace<Args...>;
+
+private:
+  template <class, class = void>
+  struct check_enabled_event_space_type : std::true_type {};
+
+  template <class T>
+  struct check_enabled_event_space_type<
+      T, std::void_t<typename T::template AgentEnabledEventSpace<char>>>
+      : std::conditional<
+            std::is_same_v<AgentApplicableActionSpace<char>,
+                           typename T::template AgentEnabledEventSpace<char>>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_enabled_event_space_type<typename CompoundDomain::Types>::value,
+      "The domain type AgentEnabledEventSpace must be equal to "
+      "AgentApplicableActionSpace when the event domain feature derives from "
+      "skdecide::ActionDomain");
+
+public:
+  /**
+   * @brief Type of an agent's enabled event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace = AgentApplicableActionSpace<Args...>;
+
+public:
+  typedef typename EventDomain<CompoundDomain>::CompoundState CompoundState;
+  typedef typename EventDomain<CompoundDomain>::CompoundMemory CompoundMemory;
+  typedef typename CompoundDomain::Features::template AgentDomain<
+      CompoundDomain>::template AgentProxy<AgentActionSpace<AgentAction>>
       CompoundActionSpace;
+  typedef std::unique_ptr<CompoundActionSpace> CompoundActionSpacePtr;
   typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundActionSpace>
-          CompoundActionSpacePtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawApplicableActionSpace<RawAction>>
-      CompoundApplicableActionSpace;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundApplicableActionSpace>
+      typename CompoundDomain::Features::template AgentDomain<CompoundDomain>::
+          template AgentProxy<AgentApplicableActionSpace<AgentAction>>
+              CompoundApplicableActionSpace;
+  typedef std::unique_ptr<CompoundApplicableActionSpace>
       CompoundApplicableActionSpacePtr;
 
   /**
    * @brief Get the (cached) domain event space (finite or infinite set).
    *
    * By default, EventDomain::get_event_space() internally calls
-   * EventDomain::make_event_space() the first time and automatically caches its
-   * value to make future calls more efficient (since the event space is
+   * EventDomain::make_event_space() the first time and automatically caches
+   * its value to make future calls more efficient (since the event space is
    * assumed to be constant).
    *
    * @return The event space.
@@ -322,35 +550,80 @@ public:
  * @brief A domain must inherit this class if it handles only actions (i.e.
  controllable events), which are always all applicable.
  *
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam Action The type of actions for one agent
- * @tparam ActionSpace The type of action spaces
  */
-template <typename DerivedCompoundDomain, typename Action,
-          template <typename...> class ActionSpace = ImplicitSpace>
-class UnrestrictedActionDomain
-    : public ActionDomain<DerivedCompoundDomain, Action, ActionSpace,
-                          ActionSpace> {
+template <typename CompoundDomain>
+class UnrestrictedActionDomain : public ActionDomain<CompoundDomain> {
 public:
-  typedef Action RawAction;
-  template <typename... T> using RawActionSpace = ActionSpace<T...>;
-
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawState>
-      CompoundState;
-  typedef typename DerivedCompoundDomain::template MemoryProxy<CompoundState>
-      CompoundMemory;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      RawActionSpace<RawAction>>
-      CompoundActionSpace;
-  typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundActionSpace>
-          CompoundActionSpacePtr;
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef typename ActionDomain<CompoundDomain>::AgentAction AgentAction;
 
   /**
-   * @brief Get the space (finite or infinite set) of applicable actions in the
-   * given memory (state or history).
+   * @brief Type of an agent's events
+   */
+  typedef typename ActionDomain<CompoundDomain>::AgentEvent AgentEvent;
+
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentActionSpace =
+      typename ActionDomain<CompoundDomain>::template AgentActionSpace<Args...>;
+
+private:
+  template <class, class = void>
+  struct check_applicable_action_space_type : std::true_type {};
+
+  template <class T>
+  struct check_applicable_action_space_type<
+      T, std::void_t<typename T::template AgentApplicableActionSpace<char>>>
+      : std::conditional<
+            std::is_same_v<
+                AgentActionSpace<char>,
+                typename T::template AgentApplicableActionSpace<char>>,
+            std::true_type, std::false_type>::type {};
+
+  static_assert(
+      check_applicable_action_space_type<typename CompoundDomain::Types>::value,
+      "The domain type AgentAplicableActionSpace must be equal to "
+      "AgentActionSpace when the event domain feature derives from "
+      "skdecide::UnrestrictedActionDomain");
+
+public:
+  /**
+   * @brief Type of an agent's applicable action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace = AgentActionSpace<Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args> using AgentEventSpace = AgentActionSpace<Args...>;
+
+  /**
+   * @brief Type of an agent's enabled event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace = AgentActionSpace<Args...>;
+
+public:
+  typedef typename ActionDomain<CompoundDomain>::CompoundState CompoundState;
+  typedef typename ActionDomain<CompoundDomain>::CompoundMemory CompoundMemory;
+  typedef typename ActionDomain<CompoundDomain>::CompoundActionSpace
+      CompoundActionSpace;
+  typedef std::unique_ptr<CompoundActionSpace> CompoundActionSpacePtr;
+
+  /**
+   * @brief Get the space (finite or infinite set) of applicable actions in
+   * the given memory (state or history).
    *
    * @param memory The memory to consider.
    * @return The space of applicable actions.

@@ -45,7 +45,7 @@ public:
           typename CompoundDomain::Features::template ObservabilityDomain<
               CompoundDomain>::AgentState>
           CompoundState;
-  typedef typename CompoundDomain::Features::template HistoryDomain<
+  typedef typename CompoundDomain::Features::template MemoryDomain<
       CompoundDomain>::template MemoryProxy<CompoundState>
       CompoundMemory;
   typedef typename CompoundDomain::Features::

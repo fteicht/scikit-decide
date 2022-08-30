@@ -6,6 +6,7 @@
 #define SKDECIDE_GOALS_HH
 
 #include "core.hh"
+#include <memory>
 
 namespace skdecide {
 
@@ -29,9 +30,7 @@ public:
       typename DerivedCompoundDomain::template RawGoalSpace<
           typename DerivedCompoundDomain::RawObservation>>
       CompoundGoalSpace;
-  typedef
-      typename DerivedCompoundDomain::template SmartPointer<CompoundGoalSpace>
-          CompoundGoalSpacePtr;
+  typedef typename std::unique_ptr<CompoundGoalSpace> CompoundGoalSpacePtr;
 
   /**
    * @brief Get the (cached) domain goals space (finite or infinite set).

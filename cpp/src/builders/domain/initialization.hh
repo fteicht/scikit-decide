@@ -94,10 +94,9 @@ public:
 
   typedef typename InitializableDomain<DerivedCompoundDomain>::CompoundState
       CompoundState;
-  typedef RawInitialStateDistribution<CompoundState>
+  typedef RawInitialStateDistribution<std::shared_ptr<CompoundState>>
       CompoundInitialStateDistribution;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      CompoundInitialStateDistribution>
+  typedef std::unique_ptr<CompoundInitialStateDistribution>
       CompoundInitialStateDistributionPtr;
 
   /**
@@ -163,8 +162,7 @@ public:
   typedef typename UncertainInitializedDomain<
       DerivedCompoundDomain, SingleValueDistribution>::CompoundState
       CompoundState;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundState>
-      CompoundStatePtr;
+  typedef std::unique_ptr<CompoundState> CompoundStatePtr;
   typedef typename UncertainInitializedDomain<DerivedCompoundDomain,
                                               SingleValueDistribution>::
       CompoundInitialStateDistribution CompoundInitialStateDistribution;
@@ -215,8 +213,9 @@ private:
    */
   virtual CompoundInitialStateDistributionPtr
   make_initial_state_distribution() {
-    return CompoundInitialStateDistributionPtr(
-        new SingleValueDistribution<CompoundState>(get_initial_state()));
+    return std::make_unique<
+        SingleValueDistribution<std::shared_ptr<CompoundState>>>(
+        get_initial_state());
   }
 };
 

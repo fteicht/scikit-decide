@@ -15,9 +15,10 @@ namespace skdecide {
  *
  * @tparam DerivedCompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam V Type of an agent's rewards
+ * @tparam Reward Type of an agent's rewards
  */
-template <typename DerivedCompoundDomain, typename Reward> class RewardDomain {
+template <typename DerivedCompoundDomain, typename Reward = double>
+class RewardDomain {
 public:
   typedef Reward RawValue;
 
@@ -50,9 +51,9 @@ public:
  *
  * @tparam DerivedCompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam V Type of an agent's costs
+ * @tparam Cost Type of an agent's costs
  */
-template <typename DerivedCompoundDomain, typename Cost>
+template <typename DerivedCompoundDomain, typename Cost = double>
 class PositiveCostDomain : public RewardDomain<DerivedCompoundDomain, Cost> {
 public:
   typedef Cost RawValue;

@@ -10,6 +10,26 @@
 #include "core.hh"
 #include "builders/domain/observability.hh"
 
+class TestCompoundDomain1 {
+public:
+  struct Types {
+    typedef std::string AgentType;
+    template <typename... T> using ConstraintList = std::vector<T...>;
+  };
+
+  struct Features {
+    template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
+    template <typename D> using ConcurrencyDomain = skdecide::ParallelDomain<D>;
+    template <typename D>
+    using ConstraintDomain = skdecide::ConstrainedDomain<D>;
+  };
+
+  struct Domain
+      : public Features::template AgentDomain<TestCompoundDomain1>,
+        public Features::template ConcurrencyDomain<TestCompoundDomain1>,
+        public Features::template ConstraintDomain<TestCompoundDomain1> {};
+};
+
 TEST_CASE("Partially observable domain", "[partially-observable-domain") {
     class TestPartiallyObservableDomain : public skdecide::PartiallyObservableDomain<float, int, std::nullptr_t> {
     public :

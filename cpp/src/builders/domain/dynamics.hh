@@ -22,41 +22,26 @@ namespace skdecide {
  * Environment domains are typically stateful: they must keep the current
  * state or history in their memory to compute next steps (automatically done by
  * default in the #_memory attribute).
+ *
  * @tparam DerivedCompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
 template <typename DerivedCompoundDomain> class EnvironmentDomain {
-  static_assert(
-      std::is_base_of<
-          PartiallyObservableDomain<
-              DerivedCompoundDomain, typename DerivedCompoundDomain::RawState,
-              typename DerivedCompoundDomain::RawObservation,
-              DerivedCompoundDomain::template RawStateSpace,
-              DerivedCompoundDomain::template RawObservationSpace,
-              DerivedCompoundDomain::template RawObservationDistribution>,
-          DerivedCompoundDomain>::value,
-      "DerivedCompoundDomain must be derived from "
-      "skdecide::PartiallyObservableDomain<DerivedCompoundDomain>");
-  static_assert(std::is_base_of<HistoryDomain<DerivedCompoundDomain>,
-                                DerivedCompoundDomain>::value,
-                "DerivedCompoundDomain must be derived from "
-                "skdecide::HistoryDomain<DerivedCompoundDomain>");
-
 public:
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawState>
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::AgentState>
       CompoundState;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawObservation>
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::AgentObservation>
       CompoundObservation;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawValue>
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::AgentValue>
       CompoundValue;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawPredicate>
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::AgentPredicate>
       CompoundPredicate;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawInfo>
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::AgentInfo>
       CompoundInfo;
   typedef EnvironmentOutcome<CompoundObservation,
                              DerivedCompoundDomain::TransitionValue,
@@ -66,13 +51,23 @@ public:
                             DerivedCompoundDomain::TransitionValue,
                             CompoundValue, CompoundPredicate, CompoundInfo>
       TransitionOutcomeReturn;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      TransitionOutcomeReturn>
-      TransitionOutcomePtr;
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::template ConcurrencyProxy<
-          typename DerivedCompoundDomain::RawEvent>>
+  typedef std::unique_ptr<TransitionOutcomeReturn> TransitionOutcomePtr;
+  typedef typename DerivedCompoundDomain::Features::template AgentProxy<
+      typename DerivedCompoundDomain::Features::template ConcurrencyProxy<
+          typename DerivedCompoundDomain::AgentEvent>>
       CompoundEvent;
+
+  virtual ~EnvironmentDomain() {
+    static_assert(
+        std::is_base_of<PartiallyObservableDomain<DerivedCompoundDomain>,
+                        DerivedCompoundDomain>::value,
+        "DerivedCompoundDomain must be derived from "
+        "skdecide::PartiallyObservableDomain<DerivedCompoundDomain>");
+    static_assert(std::is_base_of<HistoryDomain<DerivedCompoundDomain>,
+                                  DerivedCompoundDomain>::value,
+                  "DerivedCompoundDomain must be derived from "
+                  "skdecide::HistoryDomain<DerivedCompoundDomain>");
+  }
 
   /**
    * @brief Run one step of the environment's dynamics.
@@ -168,7 +163,8 @@ public:
           TransitionOutcomePtr;
   typedef typename EnvironmentDomain<DerivedCompoundDomain>::CompoundEvent
       CompoundEvent;
-  typedef typename DerivedCompoundDomain::template MemoryProxy<CompoundState>
+  typedef typename DerivedCompoundDomain::Features::template MemoryProxy<
+      CompoundState>
       CompoundMemory;
 
   /**
@@ -246,6 +242,9 @@ protected:
                                            const CompoundEvent &event) = 0;
 };
 
+template <typename DerivedCompoundDomain> class EnumerableTransitionDomain;
+template <typename DerivedCompoundDomain> class DeterministicTransitionDomain;
+
 /**
  * @brief A domain must inherit this class if its dynamics is uncertain and
  * provided as a white-box model.
@@ -263,26 +262,70 @@ protected:
  *
  * @tparam DerivedCompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam NextStateDistribution The type of the distribution used to sample
- * next states
  */
-template <typename DerivedCompoundDomain, template <typename...>
-                                          class NextStateDistribution =
-                                              ImplicitDistribution>
+template <typename DerivedCompoundDomain>
 class UncertainTransitionDomain
     : public SimulationDomain<DerivedCompoundDomain> {
+private:
+  template <typename DCD, typename Enable = void>
+  struct NextStateDistributionDeducer { // case: NextStateDistribution not
+                                        // defined in DerivedCompoundDomain
+    template <typename... T>
+    using NextStateDistribution = typename std::conditional<
+        std::is_base_of_v<DeterministicTransitionDomain<DCD>, DCD>,
+        SingleValueDistribution<T...>,
+        typename std::conditional<
+            std::is_base_of_v<EnumerableTransitionDomain<DCD>, DCD>,
+            DiscreteDistribution<T...>,
+            ImplicitDistribution<T...>>::type>::type;
+  };
+
+  template <typename DCD>
+  struct NextStateDistributionDeducer<
+      DCD,
+      std::void_t<typename DCD::template NextStateDistribution<
+          char>>> { // case: NextStateDistribution
+                    // defined in DerivedCompoundDomain
+    static_assert(
+        std::is_base_of_v<DeterministicTransitionDomain<DCD>, DCD> &&
+            !std::is_same_v<typename DCD::template NextStateDistribution<char>,
+                            SingleValueDistribution<char>>,
+        "DerivedCompoundDomain::NextStateDistribution<...> must be equal to "
+        "SingleValueDistribution<...> when DerivedCompoundDomain derives from "
+        "skdecide::DeterministicTransitionDomain.");
+    static_assert(
+        std::is_base_of_v<EnumerableTransitionDomain<DCD>, DCD> &&
+            !std::is_same_v<typename DCD::template NextStateDistribution<char>,
+                            DiscreteDistribution<char>>,
+        "DerivedCompoundDomain::NextStateDistribution<...> must be equal to "
+        "DiscreteDistribution<...> when DerivedCompoundDomain derives from "
+        "skdecide::EnumerableTransitionDomain.");
+    template <typename... T>
+    using NextStateDistribution =
+        typename DCD::template NextStateDistribution<T...>;
+  };
+
 public:
+  /**
+   * @brief NextStateDistribution The type of the distribution used to sample
+   * next states
+   *
+   * @tparam T Type of states
+   */
+  template <typename... T>
+  using NextStateDistribution = typename NextStateDistributionDeducer<
+      DerivedCompoundDomain>::template NextStateDistribution<T...>;
+
   typedef typename SimulationDomain<DerivedCompoundDomain>::CompoundEvent
       CompoundEvent;
   typedef typename SimulationDomain<DerivedCompoundDomain>::CompoundState
       CompoundState;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundState>
-      CompoundStatePtr;
+  typedef std::unique_ptr<CompoundState> CompoundStatePtr;
   typedef typename SimulationDomain<DerivedCompoundDomain>::CompoundMemory
       CompoundMemory;
-  typedef NextStateDistribution<CompoundState> NextCompoundStateDistribution;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      NextCompoundStateDistribution>
+  typedef NextStateDistribution<std::shared_ptr<CompoundState>>
+      NextCompoundStateDistribution;
+  typedef std::unique_ptr<NextCompoundStateDistribution>
       NextCompoundStateDistributionPtr;
   typedef typename SimulationDomain<DerivedCompoundDomain>::CompoundValue
       CompoundValue;
@@ -402,13 +445,13 @@ protected:
    */
   virtual TransitionOutcomePtr make_sample(const CompoundMemory &memory,
                                            const CompoundEvent &event) {
-    CompoundState next_state =
-        get_next_state_distribution(memory, event).sample();
+    CompoundState &next_state =
+        *get_next_state_distribution(memory, event).sample();
     TransitionValueReturn value =
         get_transition_value(memory, event, next_state);
     bool termination = is_terminal(next_state);
-    return TransitionOutcomePtr(
-        new TransitionOutcomeReturn(next_state, value, termination));
+    return std::make_unique<TransitionOutcomeReturn>(next_state, value,
+                                                     termination);
   }
 };
 
@@ -428,37 +471,65 @@ protected:
  *
  * @tparam DerivedCompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam NextStateDistribution The type of the distribution used to sample
- * next states (must inherit from skdecide::DiscreteDistribution<...>)
  */
-template <typename DerivedCompoundDomain, template <typename...>
-                                          class NextStateDistribution =
-                                              DiscreteDistribution>
+template <typename DerivedCompoundDomain>
 class EnumerableTransitionDomain
-    : public UncertainTransitionDomain<DerivedCompoundDomain,
-                                       NextStateDistribution> {
+    : public UncertainTransitionDomain<DerivedCompoundDomain> {
+private:
+  template <typename DCD, typename Enable = void>
+  struct NextStateDistributionDeducer { // case: NextStateDistribution not
+                                        // defined in DerivedCompoundDomain
+    template <typename... T>
+    using NextStateDistribution = typename std::conditional<
+        std::is_base_of_v<DeterministicTransitionDomain<DCD>, DCD>,
+        SingleValueDistribution<T...>, ImplicitDistribution<T...>>::type;
+  };
+
+  template <typename DCD>
+  struct NextStateDistributionDeducer<
+      DCD,
+      std::void_t<typename DCD::template NextStateDistribution<
+          char>>> { // case: NextStateDistribution
+                    // defined in DerivedCompoundDomain
+    static_assert(
+        std::is_base_of_v<DeterministicTransitionDomain<DCD>, DCD> &&
+            !std::is_same_v<typename DCD::template NextStateDistribution<char>,
+                            SingleValueDistribution<char>>,
+        "DerivedCompoundDomain::NextStateDistribution<...> must be equal to "
+        "SingleValueDistribution<...> when DerivedCompoundDomain derives from "
+        "skdecide::DeterministicTransitionDomain.");
+    template <typename... T>
+    using NextStateDistribution =
+        typename DCD::template NextStateDistribution<T...>;
+  };
+
+public:
+  /**
+   * @brief The type of the distribution used to sample
+   * next states (must inherit from skdecide::DiscreteDistribution<...>)
+   *
+   * @tparam T Type of states
+   */
+  template <typename... T>
+  using NextStateDistribution = typename NextStateDistributionDeducer<
+      DerivedCompoundDomain>::template NextStateDistribution<T...>;
+
   static_assert(
       std::is_base_of<DiscreteDistribution<int>,
                       NextStateDistribution<int>>::value,
       "NextStateDistribution template class parameter must be derived from "
       "skdecide::DiscreteDistribution<...>");
-
-public:
   typedef
-      typename UncertainTransitionDomain<DerivedCompoundDomain,
-                                         NextStateDistribution>::CompoundEvent
+      typename UncertainTransitionDomain<DerivedCompoundDomain>::CompoundEvent
           CompoundEvent;
   typedef
-      typename UncertainTransitionDomain<DerivedCompoundDomain,
-                                         NextStateDistribution>::CompoundState
+      typename UncertainTransitionDomain<DerivedCompoundDomain>::CompoundState
           CompoundState;
   typedef
-      typename UncertainTransitionDomain<DerivedCompoundDomain,
-                                         NextStateDistribution>::CompoundMemory
+      typename UncertainTransitionDomain<DerivedCompoundDomain>::CompoundMemory
           CompoundMemory;
   typedef NextStateDistribution<CompoundState> NextCompoundStateDistribution;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      NextCompoundStateDistribution>
+  typedef std::unique_ptr<NextCompoundStateDistribution>
       NextCompoundStateDistributionPtr;
 
   /**
@@ -500,23 +571,43 @@ public:
  */
 template <typename DerivedCompoundDomain>
 class DeterministicTransitionDomain
-    : public EnumerableTransitionDomain<DerivedCompoundDomain,
-                                        SingleValueDistribution> {
+    : public EnumerableTransitionDomain<DerivedCompoundDomain> {
+private:
+  template <typename DCD, typename Enable = void>
+  struct NextStateDistributionChecker { // case: NextStateDistribution not
+                                        // defined in DerivedCompoundDomain
+  };
+
+  template <typename DCD>
+  struct NextStateDistributionChecker<
+      DCD,
+      std::void_t<typename DCD::template NextStateDistribution<
+          char>>> { // case: NextStateDistribution
+                    // defined in DerivedCompoundDomain
+    static_assert(
+        std::is_same_v<typename DCD::template NextStateDistribution<char>,
+                       SingleValueDistribution<char>>,
+        "DerivedCompoundDomain::NextStateDistribution<...> must be equal to "
+        "SingleValueDistribution<...> when DerivedCompoundDomain derives from "
+        "skdecide::DeterministicTransitionDomain.");
+  };
+
+  NextStateDistributionChecker<DerivedCompoundDomain> _checker;
+
 public:
-  typedef typename EnumerableTransitionDomain<
-      DerivedCompoundDomain, SingleValueDistribution>::CompoundEvent
-      CompoundEvent;
-  typedef typename EnumerableTransitionDomain<
-      DerivedCompoundDomain, SingleValueDistribution>::CompoundState
-      CompoundState;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundState>
-      CompoundStatePtr;
-  typedef typename EnumerableTransitionDomain<
-      DerivedCompoundDomain, SingleValueDistribution>::CompoundMemory
-      CompoundMemory;
-  typedef SingleValueDistribution<CompoundState> NextCompoundStateDistribution;
-  typedef typename DerivedCompoundDomain::template SmartPointer<
-      NextCompoundStateDistribution>
+  typedef
+      typename EnumerableTransitionDomain<DerivedCompoundDomain>::CompoundEvent
+          CompoundEvent;
+  typedef
+      typename EnumerableTransitionDomain<DerivedCompoundDomain>::CompoundState
+          CompoundState;
+  typedef std::unique_ptr<CompoundState> CompoundStatePtr;
+  typedef
+      typename EnumerableTransitionDomain<DerivedCompoundDomain>::CompoundMemory
+          CompoundMemory;
+  typedef SingleValueDistribution<std::shared_ptr<CompoundState>>
+      NextCompoundStateDistribution;
+  typedef std::unique_ptr<NextCompoundStateDistribution>
       NextCompoundStateDistributionPtr;
 
   /**
@@ -536,8 +627,8 @@ public:
   inline virtual NextCompoundStateDistributionPtr
   get_next_state_distribution(const CompoundMemory &memory,
                               const CompoundEvent &event) {
-    return NextCompoundStateDistributionPtr(
-        new NextCompoundStateDistribution(get_next_state(memory, event)));
+    return std::make_unique<NextCompoundStateDistribution>(
+        get_next_state(memory, event));
   }
 
   /**

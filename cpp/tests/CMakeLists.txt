@@ -30,7 +30,8 @@ skdecide_test(concurrency)
 
 # skdecide_test(memory)
 # skdecide_test(observability)
-# skdecide_test(events)
+skdecide_test(events)
+
 # skdecide_test(initialization)
 # skdecide_test(goals)
 # skdecide_test(dynamics)

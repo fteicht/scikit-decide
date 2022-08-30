@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 
 #include "core.hh"
@@ -16,17 +17,18 @@ namespace skdecide {
 /**
  * @brief A domain must inherit this class if its full state history must be
  * stored to compute its dynamics (non-Markovian domain).
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename DerivedCompoundDomain> class HistoryDomain {
+template <typename CompoundDomain> class HistoryDomain {
 public:
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawState>
-      CompoundState;
+  typedef typename CompoundDomain::Features::
+      template AgentDomain<CompoundDomain>::template AgentProxy<
+          typename CompoundDomain::Features::template ObservabilityDomain<
+              CompoundDomain>::AgentState>
+          CompoundState;
   typedef Memory<CompoundState> CompoundMemory;
-  typedef typename DerivedCompoundDomain::template SmartPointer<CompoundMemory>
-      CompoundMemoryPtr;
+  typedef std::unique_ptr<CompoundMemory> CompoundMemoryPtr;
 
   /**
    * @brief Proxy to the type of memorized trajectories
@@ -140,22 +142,20 @@ protected:
  * @brief A domain must inherit this class if the last N states must be stored
  * to compute its dynamics (Markovian domain of order N). N is specified by the
  * return value of the FiniteHistory::get_memory_maxlen() function.
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename DerivedCompoundDomain>
-class FiniteHistoryDomain : public HistoryDomain<DerivedCompoundDomain> {
+template <typename CompoundDomain>
+class FiniteHistoryDomain : public HistoryDomain<CompoundDomain> {
 public:
-  typedef typename HistoryDomain<DerivedCompoundDomain>::CompoundState
-      CompoundState;
-  typedef typename HistoryDomain<DerivedCompoundDomain>::CompoundMemory
-      CompoundMemory;
+  typedef typename HistoryDomain<CompoundDomain>::CompoundState CompoundState;
+  typedef typename HistoryDomain<CompoundDomain>::CompoundMemory CompoundMemory;
 
   /**
    * @brief Proxy to the type of memorized trajectories
    * @tparam T Type of memorized objects (usually Tstate)
    */
-  template <typename T> using Proxy = Memory<T>;
+  template <typename T> using MemoryProxy = Memory<T>;
 
   /**
    * @brief Checks the consistency of the given memory object with this class'
@@ -220,20 +220,20 @@ protected:
 /**
  * @brief A domain must inherit this class if only its last state must be stored
  to compute its dynamics (pure Markovian domain).
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename DerivedCompoundDomain>
-class MarkovianDomain : public FiniteHistoryDomain<DerivedCompoundDomain> {
+template <typename CompoundDomain>
+class MarkovianDomain : public FiniteHistoryDomain<CompoundDomain> {
 public:
-  typedef typename FiniteHistoryDomain<DerivedCompoundDomain>::CompoundState
-      CompoundState;
+  typedef
+      typename FiniteHistoryDomain<CompoundDomain>::CompoundState CompoundState;
 
   /**
    * @brief Proxy to the type of last visited object
    * @tparam T Type of last visited object (usually Tstate)
    */
-  template <typename T> using Proxy = T;
+  template <typename T> using MemoryProxy = T;
 
 protected:
   /**
@@ -261,20 +261,19 @@ protected:
  * instead of implemented fully in scikit-decide (e.g. compiled ATARI games),
  * Memoryless can be used because the domain memory (if any) would be  handled
  *externally.
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename DerivedCompoundDomain>
-class MemorylessDomain : public MarkovianDomain<DerivedCompoundDomain> {
+template <typename CompoundDomain>
+class MemorylessDomain : public MarkovianDomain<CompoundDomain> {
 public:
-  typedef typename MarkovianDomain<DerivedCompoundDomain>::CompoundState
-      CompoundState;
+  typedef typename MarkovianDomain<CompoundDomain>::CompoundState CompoundState;
 
   /**
    * @brief Proxy to the null type (no memorized object)
    * @tparam T Unused type
    */
-  template <typename T> using Proxy = std::nullptr_t;
+  template <typename T> using MemoryProxy = std::nullptr_t;
 
   MemorylessDomain() { this->_memory = this->_init_memory({}); }
 

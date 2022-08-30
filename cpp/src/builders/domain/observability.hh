@@ -169,49 +169,49 @@ public:
               CompoundDomain>,
           typename CompoundDomain::Types>::template result<Args...>;
 
+private:
+  static_assert(
+      std::is_base_of<Space<AgentState>, AgentStateSpace<AgentState>>::value,
+      "AgentStateSpace<...> must be derived from skdecide::Space<...>");
+  static_assert(std::is_base_of<Space<AgentObservation>,
+                                AgentObservationSpace<AgentObservation>>::value,
+                "AgentObservationSpace<...> type must be derived from "
+                "skdecide::Space<...>");
+  static_assert(
+      std::is_base_of<Distribution<AgentObservation>,
+                      AgentObservationDistribution<AgentObservation>>::value,
+      "AgentObservationDistribution<...> must be derived from "
+      "skdecide::Distribution<...>");
+
 public:
-  typedef typename CompoundDomain::template AgentDomain<
+  typedef typename CompoundDomain::Features::template AgentDomain<
       CompoundDomain>::template AgentProxy<AgentState>
       CompoundState;
-  typedef typename CompoundDomain::template AgentDomain<
+  typedef typename CompoundDomain::Features::template AgentDomain<
       CompoundDomain>::template AgentProxy<AgentStateSpace<AgentState>>
       CompoundStateSpace;
   typedef std::unique_ptr<CompoundStateSpace> CompoundStateSpacePtr;
-  typedef typename CompoundDomain::template AgentDomain<
+  typedef typename CompoundDomain::Features::template AgentDomain<
       CompoundDomain>::template AgentProxy<AgentObservation>
       CompoundObservation;
-  typedef typename CompoundDomain::template AgentDomain<CompoundDomain>::
-      template AgentProxy<AgentObservationSpace<AgentObservation>>
-          CompoundObservationSpace;
+  typedef
+      typename CompoundDomain::Features::template AgentDomain<CompoundDomain>::
+          template AgentProxy<AgentObservationSpace<AgentObservation>>
+              CompoundObservationSpace;
   typedef std::unique_ptr<CompoundObservationSpace> CompoundObservationSpacePtr;
   typedef AgentObservationDistribution<std::shared_ptr<CompoundObservation>>
       CompoundObservationDistribution;
   typedef std::unique_ptr<CompoundObservationDistribution>
       CompoundObservationDistributionPtr;
-  typedef typename CompoundDomain::template AgentDomain<CompoundDomain>::
-      template AgentProxy<
-          typename CompoundDomain::template ConcurrencyDomain<CompoundDomain>::
+  typedef typename CompoundDomain::Features::
+      template AgentDomain<CompoundDomain>::template AgentProxy<
+          typename CompoundDomain::Features::template ConcurrencyDomain<
+              CompoundDomain>::
               template ConcurrencyProxy<
-                  typename CompoundDomain::template ActivityDomain<
+                  typename CompoundDomain::Features::template ActivityDomain<
                       CompoundDomain>::AgentEvent>>
           CompoundEvent;
   typedef std::unique_ptr<CompoundEvent> CompoundEventPtr;
-
-  virtual ~PartiallyObservableDomain() {
-    static_assert(
-        std::is_base_of<Space<AgentState>, AgentStateSpace<AgentState>>::value,
-        "AgentStateSpace<...> must be derived from skdecide::Space<...>");
-    static_assert(
-        std::is_base_of<Space<AgentObservation>,
-                        AgentObservationSpace<AgentObservation>>::value,
-        "AgentObservationSpace<...> type must be derived from "
-        "skdecide::Space<...>");
-    static_assert(
-        std::is_base_of<Distribution<AgentObservation>,
-                        AgentObservationDistribution<AgentObservation>>::value,
-        "AgentObservationDistribution<...> must be derived from "
-        "skdecide::Distribution<...>");
-  }
 
   /**
    * @brief Get the (cached) observation space (finite or infinite set).
