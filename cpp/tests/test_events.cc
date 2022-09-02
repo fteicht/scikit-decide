@@ -53,7 +53,8 @@ public:
     template <typename D> using ActivityDomain = skdecide::EventDomain<D>;
   };
 
-  class Impl : public Features::template ActivityDomain<TestEventDomain1> {
+  class Domain
+      : public Features::template ActivityDomain<TestEventDomain1>::Feature {
   public:
     virtual CompoundEnabledEventSpacePtr
     get_enabled_events(const CompoundMemory &memory) {
@@ -85,10 +86,10 @@ public:
     }
   };
 
-  Impl *operator->() { return &impl; }
+  Domain *operator->() { return &domain; }
 
 private:
-  Impl impl;
+  Domain domain;
 };
 
 class TestEventDomain2 {
@@ -110,17 +111,18 @@ public:
     using ActivityDomain = skdecide::UnrestrictedActionDomain<D>;
   };
 
-  class Impl : public Features::template ActivityDomain<TestEventDomain2> {
+  class Domain
+      : public Features::template ActivityDomain<TestEventDomain2>::Feature {
   private:
     inline virtual CompoundActionSpacePtr make_action_space() {
       return std::make_unique<CompoundActionSpace>(false);
     }
   };
 
-  Impl *operator->() { return &impl; }
+  Domain *operator->() { return &domain; }
 
 private:
-  Impl impl;
+  Domain domain;
 };
 
 TEST_CASE("Event domain", "[event-domain]") {
