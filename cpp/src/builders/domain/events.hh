@@ -5,302 +5,307 @@
 #ifndef SKDECIDE_EVENTS_HH
 #define SKDECIDE_EVENTS_HH
 
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include "core.hh"
 #include "memory.hh"
 
 namespace skdecide {
 
-template <typename> class EventDomain;
-template <typename> class ActionDomain;
-template <typename> class UnrestrictedActionDomain;
-
-/**
- * @brief A domain must inherit this class if it handles events (controllable or
- * not not by the agents).
- *
- * @tparam CompoundDomain The type of the domain made up of different
- * features and deriving from this particular domain feature.
- */
-template <typename CompoundDomain> class EventDomain {
-private:
-  template <typename D, typename T, typename Enable = void>
-  struct define_event_type;
-
-  template <typename D, typename T>
-  struct define_event_type<
-      D, T, std::enable_if_t<std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-
-    template <typename TT, typename = typename TT::AgentEvent>
-    struct try_import_event_type {
-      template <typename TTT, typename = void> struct try_import_action_type {
-        typedef typename TT::AgentEvent result;
-      };
-
-      template <typename TTT>
-      struct try_import_action_type<TTT, typename TTT::AgentAction> {
-        static_assert(
-            std::is_same_v<typename TTT::AgentAction, typename TT::AgentEvent>,
-            "The domain types AgentEvent and AgentAction must be the same.");
-        typedef typename TTT::AgentAction result;
-      };
-
-      typedef typename try_import_action_type<TT>::result result;
-    };
-
-    template <typename TT> struct try_import_event_type<TT, void> {
-      static_assert(!std::is_same_v<TT, T>,
-                    "The domain types must define AgentEvent when the "
-                    "agent domain feature is skdecide::EventDomain");
-    };
-
-    typedef typename try_import_event_type<T>::result result;
-  };
-
-  template <typename D, typename T>
-  struct define_event_type<
-      D, T, std::enable_if_t<!std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = typename TT::AgentAction>
-    struct try_import_action_type {
-      template <typename TTT, typename = void> struct try_import_event_type {
-        typedef typename TT::AgentAction result;
-      };
-
-      template <typename TTT>
-      struct try_import_event_type<TTT, typename TTT::AgentEvent> {
-        static_assert(
-            std::is_same_v<typename TTT::AgentEvent, typename TT::AgentAction>,
-            "The domain types AgentEvent and AgentAction must be the same.");
-        typedef typename TTT::AgentEvent result;
-      };
-
-      typedef typename try_import_event_type<TT>::result result;
-    };
-
-    template <typename TT> struct try_import_action_type<TT, void> {
-      static_assert(!std::is_same_v<TT, T>,
-                    "The domain types must define AgentAction when the agent "
-                    "domain feature derives from skdecide::ActionDomain");
-    };
-
-    typedef typename try_import_action_type<T>::result result;
-  };
-
+template <typename CompoundDomain, template <typename...> class CallingFeature,
+          template <typename...> class DerivedFeature = CallingFeature>
+class ActivityTypesImporter {
 public:
-  /**
-   * @brief Type of an agent's events
-   */
-  typedef typename define_event_type<
-      typename CompoundDomain::Features::template ActivityDomain<
-          CompoundDomain>,
-      typename CompoundDomain::Types>::result AgentEvent;
+  template <typename DefaultEventType = std::nullopt_t>
+  struct import_event_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
 
-  /**
-   * @brief Type of an agent's actions
-   */
-  typedef AgentEvent AgentAction;
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        typedef DefaultEventType result;
+      };
 
-private:
-  template <typename T, typename = void> struct define_action_space_type {
-    template <typename... Args> using result = ImplicitSpace<Args...>;
-  };
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        typedef typename DF::AgentEvent result;
+      };
 
-  template <typename T>
-  struct define_action_space_type<
-      T, std::void_t<typename T::template AgentActionSpace<char>>> {
-    template <typename... Args>
-    using result = typename T::template AgentActionSpace<Args...>;
-  };
-
-public:
-  /**
-   * @brief Type of an agent's action space
-   * @tparam Args Type of actions
-   */
-  template <typename... Args>
-  using AgentActionSpace = typename define_action_space_type<
-      typename CompoundDomain::Types>::template result<Args...>;
-
-private:
-  template <typename D, typename T, typename = void>
-  struct define_event_space_type;
-
-  template <typename D, typename T>
-  struct define_event_space_type<
-      D, T, std::enable_if_t<std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = void> struct try_import_event_space_type {
-      template <typename... Args> using result = ImplicitSpace<Args...>;
+      typedef typename delegate_import<CallingFeature<CompoundDomain>,
+                                       DerivedFeature<CompoundDomain>>::result
+          result;
     };
 
-    template <typename TT>
-    struct try_import_event_space_type<
-        TT, std::void_t<typename TT::template AgentEventSpace<char>>> {
+    template <typename T>
+    struct try_import<T, std::void_t<typename T::AgentEvent>> {
+      typedef typename T::AgentEvent result;
+    };
+
+    typedef typename try_import<typename CompoundDomain::Types>::result result;
+  };
+
+  template <typename DefaultActionType = std::nullopt_t>
+  struct import_action_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
+
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        typedef DefaultActionType result;
+      };
+
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        typedef typename DF::AgentAction result;
+      };
+
+      typedef typename delegate_import<CallingFeature<CompoundDomain>,
+                                       DerivedFeature<CompoundDomain>>::result
+          result;
+    };
+
+    template <typename T>
+    struct try_import<T, std::void_t<typename T::AgentAction>> {
+      typedef typename T::AgentAction result;
+    };
+
+    typedef typename try_import<typename CompoundDomain::Types>::result result;
+  };
+
+  template <template <typename...> class DefaultEventSpaceType = std::void_t>
+  struct import_event_space_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
+
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = DefaultEventSpaceType<Args...>;
+      };
+
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = typename DF::template AgentEventSpace<Args...>;
+      };
+
+      template <typename... Args>
+      using result = typename delegate_import<
+          CallingFeature<CompoundDomain>,
+          DerivedFeature<CompoundDomain>>::template result<Args...>;
+    };
+
+    template <typename T>
+    struct try_import<T,
+                      std::void_t<typename T::template AgentEventSpace<char>>> {
       template <typename... Args>
       using result = typename T::template AgentEventSpace<Args...>;
     };
 
     template <typename... Args>
-    using result =
-        typename try_import_event_space_type<T>::template result<Args...>;
+    using result = typename try_import<
+        typename CompoundDomain::Types>::template result<Args...>;
   };
 
-  template <typename D, typename T>
-  struct define_event_space_type<
-      D, T, std::enable_if_t<!std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-    template <typename TT, class = void>
-    struct check_event_space_type : public std::true_type {};
+  template <template <typename...> class DefaultActionSpaceType = std::void_t>
+  struct import_action_space_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
 
-    template <typename TT>
-    struct check_event_space_type<
-        TT, std::void_t<typename TT::template AgentEventSpace<char>>>
-        : public std::conditional<
-              std::is_same_v<AgentActionSpace<char>,
-                             typename TT::template AgentEventSpace<char>>,
-              std::true_type, std::false_type> {};
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = DefaultActionSpaceType<Args...>;
+      };
 
-    static_assert(
-        check_event_space_type<T>::value,
-        "The domain type AgentEventSpace must be equal to AgentActionSpace "
-        "when the event domain feature derives from skdecide::ActionDomain");
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = typename DF::template AgentActionSpace<Args...>;
+      };
 
-    template <typename... Args> using result = AgentActionSpace<Args...>;
-  };
-
-public:
-  /**
-   * @brief Type of an agent's event space
-   * @tparam Args Type of events
-   */
-  template <typename... Args>
-  using AgentEventSpace = typename define_event_space_type<
-      typename CompoundDomain::Features::template ActivityDomain<
-          CompoundDomain>,
-      typename CompoundDomain::Types>::template result<Args...>;
-
-private:
-  template <typename D, typename T, typename = void>
-  struct define_applicable_action_space_type;
-
-  template <typename D, typename T>
-  struct define_applicable_action_space_type<
-      D, T,
-      std::enable_if_t<std::is_same_v<EventDomain<CompoundDomain>, D> ||
-                       std::is_same_v<ActionDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = void>
-    struct try_import_applicable_action_space_type {
-      template <typename... Args> using result = ImplicitSpace<Args...>;
+      template <typename... Args>
+      using result = typename delegate_import<
+          CallingFeature<CompoundDomain>,
+          DerivedFeature<CompoundDomain>>::template result<Args...>;
     };
 
-    template <typename TT>
-    struct try_import_applicable_action_space_type<
-        TT,
-        std::void_t<typename TT::template AgentApplicableActionSpace<char>>> {
+    template <typename T>
+    struct try_import<
+        T, std::void_t<typename T::template AgentActionSpace<char>>> {
       template <typename... Args>
-      using result = typename T::template AgentApplicableActionSpace<Args...>;
+      using result = typename T::template AgentActionSpace<Args...>;
     };
 
     template <typename... Args>
-    using result = typename try_import_applicable_action_space_type<
-        T>::template result<Args...>;
+    using result = typename try_import<
+        typename CompoundDomain::Types>::template result<Args...>;
   };
 
-  template <typename D, typename T>
-  struct define_applicable_action_space_type<
-      D, T,
-      std::enable_if_t<!std::is_same_v<EventDomain<CompoundDomain>, D> &&
-                       !std::is_same_v<ActionDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = void>
-    struct check_applicable_action_space_type : public std::true_type {};
+  template <template <typename...> class DefaultEnabledEventSpaceType =
+                std::void_t>
+  struct import_enabled_event_space_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
 
-    template <typename TT>
-    struct check_applicable_action_space_type<
-        TT, std::void_t<typename TT::template AgentApplicableActionSpace<char>>>
-        : public std::conditional<
-              std::is_same_v<
-                  AgentActionSpace<char>,
-                  typename TT::template AgentApplicableActionSpace<char>>,
-              std::true_type, std::false_type> {};
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = DefaultEnabledEventSpaceType<Args...>;
+      };
 
-    static_assert(check_applicable_action_space_type<T>::value,
-                  "The domain type AgentApplicableActionSpace must be equal to "
-                  "AgentActionSpace when the event domain feature derives from "
-                  "skdecide::UnrestrictedActionDomain");
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = typename DF::template AgentEnabledEventSpace<Args...>;
+      };
 
-    template <typename... Args> using result = AgentActionSpace<Args...>;
-  };
-
-public:
-  /**
-   * @brief Type of an agent's event space
-   * @tparam Args Type of events
-   */
-  template <typename... Args>
-  using AgentApplicableActionSpace =
-      typename define_applicable_action_space_type<
-          typename CompoundDomain::Features::template ActivityDomain<
-              CompoundDomain>,
-          typename CompoundDomain::Types>::template result<Args...>;
-
-private:
-  template <typename D, typename T, typename = void>
-  struct define_enabled_event_space_type;
-
-  template <typename D, typename T>
-  struct define_enabled_event_space_type<
-      D, T, std::enable_if_t<std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = void>
-    struct try_import_from_domain_types {
-      template <typename... Args> using result = ImplicitSpace<Args...>;
+      template <typename... Args>
+      using result = typename delegate_import<
+          CallingFeature<CompoundDomain>,
+          DerivedFeature<CompoundDomain>>::template result<Args...>;
     };
 
-    template <typename TT>
-    struct try_import_from_domain_types<
-        TT, std::void_t<typename TT::template AgentEnabledEventSpace<char>>> {
+    template <typename T>
+    struct try_import<
+        T, std::void_t<typename T::template AgentEnabledEventSpace<char>>> {
       template <typename... Args>
       using result = typename T::template AgentEnabledEventSpace<Args...>;
     };
 
     template <typename... Args>
-    using result =
-        typename try_import_from_domain_types<T>::template result<Args...>;
+    using result = typename try_import<
+        typename CompoundDomain::Types>::template result<Args...>;
   };
 
-  template <typename D, typename T>
-  struct define_enabled_event_space_type<
-      D, T, std::enable_if_t<!std::is_same_v<EventDomain<CompoundDomain>, D>>> {
-    template <typename TT, typename = void>
-    struct check_enabled_event_space_type : public std::true_type {};
+  template <template <typename...> class DefaultApplicableActionSpaceType =
+                std::void_t>
+  struct import_applicable_action_space_type {
+    template <typename T, typename Found = void> struct try_import {
+      template <typename CF, typename DF, typename Enable = void>
+      struct delegate_import;
 
-    template <typename TT>
-    struct check_enabled_event_space_type<
-        TT, std::void_t<typename TT::template AgentEnabledEventSpace<char>>>
-        : public std::conditional<
-              std::is_same_v<
-                  AgentApplicableActionSpace<char>,
-                  typename TT::template AgentEnabledEventSpace<char>>,
-              std::true_type, std::false_type> {};
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result = DefaultApplicableActionSpaceType<Args...>;
+      };
 
-    static_assert(
-        check_enabled_event_space_type<T>::value,
-        "The domain type AgentEnabledEventSpace must be equal to "
-        "AgentApplicableActionSpace when the event domain feature derives from "
-        "skdecide::ActionDomain");
+      template <typename CF, typename DF>
+      struct delegate_import<CF, DF,
+                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
+        template <typename... Args>
+        using result =
+            typename DF::template AgentApplicableActionSpace<Args...>;
+      };
+
+      template <typename... Args>
+      using result = typename delegate_import<
+          CallingFeature<CompoundDomain>,
+          DerivedFeature<CompoundDomain>>::template result<Args...>;
+    };
+
+    template <typename T>
+    struct try_import<
+        T, std::void_t<typename T::template AgentApplicableActionSpace<char>>> {
+      template <typename... Args>
+      using result = typename T::template AgentApplicableActionSpace<Args...>;
+    };
 
     template <typename... Args>
-    using result = AgentApplicableActionSpace<Args...>;
+    using result = typename try_import<
+        typename CompoundDomain::Types>::template result<Args...>;
   };
+};
 
+/**
+ * @brief A domain must inherit this class if it handles events (controllable
+ * or not not by the agents).
+ *
+ * @tparam CompoundDomain The type of the domain made up of different
+ * features and deriving from this particular domain feature.
+ */
+template <typename CompoundDomain> class EventDomain {
 public:
+  /**
+   * @brief Type of an agent's events
+   */
+  typedef typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_event_type<>::result AgentEvent;
+
+  static_assert(!std::is_same_v<AgentEvent, std::nullptr_t> &&
+                    !std::is_same_v<AgentEvent, std::nullopt_t>,
+                "The domain types must define AgentEvent when the "
+                "agent domain feature is skdecide::EventDomain");
+
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_action_type<AgentEvent>::result AgentAction;
+
+  static_assert(std::is_same_v<AgentEvent, AgentAction>,
+                "The domain types AgentEvent and AgentAction must be the "
+                "same when they are both defined.");
+
   /**
    * @brief Type of an agent's event space
    * @tparam Args Type of events
    */
   template <typename... Args>
-  using AgentEnabledEventSpace = typename define_enabled_event_space_type<
-      typename CompoundDomain::Features::template ActivityDomain<
-          CompoundDomain>,
-      typename CompoundDomain::Types>::template result<Args...>;
+  using AgentEventSpace = typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_event_space_type<ImplicitSpace>::template result<Args...>;
+
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
+  template <typename... Args>
+  using AgentActionSpace = typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_action_space_type<ImplicitSpace>::template result<
+          Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace = typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_enabled_event_space_type<ImplicitSpace>::template result<
+          Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace = typename ActivityTypesImporter<
+      CompoundDomain, EventDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_applicable_action_space_type<
+          ImplicitSpace>::template result<Args...>;
 
 private:
   static_assert(
@@ -425,9 +430,9 @@ public:
      * @brief Get the (cached) domain action space (finite or infinite set).
      *
      * By default, EventDomain::get_action_space() internally calls
-     * EventDomain::make_action_space() the first time and automatically caches
-     * its value to make future calls more efficient (since the action space is
-     * assumed to be constant).
+     * EventDomain::make_action_space() the first time and automatically
+     * caches its value to make future calls more efficient (since the action
+     * space is assumed to be constant).
      *
      * @return The action space.
      */
@@ -439,14 +444,14 @@ public:
     }
 
     /**
-     * @brief Indicate whether an event is an action (i.e. a controllable event
-     * for the agents).
+     * @brief Indicate whether an event is an action (i.e. a controllable
+     * event for the agents).
      *
      * !!! Tip.
      *        By default, this function is implemented using the
-     * skdecide::Space::contains() function on the domain action space provided
-     * by EventDomain::get_action_space(), but it can be overridden for faster
-     * implementations.
+     * skdecide::Space::contains() function on the domain action space
+     * provided by EventDomain::get_action_space(), but it can be overridden
+     * for faster implementations.
      *
      * @param event The event to consider.
      * @return True if the event is an action (False otherwise).
@@ -515,8 +520,8 @@ public:
      * @brief Get the domain action space (finite or infinite set).
      *
      *    This is a helper function called by default from
-     * EventDomain::get_action_space(), the difference being that the result is
-     * not cached here.
+     * EventDomain::get_action_space(), the difference being that the result
+     * is not cached here.
      *
      * @return The action space.
      */
@@ -537,13 +542,78 @@ public:
  */
 template <typename CompoundDomain> class ActionDomain {
 public:
-  typedef typename EventDomain<CompoundDomain>::AgentAction AgentAction;
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
+      template import_action_type<>::result AgentAction;
+
+  static_assert(!std::is_same_v<AgentAction, std::nullptr_t> &&
+                    !std::is_same_v<AgentAction, std::nullopt_t>,
+                "The domain types must define AgentAction when the "
+                "agent domain feature derives from skdecide::EventDomain");
+
+  /**
+   * @brief Type of an agent's events
+   */
+  typedef typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
+      template import_event_type<AgentAction>::result AgentEvent;
+
+  static_assert(std::is_same_v<AgentEvent, AgentAction>,
+                "The domain types AgentEvent and AgentAction must be the "
+                "same when they are both defined.");
+
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
   template <typename... Args>
   using AgentActionSpace =
-      typename EventDomain<CompoundDomain>::template AgentActionSpace<Args...>;
+      typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
+          template import_action_space_type<ImplicitSpace>::template result<
+              Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
   template <typename... Args>
-  using AgentApplicableActionSpace = typename EventDomain<
-      CompoundDomain>::template AgentApplicableActionSpace<Args...>;
+  using AgentEventSpace =
+      typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
+          template import_event_space_type<AgentActionSpace>::template result<
+              Args...>;
+
+  static_assert(
+      std::is_same_v<AgentActionSpace<char>, AgentEventSpace<char>>,
+      "AgentActionSpace<...> and AgentEventSpace<...> must be the same when "
+      "the activity domain feature derives from ActionDomain.");
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace = typename ActivityTypesImporter<
+      CompoundDomain, ActionDomain,
+      CompoundDomain::Features::template ActivityDomain>::
+      template import_applicable_action_space_type<
+          ImplicitSpace>::template result<Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace =
+      typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
+          template import_enabled_event_space_type<
+              AgentApplicableActionSpace>::template result<Args...>;
+
+  static_assert(
+      std::is_same_v<AgentActionSpace<char>, AgentEventSpace<char>>,
+      "AgentApplicableActionSpace<...> and AgentEnabledEventSpace<...> must "
+      "be "
+      "the same when the activity domain feature derives from ActionDomain.");
 
   class Feature : public EventDomain<CompoundDomain>::Feature {
   public:
@@ -597,11 +667,65 @@ public:
  */
 template <typename CompoundDomain> class UnrestrictedActionDomain {
 public:
-  typedef typename ActionDomain<CompoundDomain>::AgentAction AgentAction;
-  typedef AgentAction AgentEvent;
+  /**
+   * @brief Type of an agent's actions
+   */
+  typedef
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_action_type<>::result AgentAction;
+
+  /**
+   * @brief Type of an agent's events
+   */
+  typedef
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_event_type<AgentAction>::result AgentEvent;
+
+  /**
+   * @brief Type of an agent's action space
+   * @tparam Args Type of actions
+   */
   template <typename... Args>
   using AgentActionSpace =
-      typename ActionDomain<CompoundDomain>::template AgentActionSpace<Args...>;
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_action_space_type<ImplicitSpace>::template result<
+              Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEventSpace =
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_event_space_type<AgentActionSpace>::template result<
+              Args...>;
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentApplicableActionSpace =
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_applicable_action_space_type<
+              AgentActionSpace>::template result<Args...>;
+
+  static_assert(
+      std::is_same_v<AgentActionSpace<char>, AgentApplicableActionSpace<char>>,
+      "AgentApplicableActionSpace<...> and AgentActionSpace<...> must be the "
+      "same when the activity domain feature derives from "
+      "UnrestrictedActionDomain.");
+
+  /**
+   * @brief Type of an agent's event space
+   * @tparam Args Type of events
+   */
+  template <typename... Args>
+  using AgentEnabledEventSpace =
+      typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
+          template import_enabled_event_space_type<
+              AgentApplicableActionSpace>::template result<Args...>;
 
   class Feature : public ActionDomain<CompoundDomain>::Feature {
   public:
