@@ -11,6 +11,7 @@
 #include <type_traits>
 #include "core.hh"
 #include "memory.hh"
+#include "domain_type_importer.hh"
 
 namespace skdecide {
 
@@ -18,216 +19,24 @@ template <typename CompoundDomain, template <typename...> class CallingFeature,
           template <typename...> class DerivedFeature = CallingFeature>
 class ActivityTypesImporter {
 public:
-  template <typename DefaultEventType = std::nullopt_t>
-  struct import_event_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
+  DOMAIN_SIMPLE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                              event, AgentEvent);
 
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        typedef DefaultEventType result;
-      };
+  DOMAIN_SIMPLE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                              action, AgentAction);
 
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        typedef typename DF::AgentEvent result;
-      };
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                event_space, AgentEventSpace);
 
-      typedef typename delegate_import<CallingFeature<CompoundDomain>,
-                                       DerivedFeature<CompoundDomain>>::result
-          result;
-    };
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                action_space, AgentActionSpace);
 
-    template <typename T>
-    struct try_import<T, std::void_t<typename T::AgentEvent>> {
-      typedef typename T::AgentEvent result;
-    };
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                enabled_event_space, AgentEnabledEventSpace);
 
-    typedef typename try_import<typename CompoundDomain::Types>::result result;
-  };
-
-  template <typename DefaultActionType = std::nullopt_t>
-  struct import_action_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        typedef DefaultActionType result;
-      };
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        typedef typename DF::AgentAction result;
-      };
-
-      typedef typename delegate_import<CallingFeature<CompoundDomain>,
-                                       DerivedFeature<CompoundDomain>>::result
-          result;
-    };
-
-    template <typename T>
-    struct try_import<T, std::void_t<typename T::AgentAction>> {
-      typedef typename T::AgentAction result;
-    };
-
-    typedef typename try_import<typename CompoundDomain::Types>::result result;
-  };
-
-  template <template <typename...> class DefaultEventSpaceType = std::void_t>
-  struct import_event_space_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = DefaultEventSpaceType<Args...>;
-      };
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = typename DF::template AgentEventSpace<Args...>;
-      };
-
-      template <typename... Args>
-      using result = typename delegate_import<
-          CallingFeature<CompoundDomain>,
-          DerivedFeature<CompoundDomain>>::template result<Args...>;
-    };
-
-    template <typename T>
-    struct try_import<T,
-                      std::void_t<typename T::template AgentEventSpace<char>>> {
-      template <typename... Args>
-      using result = typename T::template AgentEventSpace<Args...>;
-    };
-
-    template <typename... Args>
-    using result = typename try_import<
-        typename CompoundDomain::Types>::template result<Args...>;
-  };
-
-  template <template <typename...> class DefaultActionSpaceType = std::void_t>
-  struct import_action_space_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = DefaultActionSpaceType<Args...>;
-      };
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = typename DF::template AgentActionSpace<Args...>;
-      };
-
-      template <typename... Args>
-      using result = typename delegate_import<
-          CallingFeature<CompoundDomain>,
-          DerivedFeature<CompoundDomain>>::template result<Args...>;
-    };
-
-    template <typename T>
-    struct try_import<
-        T, std::void_t<typename T::template AgentActionSpace<char>>> {
-      template <typename... Args>
-      using result = typename T::template AgentActionSpace<Args...>;
-    };
-
-    template <typename... Args>
-    using result = typename try_import<
-        typename CompoundDomain::Types>::template result<Args...>;
-  };
-
-  template <template <typename...> class DefaultEnabledEventSpaceType =
-                std::void_t>
-  struct import_enabled_event_space_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = DefaultEnabledEventSpaceType<Args...>;
-      };
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = typename DF::template AgentEnabledEventSpace<Args...>;
-      };
-
-      template <typename... Args>
-      using result = typename delegate_import<
-          CallingFeature<CompoundDomain>,
-          DerivedFeature<CompoundDomain>>::template result<Args...>;
-    };
-
-    template <typename T>
-    struct try_import<
-        T, std::void_t<typename T::template AgentEnabledEventSpace<char>>> {
-      template <typename... Args>
-      using result = typename T::template AgentEnabledEventSpace<Args...>;
-    };
-
-    template <typename... Args>
-    using result = typename try_import<
-        typename CompoundDomain::Types>::template result<Args...>;
-  };
-
-  template <template <typename...> class DefaultApplicableActionSpaceType =
-                std::void_t>
-  struct import_applicable_action_space_type {
-    template <typename T, typename Found = void> struct try_import {
-      template <typename CF, typename DF, typename Enable = void>
-      struct delegate_import;
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF, std::enable_if_t<std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result = DefaultApplicableActionSpaceType<Args...>;
-      };
-
-      template <typename CF, typename DF>
-      struct delegate_import<CF, DF,
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {
-        template <typename... Args>
-        using result =
-            typename DF::template AgentApplicableActionSpace<Args...>;
-      };
-
-      template <typename... Args>
-      using result = typename delegate_import<
-          CallingFeature<CompoundDomain>,
-          DerivedFeature<CompoundDomain>>::template result<Args...>;
-    };
-
-    template <typename T>
-    struct try_import<
-        T, std::void_t<typename T::template AgentApplicableActionSpace<char>>> {
-      template <typename... Args>
-      using result = typename T::template AgentApplicableActionSpace<Args...>;
-    };
-
-    template <typename... Args>
-    using result = typename try_import<
-        typename CompoundDomain::Types>::template result<Args...>;
-  };
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                applicable_action_space,
+                                AgentApplicableActionSpace);
 };
 
 /**
@@ -246,6 +55,8 @@ public:
       CompoundDomain, EventDomain,
       CompoundDomain::Features::template ActivityDomain>::
       template import_event_type<>::result AgentEvent;
+
+  // typedef typename IMPORT_DOMAIN_TYPE(NAME, DEFAULT_TYPE)
 
   static_assert(!std::is_same_v<AgentEvent, std::nullptr_t> &&
                     !std::is_same_v<AgentEvent, std::nullopt_t>,
