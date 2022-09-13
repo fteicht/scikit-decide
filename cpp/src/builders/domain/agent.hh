@@ -6,11 +6,24 @@
 #define SKDECIDE_AGENT_HH
 
 #include <cstddef>
+#include <optional>
 #include <type_traits>
 #include <unordered_map>
+#include "domain_type_importer.hh"
 #include "utils/associative_container_deducer.hh"
 
 namespace skdecide {
+
+template <typename CompoundDomain, template <typename...> class CallingFeature,
+          template <typename...> class DerivedFeature = CallingFeature>
+class AgentTypesImporter {
+public:
+  DOMAIN_SIMPLE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                              agent, AgentType);
+
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                agent_dict, AgentDict);
+};
 
 /**
  * @brief A domain must inherit this class if it is multi-agent (i.e hosting
@@ -20,84 +33,37 @@ namespace skdecide {
  * features and deriving from this particular domain feature.
  */
 template <typename CompoundDomain> class MultiAgentDomain {
-private:
-  template <class, class, class = void> struct define_agent_type;
-
-  template <class D, class T>
-  struct define_agent_type<
-      D, T,
-      std::enable_if_t<std::is_same_v<MultiAgentDomain<CompoundDomain>, D>>> {
-    template <class, class = void> struct try_import_from_domain_types {
-      static_assert(!std::is_same_v<MultiAgentDomain<CompoundDomain>, D>,
-                    "The domain types must define AgentType when the "
-                    "agent domain feature is "
-                    "skdecide::MultiAgentDomain");
-    };
-
-    template <class TT>
-    struct try_import_from_domain_types<TT,
-                                        std::void_t<typename TT::AgentType>> {
-      typedef typename TT::AgentType result;
-    };
-
-    typedef typename try_import_from_domain_types<T>::result result;
-  };
-
-  template <class D, class T>
-  struct define_agent_type<
-      D, T,
-      std::enable_if_t<!std::is_same_v<MultiAgentDomain<CompoundDomain>, D>>> {
-    typedef std::nullptr_t result;
-  };
-
 public:
   /**
    * @brief The type of agents
    */
-  typedef typename define_agent_type<
-      typename CompoundDomain::Features::template AgentDomain<CompoundDomain>,
-      typename CompoundDomain::Types>::result AgentType;
+  typedef typename AgentTypesImporter<
+      CompoundDomain, MultiAgentDomain,
+      CompoundDomain::Features::template AgentDomain>::
+      template import_agent_type<>::result AgentType;
+
+  static_assert(!std::is_same_v<MultiAgentDomain<CompoundDomain>,
+                                typename CompoundDomain::Features::
+                                    template AgentDomain<CompoundDomain>> ||
+                    (!std::is_same_v<AgentType, std::nullopt_t> &&
+                     !std::is_same_v<AgentType, std::nullptr_t>),
+                "The domain types must define AgentType when the "
+                "agent domain feature is skdecide::MultiAgentDomain");
 
 private:
-  template <class, class, class = void> struct define_agent_dict;
-
-  template <class D, class T>
-  struct define_agent_dict<
-      D, T,
-      std::enable_if_t<std::is_same_v<MultiAgentDomain<CompoundDomain>, D>>> {
-
-    template <class, class = void> struct try_import_from_domain_types {
-      template <typename... Args>
-      using result = typename MapTypeDeducer<Args...>::Map;
-    };
-
-    template <class TT>
-    struct try_import_from_domain_types<
-        TT, std::void_t<typename TT::template AgentDict<int, char>>> {
-      template <typename... Args>
-      using result = typename TT::template AgentDict<Args...>;
-    };
-
-    template <typename... Args>
-    using result =
-        typename try_import_from_domain_types<T>::template result<Args...>;
-  };
-
-  template <class D, class T>
-  struct define_agent_dict<
-      D, T,
-      std::enable_if_t<!std::is_same_v<MultiAgentDomain<CompoundDomain>, D>>> {
-    template <typename K, typename V, typename... Args> using result = V;
-  };
+  template <typename... Args>
+  using AgentMapTypeDeducer = typename MapTypeDeducer<Args...>::Map;
 
 public:
   /**
    * @brief Type of the dictionary class
    */
-  template <typename K, typename V, typename... Args>
-  using AgentDict = typename define_agent_dict<
-      typename CompoundDomain::Features::template AgentDomain<CompoundDomain>,
-      typename CompoundDomain::Types>::template result<K, V, Args...>;
+  template <typename... Args>
+  using AgentDict = typename AgentTypesImporter<
+      CompoundDomain, MultiAgentDomain,
+      CompoundDomain::Features::template AgentDomain>::
+      template import_agent_dict_type<AgentMapTypeDeducer>::template test_with<
+          AgentType, char>::template result<Args...>;
 
   /**
    * @brief Proxy to the type of objects stored by agents
@@ -107,6 +73,14 @@ public:
    */
   template <typename V, typename... Args>
   using AgentProxy = AgentDict<AgentType, V, Args...>;
+
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
+  class Feature {
+  public:
+    typedef MultiAgentDomain<CompoundDomain> FeatureDomain;
+  };
 };
 
 /**
@@ -115,46 +89,39 @@ public:
  * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename CompoundDomain>
-class SingleAgentDomain : public MultiAgentDomain<CompoundDomain> {
+template <typename CompoundDomain> class SingleAgentDomain {
+public:
+  /**
+   * @brief The type of agents
+   */
+  typedef typename AgentTypesImporter<CompoundDomain, SingleAgentDomain>::
+      template import_agent_type<std::nullptr_t>::result AgentType;
+
+  static_assert(std::is_same_v<AgentType, std::nullptr_t>,
+                "The domain type AgentType must be equal to std::nullptr_t "
+                "when the agent domain feature is skdecide::SingleAgentDomain");
+
 private:
-  template <class, class = void> struct check_agent_type : std::true_type {};
+  template <typename K, typename V, typename... Args> struct SingleAgentDict {
+    using type = V;
+  };
 
-  template <class T>
-  struct check_agent_type<T, std::void_t<typename T::AgentType>>
-      : std::conditional<std::is_same_v<std::nullptr_t, typename T::AgentType>,
-                         std::true_type, std::false_type>::type {};
-
-  static_assert(
-      !std::is_same_v<SingleAgentDomain<CompoundDomain>,
-                      typename CompoundDomain::Features::template AgentDomain<
-                          CompoundDomain>> ||
-          check_agent_type<typename CompoundDomain::Types>::value,
-      "The domain type AgentType must be equal to std::nullptr_t when the "
-      "agent domain feature is skdecide::SingleAgentDomain");
+  template <typename... Args>
+  using SingleAgentDictAlias = typename SingleAgentDict<Args...>::type;
 
 public:
-  typedef std::nullptr_t AgentType;
+  /**
+   * @brief Type of the dictionary class
+   */
+  template <typename... Args>
+  using AgentDict = typename AgentTypesImporter<CompoundDomain,
+                                                SingleAgentDomain>::
+      template import_agent_dict_type<SingleAgentDictAlias>::template test_with<
+          std::nullptr_t, char>::template result<Args...>;
 
-private:
-  template <class, class = void> struct check_agent_dict : std::true_type {};
-
-  template <class T>
-  struct check_agent_dict<
-      T, std::void_t<typename T::template AgentDict<int, char>>>
-      : std::conditional<
-            std::is_same_v<char, typename T::template AgentDict<int, char>>,
-            std::true_type, std::false_type>::type {};
-
-  static_assert(!std::is_same_v<SingleAgentDomain<CompoundDomain>,
-                                typename CompoundDomain::Features::
-                                    template AgentDomain<CompoundDomain>> ||
-                    check_agent_dict<typename CompoundDomain::Types>::value,
+  static_assert(std::is_same_v<AgentDict<std::nullptr_t, char>, char>,
                 "The domain type AgentDict<K, V> must be equal to V when the "
                 "agent domain feature is skdecide::SingleAgentDomain");
-
-public:
-  template <typename K, typename V, typename... T> using AgentDict = V;
 
   /**
    * @brief Proxy to the type of objects stored by this agent.
@@ -162,6 +129,14 @@ public:
    * @tparam T
    */
   template <typename T> using AgentProxy = T;
+
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
+  class Feature : public MultiAgentDomain<CompoundDomain>::Feature {
+  public:
+    typedef SingleAgentDomain<CompoundDomain> FeatureDomain;
+  };
 };
 
 } // namespace skdecide

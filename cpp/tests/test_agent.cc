@@ -16,7 +16,7 @@ public:
     template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain1> {};
+  struct Domain : public Features::template AgentDomain<TestCompoundDomain1>::Feature {};
 };
 
 class TestCompoundDomain2 {
@@ -29,7 +29,7 @@ public:
     template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain2> {};
+  struct Domain : public Features::template AgentDomain<TestCompoundDomain2>::Feature {};
 };
 
 class TestCompoundDomain3 {
@@ -40,7 +40,7 @@ public:
     template <typename D> using AgentDomain = skdecide::SingleAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain3> {};
+  struct Domain : public Features::template AgentDomain<TestCompoundDomain3>::Feature {};
 };
 
 TEST_CASE("Agent domain", "[agent-domain]") {

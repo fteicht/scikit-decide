@@ -44,38 +44,41 @@
                                       DerivedFeature, EntityName, TypeName)    \
   template <template <typename...> class DefaultType = std::void_t>            \
   struct import_##EntityName##_type {                                          \
-    template <typename T, typename Found = void> struct try_import {           \
-      template <typename CF, typename DF, typename Enable = void>              \
-      struct delegate_import;                                                  \
+    template <typename... TestArgs> struct test_with {                         \
+      template <typename T, typename Found = void> struct try_import {         \
+        template <typename CF, typename DF, typename Enable = void>            \
+        struct delegate_import;                                                \
                                                                                \
-      template <typename CF, typename DF>                                      \
-      struct delegate_import<CF, DF,                                           \
-                             std::enable_if_t<std::is_same_v<CF, DF>>> {       \
-        template <typename... Args> using result = DefaultType<Args...>;       \
-      };                                                                       \
+        template <typename CF, typename DF>                                    \
+        struct delegate_import<CF, DF,                                         \
+                               std::enable_if_t<std::is_same_v<CF, DF>>> {     \
+          template <typename... Args> using result = DefaultType<Args...>;     \
+        };                                                                     \
                                                                                \
-      template <typename CF, typename DF>                                      \
-      struct delegate_import<CF, DF,                                           \
-                             std::enable_if_t<!std::is_same_v<CF, DF>>> {      \
+        template <typename CF, typename DF>                                    \
+        struct delegate_import<CF, DF,                                         \
+                               std::enable_if_t<!std::is_same_v<CF, DF>>> {    \
+          template <typename... Args>                                          \
+          using result = typename DF::template TypeName<Args...>;              \
+        };                                                                     \
+                                                                               \
         template <typename... Args>                                            \
-        using result = typename DF::template TypeName<Args...>;                \
+        using result = typename delegate_import<                               \
+            CallingFeature<CompoundDomain>,                                    \
+            DerivedFeature<CompoundDomain>>::template result<Args...>;         \
+      };                                                                       \
+                                                                               \
+      template <typename T>                                                    \
+      struct try_import<                                                       \
+          T, std::void_t<typename T::template TypeName<TestArgs...>>> {        \
+        template <typename... Args>                                            \
+        using result = typename T::template TypeName<Args...>;                 \
       };                                                                       \
                                                                                \
       template <typename... Args>                                              \
-      using result = typename delegate_import<                                 \
-          CallingFeature<CompoundDomain>,                                      \
-          DerivedFeature<CompoundDomain>>::template result<Args...>;           \
+      using result = typename try_import<                                      \
+          typename CompoundDomain::Types>::template result<Args...>;           \
     };                                                                         \
-                                                                               \
-    template <typename T>                                                      \
-    struct try_import<T, std::void_t<typename T::template TypeName<char>>> {   \
-      template <typename... Args>                                              \
-      using result = typename T::template TypeName<Args...>;                   \
-    };                                                                         \
-                                                                               \
-    template <typename... Args>                                                \
-    using result = typename try_import<                                        \
-        typename CompoundDomain::Types>::template result<Args...>;             \
   };
 
 #endif // DOMAIN_TYPE_IMPORTER_HH

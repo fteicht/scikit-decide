@@ -83,7 +83,8 @@ public:
   using AgentEventSpace = typename ActivityTypesImporter<
       CompoundDomain, EventDomain,
       CompoundDomain::Features::template ActivityDomain>::
-      template import_event_space_type<ImplicitSpace>::template result<Args...>;
+      template import_event_space_type<ImplicitSpace>::template test_with<
+          AgentEvent>::template result<Args...>;
 
   /**
    * @brief Type of an agent's action space
@@ -93,8 +94,8 @@ public:
   using AgentActionSpace = typename ActivityTypesImporter<
       CompoundDomain, EventDomain,
       CompoundDomain::Features::template ActivityDomain>::
-      template import_action_space_type<ImplicitSpace>::template result<
-          Args...>;
+      template import_action_space_type<ImplicitSpace>::template test_with<
+          AgentAction>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -104,8 +105,8 @@ public:
   using AgentEnabledEventSpace = typename ActivityTypesImporter<
       CompoundDomain, EventDomain,
       CompoundDomain::Features::template ActivityDomain>::
-      template import_enabled_event_space_type<ImplicitSpace>::template result<
-          Args...>;
+      template import_enabled_event_space_type<ImplicitSpace>::
+          template test_with<AgentEvent>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -115,8 +116,8 @@ public:
   using AgentApplicableActionSpace = typename ActivityTypesImporter<
       CompoundDomain, EventDomain,
       CompoundDomain::Features::template ActivityDomain>::
-      template import_applicable_action_space_type<
-          ImplicitSpace>::template result<Args...>;
+      template import_applicable_action_space_type<ImplicitSpace>::
+          template test_with<AgentAction>::template result<Args...>;
 
 private:
   static_assert(
@@ -135,7 +136,13 @@ private:
                 "skdecide::Space<...>");
 
 public:
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
   class Feature {
+  public:
+    typedef EventDomain<CompoundDomain> FeatureDomain;
+
   private:
     static_assert(
         std::is_base_of<HistoryDomain<CompoundDomain>,
@@ -381,8 +388,8 @@ public:
   template <typename... Args>
   using AgentActionSpace =
       typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
-          template import_action_space_type<ImplicitSpace>::template result<
-              Args...>;
+          template import_action_space_type<ImplicitSpace>::template test_with<
+              AgentAction>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -391,8 +398,8 @@ public:
   template <typename... Args>
   using AgentEventSpace =
       typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
-          template import_event_space_type<AgentActionSpace>::template result<
-              Args...>;
+          template import_event_space_type<AgentActionSpace>::
+              template test_with<AgentEvent>::template result<Args...>;
 
   static_assert(
       std::is_same_v<AgentActionSpace<char>, AgentEventSpace<char>>,
@@ -407,8 +414,8 @@ public:
   using AgentApplicableActionSpace = typename ActivityTypesImporter<
       CompoundDomain, ActionDomain,
       CompoundDomain::Features::template ActivityDomain>::
-      template import_applicable_action_space_type<
-          ImplicitSpace>::template result<Args...>;
+      template import_applicable_action_space_type<ImplicitSpace>::
+          template test_with<AgentAction>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -417,8 +424,8 @@ public:
   template <typename... Args>
   using AgentEnabledEventSpace =
       typename ActivityTypesImporter<CompoundDomain, ActionDomain>::
-          template import_enabled_event_space_type<
-              AgentApplicableActionSpace>::template result<Args...>;
+          template import_enabled_event_space_type<AgentApplicableActionSpace>::
+              template test_with<AgentEvent>::template result<Args...>;
 
   static_assert(
       std::is_same_v<AgentActionSpace<char>, AgentEventSpace<char>>,
@@ -426,8 +433,13 @@ public:
       "be "
       "the same when the activity domain feature derives from ActionDomain.");
 
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
   class Feature : public EventDomain<CompoundDomain>::Feature {
   public:
+    typedef ActionDomain<CompoundDomain> FeatureDomain;
+
     typedef typename EventDomain<CompoundDomain>::Feature::CompoundMemory
         CompoundMemory;
     typedef typename CompoundDomain::Features::template AgentDomain<
@@ -499,8 +511,8 @@ public:
   template <typename... Args>
   using AgentActionSpace =
       typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
-          template import_action_space_type<ImplicitSpace>::template result<
-              Args...>;
+          template import_action_space_type<ImplicitSpace>::template test_with<
+              AgentAction>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -509,8 +521,8 @@ public:
   template <typename... Args>
   using AgentEventSpace =
       typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
-          template import_event_space_type<AgentActionSpace>::template result<
-              Args...>;
+          template import_event_space_type<AgentActionSpace>::
+              template test_with<AgentEvent>::template result<Args...>;
 
   /**
    * @brief Type of an agent's event space
@@ -519,8 +531,8 @@ public:
   template <typename... Args>
   using AgentApplicableActionSpace =
       typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
-          template import_applicable_action_space_type<
-              AgentActionSpace>::template result<Args...>;
+          template import_applicable_action_space_type<AgentActionSpace>::
+              template test_with<AgentAction>::template result<Args...>;
 
   static_assert(
       std::is_same_v<AgentActionSpace<char>, AgentApplicableActionSpace<char>>,
@@ -535,11 +547,16 @@ public:
   template <typename... Args>
   using AgentEnabledEventSpace =
       typename ActivityTypesImporter<CompoundDomain, UnrestrictedActionDomain>::
-          template import_enabled_event_space_type<
-              AgentApplicableActionSpace>::template result<Args...>;
+          template import_enabled_event_space_type<AgentApplicableActionSpace>::
+              template test_with<AgentEvent>::template result<Args...>;
 
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
   class Feature : public ActionDomain<CompoundDomain>::Feature {
   public:
+    typedef UnrestrictedActionDomain<CompoundDomain> FeatureDomain;
+
     typedef typename ActionDomain<CompoundDomain>::Feature::CompoundState
         CompoundState;
     typedef typename ActionDomain<CompoundDomain>::Feature::CompoundMemory
