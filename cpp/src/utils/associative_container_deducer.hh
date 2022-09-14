@@ -126,7 +126,7 @@ template <typename T> struct Hash {
                               is_default_hashable<U>::value,
                           std::size_t>::type
   operator()(const U &u) const {
-    return std::hash<typename U::Hash>()(u);
+    return std::hash<U>()(u);
   }
 };
 

@@ -144,12 +144,12 @@ public:
     typedef EventDomain<CompoundDomain> FeatureDomain;
 
   private:
-    static_assert(
-        std::is_base_of<HistoryDomain<CompoundDomain>,
-                        typename CompoundDomain::Features::
-                            template MemoryDomain<CompoundDomain>>::value,
-        "The memory domain feature must derive from "
-        "skdecide::HistoryDomain<...> when using activity domains");
+    static_assert(std::is_base_of<
+                      typename HistoryDomain<CompoundDomain>::Feature,
+                      typename CompoundDomain::Features::template MemoryDomain<
+                          CompoundDomain>::Feature>::value,
+                  "The memory domain feature must derive from "
+                  "skdecide::HistoryDomain<...> when using activity domains");
 
   public:
     typedef typename CompoundDomain::Features::
@@ -369,7 +369,7 @@ public:
   static_assert(!std::is_same_v<AgentAction, std::nullptr_t> &&
                     !std::is_same_v<AgentAction, std::nullopt_t>,
                 "The domain types must define AgentAction when the "
-                "agent domain feature derives from skdecide::EventDomain");
+                "agent domain feature derives from skdecide::ActionDomain");
 
   /**
    * @brief Type of an agent's events

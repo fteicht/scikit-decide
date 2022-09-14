@@ -5,10 +5,19 @@
 #ifndef SKDECIDE_CONCURRENCY_HH
 #define SKDECIDE_CONCURRENCY_HH
 
+#include "builders/domain/domain_type_importer.hh"
 #include <list>
 #include <type_traits>
 
 namespace skdecide {
+
+template <typename CompoundDomain, template <typename...> class CallingFeature,
+          template <typename...> class DerivedFeature = CallingFeature>
+class ConcurrencyTypesImporter {
+public:
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                event_list, EventList);
+};
 
 /**
  * @brief A domain must inherit this class if multiple events/actions can happen
@@ -17,55 +26,32 @@ namespace skdecide {
  * features and deriving from this particular domain feature.
  */
 template <typename CompoundDomain> class ParallelDomain {
-private:
-  template <class, class, class = void> struct define_event_list;
-
-  template <class D, class T>
-  struct define_event_list<
-      D, T,
-      std::enable_if_t<std::is_same_v<ParallelDomain<CompoundDomain>, D>>> {
-
-    template <class, class = void> struct try_import_from_domain_types {
-      template <typename... Args> using result = std::list<Args...>;
-    };
-
-    template <class TT>
-    struct try_import_from_domain_types<
-        TT, std::void_t<typename TT::template EventList<char>>> {
-      template <typename... Args>
-      using result = typename TT::template EventList<Args...>;
-    };
-
-    template <typename... Args>
-    using result =
-        typename try_import_from_domain_types<T>::template result<Args...>;
-  };
-
-  template <class D, class T>
-  struct define_event_list<
-      D, T,
-      std::enable_if_t<!std::is_same_v<ParallelDomain<CompoundDomain>, D>>> {
-    template <typename E, typename... Args> using result = E;
-  };
-
 public:
   /**
    * @brief Type of the sequence class used to store objects run in parallel
-   * @tparam E Type of events
+   * @tparam Args Type of events
    */
-  template <typename E, typename... Args>
-  using EventList = typename define_event_list<
-      typename CompoundDomain::Features::template ConcurrencyDomain<
-          CompoundDomain>,
-      typename CompoundDomain::Types>::template result<E, Args...>;
+  template <typename... Args>
+  using EventList = typename ConcurrencyTypesImporter<
+      CompoundDomain, ParallelDomain,
+      CompoundDomain::Features::template ConcurrencyDomain>::
+      template import_event_list_type<std::list>::template test_with<
+          char>::template result<Args...>;
 
   /**
    * @brief Proxy to the type of objects to be run in parallel
-   * @tparam E type of events
+   * @tparam Args type of events
    * @tparam Args Additional sequence container template parameters
    */
-  template <typename E, typename... Args>
-  using ConcurrencyProxy = EventList<E, Args...>;
+  template <typename... Args> using ConcurrencyProxy = EventList<Args...>;
+
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
+  class Feature {
+  public:
+    typedef ParallelDomain<CompoundDomain> FeatureDomain;
+  };
 };
 
 /**
@@ -74,38 +60,44 @@ public:
  * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename CompoundDomain>
-class SequentialDomain : public ParallelDomain<CompoundDomain> {
+template <typename CompoundDomain> class SequentialDomain {
 private:
-  template <class, class = void> struct check_event_list : std::true_type {};
+  template <typename E, typename... Args> struct SequentialDomainEventList {
+    using type = E;
+  };
 
-  template <class T>
-  struct check_event_list<T, std::void_t<typename T::template EventList<char>>>
-      : std::conditional<
-            std::is_same_v<char, typename T::template EventList<char>>,
-            std::true_type, std::false_type>::type {};
-
-  static_assert(
-      !std::is_same_v<SequentialDomain<CompoundDomain>,
-                      typename CompoundDomain::Features::
-                          template ConcurrencyDomain<CompoundDomain>> ||
-          check_event_list<typename CompoundDomain::Types>::value,
-      "The domain type EventList<E> must be equal to E when the "
-      "concurrency domain feature is skdecide::SequentialDomain");
+  template <typename... Args>
+  using EventListAlias = typename SequentialDomainEventList<Args...>::type;
 
 public:
   /**
-   * @brief Type of events
-   * @tparam E Type of events
+   * @brief Type of the sequence class used to store objects run in parallel
+   * @tparam Args Type of events
    */
-  template <typename E, typename... Args> using EventList = E;
+  template <typename... Args>
+  using EventList =
+      typename ConcurrencyTypesImporter<CompoundDomain, SequentialDomain>::
+          template import_event_list_type<EventListAlias>::template test_with<
+              char>::template result<Args...>;
+
+  static_assert(
+      std::is_same_v<EventList<char>, char>,
+      "The domain type EventList<E> must be equal to E when the "
+      "concurrency domain feature derives skdecide::SequentialDomain");
 
   /**
    * @brief Proxy to the type of objects to be run sequentially
-   * @tparam E Type of events
+   * @tparam Args Type of events
    */
-  template <typename E, typename... Args>
-  using ConcurrencyProxy = EventList<E, Args...>;
+  template <typename... Args> using ConcurrencyProxy = EventList<Args...>;
+
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
+  class Feature : public ParallelDomain<CompoundDomain>::Feature {
+  public:
+    typedef SequentialDomain<CompoundDomain> FeatureDomain;
+  };
 };
 
 } // namespace skdecide

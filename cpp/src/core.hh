@@ -731,7 +731,7 @@ public:
   }
 
 protected:
-  const CheckFunction &_check_function;
+  CheckFunction _check_function;
   bool _depends_on_next_state;
 
   /**

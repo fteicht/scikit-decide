@@ -22,14 +22,6 @@ namespace skdecide {
  */
 template <typename CompoundDomain> class HistoryDomain {
 public:
-  typedef typename CompoundDomain::Features::
-      template AgentDomain<CompoundDomain>::template AgentProxy<
-          typename CompoundDomain::Features::template ObservabilityDomain<
-              CompoundDomain>::AgentState>
-          CompoundState;
-  typedef Memory<CompoundState> CompoundMemory;
-  typedef std::unique_ptr<CompoundMemory> CompoundMemoryPtr;
-
   /**
    * @brief Proxy to the type of memorized trajectories
    * @tparam T Type of memorized objects (usually Tstate)
@@ -37,105 +29,122 @@ public:
   template <typename T> using MemoryProxy = Memory<T>;
 
   /**
-   * @brief Checks the consistency of the given memory object with this class'
-   * memory. In the general history domains, memory can be infinite so this
-   * check always returns true.
-   * @param memory State memory object
-   * @return Always true
+   * @brief Feature class where the actual methods are defined
    */
-  inline virtual bool check_memory(const CompoundMemory &memory) {
-    return true;
-  }
+  class Feature {
+  public:
+    typedef HistoryDomain<CompoundDomain> FeatureDomain;
 
-  /**
-   * @brief Checks the consistency of the internal memory object with this
-   * class' memory. In the general history domains, memory can be infinite so
-   * this check always returns true. An exception is thrown if the internal
-   * memory object has not yet been initialized.
-   * @return Always true
-   */
-  inline virtual bool check_memory() {
-    if (!_memory)
-      throw std::invalid_argument("Uninitialized internal state memory");
+    typedef typename CompoundDomain::Features::
+        template AgentDomain<CompoundDomain>::template AgentProxy<
+            typename CompoundDomain::Features::template ObservabilityDomain<
+                CompoundDomain>::AgentState>
+            CompoundState;
+    typedef Memory<CompoundState> CompoundMemory;
+    typedef std::unique_ptr<CompoundMemory> CompoundMemoryPtr;
 
-    return check_memory(*_memory);
-  }
-
-  /**
-   * @brief Get the last state object of the given memory object.
-   * An exception is thrown if the given memory object is empty (i.e. it
-   * contains no state).
-   * @param memory State memory object
-   * @return Last state of the memory
-   */
-  static CompoundState &get_last_state(CompoundMemory &memory) {
-    if (memory.size() > 0) {
-      return memory.back();
-    } else {
-      throw std::out_of_range(
-          "Attempting to get last state of empty memory object");
+    /**
+     * @brief Checks the consistency of the given memory object with this class'
+     * memory. In the general history domains, memory can be infinite so this
+     * check always returns true.
+     * @param memory State memory object
+     * @return Always true
+     */
+    inline virtual bool check_memory(const CompoundMemory &memory) {
+      return true;
     }
-  }
 
-  /**
-   * @brief Get the last state object of the internal memory object.
-   * An exception is thrown if the given memory object is empty (i.e. it
-   * contains no state).
-   * @return Last state of the internal memory
-   */
-  inline CompoundState &get_last_state() {
-    if (!_memory)
-      throw std::invalid_argument("Uninitialized internal state memory");
+    /**
+     * @brief Checks the consistency of the internal memory object with this
+     * class' memory. In the general history domains, memory can be infinite so
+     * this check always returns true. An exception is thrown if the internal
+     * memory object has not yet been initialized.
+     * @return Always true
+     */
+    inline virtual bool check_memory() {
+      if (!_memory)
+        throw std::invalid_argument("Uninitialized internal state memory");
 
-    return get_last_state(*_memory);
-  }
+      return check_memory(*_memory);
+    }
 
-protected:
-  CompoundMemoryPtr _memory;
+    /**
+     * @brief Get the last state object of the given memory object.
+     * An exception is thrown if the given memory object is empty (i.e. it
+     * contains no state).
+     * @param memory State memory object
+     * @return Last state of the memory
+     */
+    static CompoundState &get_last_state(CompoundMemory &memory) {
+      if (memory.size() > 0) {
+        return memory.back();
+      } else {
+        throw std::out_of_range(
+            "Attempting to get last state of empty memory object");
+      }
+    }
 
-  /**
-   * Protected constructor because the class must be specialized to properly
-   * initialize the state memory
-   */
-  HistoryDomain() {}
+    /**
+     * @brief Get the last state object of the internal memory object.
+     * An exception is thrown if the given memory object is empty (i.e. it
+     * contains no state).
+     * @return Last state of the internal memory
+     */
+    inline CompoundState &get_last_state() {
+      if (!_memory)
+        throw std::invalid_argument("Uninitialized internal state memory");
 
-  /**
-   * @brief Initialize memory and return it. This function is automatically
-   * called by Initializable::reset() to reinitialize the internal memory
-   * whenever the domain is used as an environment.
-   * @tparam InputIt Type of the memory sequence iterator
-   * @param iBegin Begin of the memory sequence iterator
-   * @param iEnd End of the memory sequence iterator
-   * @return The new initialized memory.
-   */
-  template <typename InputIt>
-  inline CompoundMemoryPtr _init_memory(InputIt iBegin, InputIt iEnd) {
-    return std::make_unique<CompoundMemory>(iBegin, iEnd, get_memory_maxlen());
-  }
+      return get_last_state(*_memory);
+    }
 
-  /**
-   * @brief Initialize memory and return it. This function is automatically
-   * called by Initializable::reset() to reinitialize the internal memory
-   * whenever the domain is used as an environment.
-   * @param iList Memory sequence initializer list
-   * @return The new initialized memory.
-   */
-  inline CompoundMemoryPtr
-  _init_memory(std::initializer_list<CompoundState> iList) {
-    return std::make_unique<CompoundMemory>(iList, get_memory_maxlen());
-  }
+  protected:
+    CompoundMemoryPtr _memory;
 
-  /**
-   * @brief Get the memory max length (or None if unbounded).
-   * !!! tip.
-   * This function returns always None by default because the memory
-   * length is unbounded at this level.
-   * @return The memory max length (or
-   * std::numeric_limits<std::size_t>::max() if unbounded).
-   */
-  inline virtual std::size_t get_memory_maxlen() {
-    return std::numeric_limits<std::size_t>::max();
-  }
+    /**
+     * Protected constructor because the class must be specialized to properly
+     * initialize the state memory
+     */
+    Feature() {}
+
+    /**
+     * @brief Initialize memory and return it. This function is automatically
+     * called by Initializable::reset() to reinitialize the internal memory
+     * whenever the domain is used as an environment.
+     * @tparam InputIt Type of the memory sequence iterator
+     * @param iBegin Begin of the memory sequence iterator
+     * @param iEnd End of the memory sequence iterator
+     * @return The new initialized memory.
+     */
+    template <typename InputIt>
+    inline CompoundMemoryPtr _init_memory(InputIt iBegin, InputIt iEnd) {
+      return std::make_unique<CompoundMemory>(iBegin, iEnd,
+                                              get_memory_maxlen());
+    }
+
+    /**
+     * @brief Initialize memory and return it. This function is automatically
+     * called by Initializable::reset() to reinitialize the internal memory
+     * whenever the domain is used as an environment.
+     * @param iList Memory sequence initializer list
+     * @return The new initialized memory.
+     */
+    inline CompoundMemoryPtr
+    _init_memory(std::initializer_list<CompoundState> iList) {
+      return std::make_unique<CompoundMemory>(iList, get_memory_maxlen());
+    }
+
+    /**
+     * @brief Get the memory max length (or None if unbounded).
+     * !!! tip.
+     * This function returns always None by default because the memory
+     * length is unbounded at this level.
+     * @return The memory max length (or
+     * std::numeric_limits<std::size_t>::max() if unbounded).
+     */
+    inline virtual std::size_t get_memory_maxlen() {
+      return std::numeric_limits<std::size_t>::max();
+    }
+  };
 };
 
 /**
@@ -145,12 +154,8 @@ protected:
  * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename CompoundDomain>
-class FiniteHistoryDomain : public HistoryDomain<CompoundDomain> {
+template <typename CompoundDomain> class FiniteHistoryDomain {
 public:
-  typedef typename HistoryDomain<CompoundDomain>::CompoundState CompoundState;
-  typedef typename HistoryDomain<CompoundDomain>::CompoundMemory CompoundMemory;
-
   /**
    * @brief Proxy to the type of memorized trajectories
    * @tparam T Type of memorized objects (usually Tstate)
@@ -158,63 +163,76 @@ public:
   template <typename T> using MemoryProxy = Memory<T>;
 
   /**
-   * @brief Checks the consistency of the given memory object with this class'
-   * memory
-   * @param memory State memory object
-   * @return True if the given memory's max length is equal to this class'
-   * memory max length (False otherwise)
+   * @brief Feature class where the actual methods are defined
    */
-  inline virtual bool check_memory(const CompoundMemory &memory) {
-    return memory.maxlen() == get_memory_maxlen();
-  }
+  class Feature : public HistoryDomain<CompoundDomain>::Feature {
+  public:
+    typedef FiniteHistoryDomain<CompoundDomain> FeatureDomain;
 
-  /**
-   * @brief Checks the consistency of the internal memory object with this
-   * class' memory. An exception is thrown if the internal memory object has not
-   * yet been initialized.
-   * @return True if the internal memory's max length is equal to this class'
-   * memory max length (False otherwise)
-   */
-  inline virtual bool check_memory() {
-    if (!(this->_memory))
-      throw std::invalid_argument("Uninitialized internal state memory");
+    typedef typename HistoryDomain<CompoundDomain>::Feature::CompoundState
+        CompoundState;
+    typedef typename HistoryDomain<CompoundDomain>::Feature::CompoundMemory
+        CompoundMemory;
 
-    return check_memory(*(this->_memory));
-  }
-
-protected:
-  /**
-   * Protected constructor because the class must be specialized to properly
-   * initialize the state memory
-   */
-  FiniteHistoryDomain() {}
-
-  /**
-   * @brief Get the (cached) memory max length. By default,
-   * FiniteHistory::get_memory_maxlen() internally calls
-   * FiniteHistory::make_memory_maxlen() the first time and automatically caches
-   * its value to make future calls more efficient (since the memory max length
-   * is assumed to be constant).
-   * @return The memory max length.
-   */
-  inline virtual std::size_t get_memory_maxlen() {
-    if (!_memory_maxlen) {
-      _memory_maxlen = std::make_unique<std::size_t>(make_memory_maxlen());
+    /**
+     * @brief Checks the consistency of the given memory object with this class'
+     * memory
+     * @param memory State memory object
+     * @return True if the given memory's max length is equal to this class'
+     * memory max length (False otherwise)
+     */
+    inline virtual bool check_memory(const CompoundMemory &memory) {
+      return memory.maxlen() == get_memory_maxlen();
     }
-    return *_memory_maxlen;
-  }
 
-protected:
-  std::unique_ptr<std::size_t> _memory_maxlen;
+    /**
+     * @brief Checks the consistency of the internal memory object with this
+     * class' memory. An exception is thrown if the internal memory object has
+     * not yet been initialized.
+     * @return True if the internal memory's max length is equal to this class'
+     * memory max length (False otherwise)
+     */
+    inline virtual bool check_memory() {
+      if (!(this->_memory))
+        throw std::invalid_argument("Uninitialized internal state memory");
 
-  /**
-   * @brief Get the memory max length.
-   * This is a helper function called by default from
-   * FiniteHistory::get_memory_maxlen(), the difference being that the result is
-   * not cached here.
-   * @return The memory max length.
-   */
-  virtual std::size_t make_memory_maxlen() = 0;
+      return check_memory(*(this->_memory));
+    }
+
+  protected:
+    /**
+     * Protected constructor because the class must be specialized to properly
+     * initialize the state memory
+     */
+    Feature() {}
+
+    /**
+     * @brief Get the (cached) memory max length. By default,
+     * FiniteHistory::get_memory_maxlen() internally calls
+     * FiniteHistory::make_memory_maxlen() the first time and automatically
+     * caches its value to make future calls more efficient (since the memory
+     * max length is assumed to be constant).
+     * @return The memory max length.
+     */
+    inline virtual std::size_t get_memory_maxlen() {
+      if (!_memory_maxlen) {
+        _memory_maxlen = std::make_unique<std::size_t>(make_memory_maxlen());
+      }
+      return *_memory_maxlen;
+    }
+
+  protected:
+    std::unique_ptr<std::size_t> _memory_maxlen;
+
+    /**
+     * @brief Get the memory max length.
+     * This is a helper function called by default from
+     * FiniteHistory::get_memory_maxlen(), the difference being that the result
+     * is not cached here.
+     * @return The memory max length.
+     */
+    virtual std::size_t make_memory_maxlen() = 0;
+  };
 };
 
 /**
@@ -223,33 +241,40 @@ protected:
  * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename CompoundDomain>
-class MarkovianDomain : public FiniteHistoryDomain<CompoundDomain> {
+template <typename CompoundDomain> class MarkovianDomain {
 public:
-  typedef
-      typename FiniteHistoryDomain<CompoundDomain>::CompoundState CompoundState;
-
   /**
    * @brief Proxy to the type of last visited object
    * @tparam T Type of last visited object (usually Tstate)
    */
   template <typename T> using MemoryProxy = T;
 
-protected:
   /**
-   * Protected constructor because the class must be specialized to properly
-   * initialize the state memory
+   * @brief Feature class where the actual methods are defined
    */
-  MarkovianDomain() {}
+  class Feature : public FiniteHistoryDomain<CompoundDomain>::Feature {
+  public:
+    typedef MarkovianDomain<CompoundDomain> FeatureDomain;
 
-  /**
-   * @brief Get the memory max length which is always equal to 1 for Markovian
-   * domains. This is a helper function called by default from
-   * FiniteHistory::get_memory_maxlen(), the difference being that the result is
-   * not cached here.
-   * @return The memory max length which is constantly equal to 1.
-   */
-  inline virtual std::size_t make_memory_maxlen() { return 1; }
+    typedef typename FiniteHistoryDomain<CompoundDomain>::Feature::CompoundState
+        CompoundState;
+
+  protected:
+    /**
+     * Protected constructor because the class must be specialized to properly
+     * initialize the state memory
+     */
+    Feature() {}
+
+    /**
+     * @brief Get the memory max length which is always equal to 1 for Markovian
+     * domains. This is a helper function called by default from
+     * FiniteHistory::get_memory_maxlen(), the difference being that the result
+     * is not cached here.
+     * @return The memory max length which is constantly equal to 1.
+     */
+    inline virtual std::size_t make_memory_maxlen() { return 1; }
+  };
 };
 
 /**
@@ -264,28 +289,36 @@ protected:
  * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
  */
-template <typename CompoundDomain>
-class MemorylessDomain : public MarkovianDomain<CompoundDomain> {
+template <typename CompoundDomain> class MemorylessDomain {
 public:
-  typedef typename MarkovianDomain<CompoundDomain>::CompoundState CompoundState;
-
   /**
    * @brief Proxy to the null type (no memorized object)
    * @tparam T Unused type
    */
   template <typename T> using MemoryProxy = std::nullptr_t;
 
-  MemorylessDomain() { this->_memory = this->_init_memory({}); }
-
-protected:
   /**
-   * @brief Get the memory max length which is always equal to 0 for memoryless
-   * domains. This is a helper function called by default from
-   * FiniteHistory::get_memory_maxlen(), the difference being that the result is
-   * not cached here.
-   * @return The memory max length which is constantly equal to 0.
+   * @brief Feature class where the actual methods are defined
    */
-  inline virtual std::size_t make_memory_maxlen() { return 0; }
+  class Feature : public MarkovianDomain<CompoundDomain>::Feature {
+  public:
+    typedef MemorylessDomain<CompoundDomain> FeatureDomain;
+
+    typedef typename MarkovianDomain<CompoundDomain>::Feature::CompoundState
+        CompoundState;
+
+    Feature() { this->_memory = this->_init_memory({}); }
+
+  protected:
+    /**
+     * @brief Get the memory max length which is always equal to 0 for
+     * memoryless domains. This is a helper function called by default from
+     * FiniteHistory::get_memory_maxlen(), the difference being that the result
+     * is not cached here.
+     * @return The memory max length which is constantly equal to 0.
+     */
+    inline virtual std::size_t make_memory_maxlen() { return 0; }
+  };
 };
 
 } // namespace skdecide

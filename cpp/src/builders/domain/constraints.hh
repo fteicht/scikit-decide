@@ -9,8 +9,17 @@
 #include <list>
 
 #include "core.hh"
+#include "builders/domain/domain_type_importer.hh"
 
 namespace skdecide {
+
+template <typename CompoundDomain, template <typename...> class CallingFeature,
+          template <typename...> class DerivedFeature = CallingFeature>
+class ConstraintsTypesImporter {
+public:
+  DOMAIN_TEMPLATE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                                constraint_list, ConstraintList);
+};
 
 /**
  * @brief A domain must inherit this class if it has constraints.
@@ -18,59 +27,58 @@ namespace skdecide {
  * features and deriving from this particular domain feature.
  */
 template <typename CompoundDomain> class ConstrainedDomain {
-private:
-  template <class, class = void> struct define_constraint_list {
-    template <typename... Args> using result = std::list<Args...>;
-  };
-
-  template <class T>
-  struct define_constraint_list<
-      T, std::void_t<typename T::template ConstraintList<char>>> {
-    template <typename... Args>
-    using result = typename T::template ConstraintList<Args...>;
-  };
-
 public:
   /**
    * @brief Type of sequence to store constraints
-   * @tparam T Type of constraints
-   * @tparam Args Additional sequence container template parameters
+   * @tparam Args Type of constraints
    */
-  template <typename T, typename... Args>
-  using ConstraintList = typename define_constraint_list<
-      typename CompoundDomain::Types>::template result<T, Args...>;
+  template <typename... Args>
+  using ConstraintList =
+      typename ConstraintsTypesImporter<CompoundDomain, ConstrainedDomain>::
+          template import_constraint_list_type<std::list>::template test_with<
+              char>::template result<Args...>;
 
-  typedef typename CompoundDomain::Features::
-      template AgentDomain<CompoundDomain>::template AgentProxy<
-          typename CompoundDomain::Features::template ObservabilityDomain<
-              CompoundDomain>::AgentState>
-          CompoundState;
-  typedef typename CompoundDomain::Features::template MemoryDomain<
-      CompoundDomain>::template MemoryProxy<CompoundState>
-      CompoundMemory;
-  typedef typename CompoundDomain::Features::
-      template AgentDomain<CompoundDomain>::template AgentProxy<
-          typename CompoundDomain::Features::template ConcurrencyDomain<
-              CompoundDomain>::
-              template ConcurrencyProxy<
-                  typename CompoundDomain::Features::template AgentDomain<
-                      CompoundDomain>::AgentEvent>>
-          CompoundEvent;
-  typedef std::shared_ptr<
-      Constraint<CompoundMemory, CompoundState, CompoundEvent>>
-      ConstraintPtr;
+  /**
+   * @brief Feature class where the actual methods are defined
+   */
+  class Feature {
+  public:
+    typedef ConstrainedDomain<CompoundDomain> FeatureDomain;
 
-  const ConstraintList<ConstraintPtr> &get_constraints() {
-    if (!(this->_constraints)) {
-      this->_constraints = this->make_constraints();
+    typedef typename CompoundDomain::Features::
+        template AgentDomain<CompoundDomain>::template AgentProxy<
+            typename CompoundDomain::Features::template ObservabilityDomain<
+                CompoundDomain>::AgentState>
+            CompoundState;
+    typedef typename CompoundDomain::Features::template MemoryDomain<
+        CompoundDomain>::template MemoryProxy<CompoundState>
+        CompoundMemory;
+    typedef typename CompoundDomain::Features::
+        template AgentDomain<CompoundDomain>::template AgentProxy<
+            typename CompoundDomain::Features::template ConcurrencyDomain<
+                CompoundDomain>::
+                template ConcurrencyProxy<
+                    typename CompoundDomain::Features::template ActivityDomain<
+                        CompoundDomain>::AgentEvent>>
+            CompoundEvent;
+    typedef std::shared_ptr<
+        Constraint<CompoundMemory, CompoundState, CompoundEvent>>
+        ConstraintPtr;
+    typedef ConstraintList<ConstraintPtr> ConstraintList;
+    typedef std::unique_ptr<ConstraintList> ConstraintListPtr;
+
+    const ConstraintList &get_constraints() {
+      if (!(this->_constraints)) {
+        this->_constraints = this->make_constraints();
+      }
+      return *(this->_constraints);
     }
-    return *(this->_constraints);
-  }
 
-protected:
-  std::unique_ptr<ConstraintList<ConstraintPtr>> _constraints;
+  protected:
+    std::unique_ptr<ConstraintList> _constraints;
 
-  virtual std::unique_ptr<ConstraintList<ConstraintPtr>> make_constraints() = 0;
+    virtual ConstraintListPtr make_constraints() = 0;
+  };
 };
 
 } // namespace skdecide
