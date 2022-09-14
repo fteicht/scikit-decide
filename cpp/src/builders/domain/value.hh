@@ -5,41 +5,64 @@
 #ifndef SKDECIDE_VALUE_HH
 #define SKDECIDE_VALUE_HH
 
+#include "builders/domain/domain_type_importer.hh"
 #include "core.hh"
 
 namespace skdecide {
+
+template <typename CompoundDomain, template <typename...> class CallingFeature,
+          template <typename...> class DerivedFeature = CallingFeature>
+class ValueTypesImporter {
+public:
+  DOMAIN_SIMPLE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                              reward, AgentReward)
+  DOMAIN_SIMPLE_TYPE_IMPORTER(CompoundDomain, CallingFeature, DerivedFeature,
+                              cost, AgentCost)
+};
 
 /**
  * @brief A domain must inherit this class if it sends rewards (positive and/or
  * negative).
  *
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam Reward Type of an agent's rewards
  */
-template <typename DerivedCompoundDomain, typename Reward = double>
-class RewardDomain {
+template <typename CompoundDomain> class RewardDomain {
 public:
-  typedef Reward RawValue;
-
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawValue>
-      CompoundValue;
+  /**
+   * @brief Type of an agent's rewards
+   */
+  typedef typename ValueTypesImporter<
+      CompoundDomain, RewardDomain,
+      CompoundDomain::Features::template ValueDomain>::
+      template import_reward_type<double>::result AgentReward;
 
   /**
-   * @brief heck that a value is compliant with its reward specification.
-   *
-   * !!! Tip.
-   *         This function returns always True by default because any kind of
-   * reward should be accepted at this level.
-   *
-   * @param value The value to check.
-   * @return Always True.
+   * @brief Feature class where the actual methods are defined
    */
-  inline virtual bool
-  check_value(const Value<ValueType::REWARD, CompoundValue> &value) {
-    return true;
-  }
+  class Feature {
+  public:
+    typedef RewardDomain<CompoundDomain> FeatureDomain;
+
+    typedef typename CompoundDomain::Features::template AgentDomain<
+        CompoundDomain>::template AgentProxy<AgentReward>
+        CompoundValue;
+
+    /**
+     * @brief Check that a value is compliant with its reward specification.
+     *
+     * !!! Tip.
+     *         This function returns always True by default because any kind of
+     * reward should be accepted at this level.
+     *
+     * @param value The value to check.
+     * @return Always True.
+     */
+    inline virtual bool
+    check_value(const Value<ValueType::REWARD, CompoundValue> &value) {
+      return true;
+    }
+  };
 };
 
 /**
@@ -49,30 +72,63 @@ public:
  * Having only positive costs is a required assumption for certain solvers to
  * work, such as classical planners.
  *
- * @tparam DerivedCompoundDomain The type of the domain made up of different
+ * @tparam CompoundDomain The type of the domain made up of different
  * features and deriving from this particular domain feature.
- * @tparam Cost Type of an agent's costs
  */
-template <typename DerivedCompoundDomain, typename Cost = double>
-class PositiveCostDomain : public RewardDomain<DerivedCompoundDomain, Cost> {
+template <typename CompoundDomain> class PositiveCostDomain {
 public:
-  typedef Cost RawValue;
-
-  typedef typename DerivedCompoundDomain::template AgentProxy<
-      typename DerivedCompoundDomain::RawValue>
-      CompoundValue;
+  /**
+   * @brief Type of an agent's costs
+   */
+  typedef typename ValueTypesImporter<CompoundDomain, PositiveCostDomain>::
+      template import_cost_type<double>::result AgentCost;
 
   /**
-   * @brief Check that a value is compliant with its cost specification (must be
-   * positive).
-   *
-   * @param value The value to check.
-   * @return True if the cost is positive (False otherwise).
+   * @brief Type of an agent's rewards
    */
-  inline virtual bool
-  check_value(const Value<ValueType::COST, CompoundValue> &value) {
-    return value.cost >= 0;
-  }
+  typedef typename ValueTypesImporter<CompoundDomain, PositiveCostDomain>::
+      template import_reward_type<AgentCost>::result AgentReward;
+
+  static_assert(
+      std::is_same_v<AgentCost, AgentReward>,
+      "The domain types AgentCost and AgentReward must be the same when the "
+      "domain value feature derives from PositiveCostDomain<...>.");
+
+  class Feature : public RewardDomain<CompoundDomain>::Feature {
+  public:
+    typedef PositiveCostDomain<CompoundDomain> FeatureDomain;
+
+    typedef typename CompoundDomain::Features::template AgentDomain<
+        CompoundDomain>::template AgentProxy<AgentCost>
+        CompoundValue;
+
+    /**
+     * @brief Check that a value is compliant with its reward specification.
+     *
+     * !!! Tip.
+     *         This function returns always True by default because any kind of
+     * reward should be accepted at this level.
+     *
+     * @param value The value to check.
+     * @return Always True.
+     */
+    inline virtual bool
+    check_value(const Value<ValueType::REWARD, CompoundValue> &value) {
+      return value.cost() >= 0;
+    }
+
+    /**
+     * @brief Check that a value is compliant with its cost specification (must
+     * be positive).
+     *
+     * @param value The value to check.
+     * @return True if the cost is positive (False otherwise).
+     */
+    inline bool
+    check_value(const Value<ValueType::COST, CompoundValue> &value) {
+      return value.cost() >= 0;
+    }
+  };
 };
 
 } // namespace skdecide
