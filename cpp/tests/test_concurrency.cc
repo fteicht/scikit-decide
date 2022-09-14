@@ -16,8 +16,8 @@ public:
     template <typename D> using ConcurrencyDomain = skdecide::ParallelDomain<D>;
   };
 
-  struct Domain
-      : public Features::template ConcurrencyDomain<TestCompoundDomain1> {};
+  struct Domain : public Features::template ConcurrencyDomain<
+                      TestCompoundDomain1>::Feature {};
 };
 
 class TestCompoundDomain2 {
@@ -28,8 +28,8 @@ public:
     template <typename D> using ConcurrencyDomain = skdecide::ParallelDomain<D>;
   };
 
-  struct Domain
-      : public Features::template ConcurrencyDomain<TestCompoundDomain2> {};
+  struct Domain : public Features::template ConcurrencyDomain<
+                      TestCompoundDomain2>::Feature {};
 };
 
 class TestCompoundDomain3 {
@@ -41,8 +41,8 @@ public:
     using ConcurrencyDomain = skdecide::SequentialDomain<D>;
   };
 
-  struct Domain
-      : public Features::template ConcurrencyDomain<TestCompoundDomain3> {};
+  struct Domain : public Features::template ConcurrencyDomain<
+                      TestCompoundDomain3>::Feature {};
 };
 
 TEST_CASE("Agent domain", "[agent-domain]") {

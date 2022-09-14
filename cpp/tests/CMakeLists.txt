@@ -27,6 +27,7 @@ TARGET_INCLUDE_DIRECTORIES(tests-main PRIVATE ${CATCH2_INCLUDE_DIR})
 skdecide_test(core)
 skdecide_test(agent)
 skdecide_test(concurrency)
+skdecide_test(constraints)
 
 # skdecide_test(memory)
 # skdecide_test(observability)
