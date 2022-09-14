@@ -7,79 +7,119 @@
 #include <list>
 #include <set>
 #include <cmath>
+
 #include "core.hh"
 #include "builders/domain/observability.hh"
+#include "builders/domain/agent.hh"
+#include "builders/domain/concurrency.hh"
+#include "builders/domain/events.hh"
 
-class TestCompoundDomain1 {
+class TestPartiallyObservableDomain {
 public:
   struct Types {
-    typedef std::string AgentType;
-    template <typename... T> using ConstraintList = std::vector<T...>;
+    typedef int AgentEvent;
+    typedef float AgentState;
+    typedef int AgentObservation;
   };
 
   struct Features {
-    template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
+    template <typename D> using ActivityDomain = skdecide::EventDomain<D>;
+    template <typename D> using AgentDomain = skdecide::SingleAgentDomain<D>;
     template <typename D> using ConcurrencyDomain = skdecide::ParallelDomain<D>;
     template <typename D>
-    using ConstraintDomain = skdecide::ConstrainedDomain<D>;
+    using ObservabilityDomain = skdecide::PartiallyObservableDomain<D>;
   };
 
-  struct Domain
-      : public Features::template AgentDomain<TestCompoundDomain1>,
-        public Features::template ConcurrencyDomain<TestCompoundDomain1>,
-        public Features::template ConstraintDomain<TestCompoundDomain1> {};
+  struct Domain : public Features::template ObservabilityDomain<
+                      TestPartiallyObservableDomain>::Feature {
+  public:
+    virtual CompoundObservationSpacePtr make_observation_space() {
+      return std::make_unique<CompoundObservationSpace>(
+          [](const int &o) -> bool { return o >= 0 && o <= 10; });
+    }
+
+    virtual CompoundStateSpacePtr make_state_space() {
+      return std::make_unique<CompoundStateSpace>(
+          [](const float &s) -> bool { return s >= -0.5 && s <= 10.5; });
+    }
+
+    virtual CompoundObservationDistributionPtr get_observation_distribution(
+        const CompoundState &state,
+        const CompoundEventPtr &event = CompoundEventPtr()) {
+      return std::make_unique<CompoundObservationDistribution>(
+          [&state]() -> CompoundObservationPtr {
+            return std::make_shared<CompoundObservation>(
+                std::min(std::max(0, int(std::round(state))), 10));
+          });
+    }
+  };
+
+  Domain *operator->() { return &domain; }
+
+private:
+  Domain domain;
 };
 
 TEST_CASE("Partially observable domain", "[partially-observable-domain") {
-    class TestPartiallyObservableDomain : public skdecide::PartiallyObservableDomain<float, int, std::nullptr_t> {
-    public :
-        virtual std::unique_ptr<skdecide::Space<int>> make_observation_space() {
-            return std::make_unique<skdecide::ImplicitSpace<int>>([](const int& o)->bool{return o >=0 && o <= 10;});
-        }
-
-        virtual std::unique_ptr<skdecide::Space<float>> make_state_space() {
-            return std::make_unique<skdecide::ImplicitSpace<float>>([](const float& s)->bool{return s >= -0.5 && s <= 10.5;});
-        }
-
-        virtual std::unique_ptr<skdecide::Distribution<int>> get_observation_distribution(const float& state, const std::nullptr_t& event) {
-            return std::make_unique<skdecide::SingleValueDistribution<int>>(std::min(std::max(0, int(std::round(state))), 10));
-        }
-    };
-
-    TestPartiallyObservableDomain tpod;
-    REQUIRE( tpod.is_observation(5) == true );
-    REQUIRE( tpod.is_observation(-1) == false );
-    REQUIRE( tpod.is_state(5.7) == true );
-    REQUIRE( tpod.is_state(11) == false );
-    REQUIRE( tpod.get_observation_distribution(2.8, nullptr)->sample() == 3 );
+  TestPartiallyObservableDomain tpod;
+  REQUIRE(tpod->is_observation(5) == true);
+  REQUIRE(tpod->is_observation(-1) == false);
+  REQUIRE(tpod->is_state(5.7) == true);
+  REQUIRE(tpod->is_state(11) == false);
+  REQUIRE(*(tpod->get_observation_distribution(2.8, nullptr)->sample()) == 3);
 }
 
+template <typename Letter = char>
+class AlphabetSpace : public skdecide::Space<Letter> {
+public:
+  AlphabetSpace() {
+    std::vector<Letter> v(26);
+    std::iota(v.begin(), v.end(), 'a');
+    std::copy(v.begin(), v.end(), std::inserter(_alphabet, _alphabet.end()));
+  }
+
+  inline virtual bool contains(const Letter &x) const {
+    return _alphabet.find(x) != _alphabet.end();
+  }
+
+private:
+  std::set<Letter> _alphabet;
+};
+
+class TestFullyObservableDomain {
+public:
+  struct Types {
+    typedef int AgentAction;
+    typedef char AgentState;
+    template <typename... T> using AgentStateSpace = AlphabetSpace<T...>;
+  };
+
+  struct Features {
+    template <typename D> using ActivityDomain = skdecide::ActionDomain<D>;
+    template <typename D> using AgentDomain = skdecide::SingleAgentDomain<D>;
+    template <typename D>
+    using ConcurrencyDomain = skdecide::SequentialDomain<D>;
+    template <typename D>
+    using ObservabilityDomain = skdecide::FullyObservableDomain<D>;
+  };
+
+  class Domain : public Features::template ObservabilityDomain<
+                     TestFullyObservableDomain>::Feature {
+  private:
+    virtual CompoundStateSpacePtr make_state_space() {
+      return std::make_unique<CompoundStateSpace>();
+    };
+  };
+
+  Domain *operator->() { return &domain; }
+
+private:
+  Domain domain;
+};
+
 TEST_CASE("Fully observable domain", "[fully-observable-domain]") {
-    class AlphabetSpace : public skdecide::Space<char> {
-    public :
-        AlphabetSpace() {
-            std::vector<char> v(26);
-            std::iota(v.begin(), v.end(), 'a');
-            std::copy(v.begin(), v.end(), std::inserter(_alphabet, _alphabet.end()));
-        }
-
-        inline virtual bool contains(const char& x) const {
-            return _alphabet.find(x) != _alphabet.end();
-        }
-
-    private :
-        std::set<char> _alphabet;
-    };
-
-    class TestFullyObservableDomain : public skdecide::FullyObservableDomain<char, std::nullptr_t, AlphabetSpace> {
-    private :
-        virtual std::unique_ptr<AlphabetSpace> make_state_space() {
-            return std::make_unique<AlphabetSpace>();
-        }
-    };
-
-    TestFullyObservableDomain tfod;
-    REQUIRE( tfod.get_observation_space().contains('Z') == false );
-    REQUIRE( tfod.get_state_space().contains('i') == true );
-    REQUIRE( tfod.get_observation_distribution('a', nullptr)->sample() == 'a' );
+  TestFullyObservableDomain tfod;
+  REQUIRE(tfod->get_observation_space().contains('Z') == false);
+  REQUIRE(tfod->get_state_space().contains('i') == true);
+  REQUIRE(*(tfod->get_observation_distribution('a', nullptr)->sample()) == 'a');
 }

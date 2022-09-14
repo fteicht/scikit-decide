@@ -136,13 +136,14 @@ public:
     typedef typename CompoundDomain::Features::template AgentDomain<
         CompoundDomain>::template AgentProxy<AgentObservation>
         CompoundObservation;
+    typedef std::shared_ptr<CompoundObservation> CompoundObservationPtr;
     typedef typename CompoundDomain::Features::
         template AgentDomain<CompoundDomain>::template AgentProxy<
             AgentObservationSpace<AgentObservation>>
             CompoundObservationSpace;
     typedef std::unique_ptr<CompoundObservationSpace>
         CompoundObservationSpacePtr;
-    typedef AgentObservationDistribution<std::shared_ptr<CompoundObservation>>
+    typedef AgentObservationDistribution<CompoundObservationPtr>
         CompoundObservationDistribution;
     typedef std::unique_ptr<CompoundObservationDistribution>
         CompoundObservationDistributionPtr;

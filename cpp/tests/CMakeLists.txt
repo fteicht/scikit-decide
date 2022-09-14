@@ -28,10 +28,10 @@ skdecide_test(core)
 skdecide_test(agent)
 skdecide_test(concurrency)
 skdecide_test(constraints)
+skdecide_test(events)
 
 # skdecide_test(memory)
-# skdecide_test(observability)
-skdecide_test(events)
+skdecide_test(observability)
 
 # skdecide_test(initialization)
 # skdecide_test(goals)
