@@ -31,6 +31,8 @@ public:
    */
   class Feature {
   public:
+    typedef RenderableDomain<CompoundDomain> FeatureDomain;
+
     typedef typename CompoundDomain::Features::
         template AgentDomain<CompoundDomain>::template AgentProxy<
             typename CompoundDomain::Features::template ObservabilityDomain<
