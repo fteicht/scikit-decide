@@ -24,6 +24,11 @@ This guide is organized as follows:
 
 ## Setting up your development environment
 
+### Prerequisite: minizinc
+
+You need first to install [minizinc](https://www.minizinc.org/) (version greater than 2.6) and update the `PATH` environment variable
+so that it can be found by Python. See [minizinc documentation](https://www.minizinc.org/doc-latest/en/installation.html) for more details.
+
 ### Installing from source in developer mode
 
 > **Disclaimer**: The following process has only been tested on Linux/MacOS platforms.
@@ -62,25 +67,29 @@ Here are the steps to follow:
     pip install -U pip
     ```
 
-- Use poetry to install the project:
+  - Use poetry to install the project:
 
-    - Install [poetry](https://python-poetry.org/docs/master/#installation).
-        ```shell
-        curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
-        export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
-        ```
+      - Install [poetry](https://python-poetry.org/docs/master/#installation).
+          ```shell
+          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
+          export PATH="$HOME/.local/bin:$PATH"  # add path to poetry
+          ```
 
-    - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
-        ```shell
-        poetry env use 3.8.11
-        ```
+      - Install poetry-dynamic-versioning in poetry root env
+          ```shell
+          poetry self add poetry-dynamic-versioning
+          ```
 
-    - Install all dependencies as defined in `poetry.lock`, build c++ libraries, and configure them.
-        ```shell
-        rm -rf build  # removing previous build
-        poetry install --extras all
-        poetry run python postbuild_dev.py
-        ```
+      - Specify to poetry the python version to use so that it creates the appropriate virtual environment.
+          ```shell
+          poetry env use 3.8.11
+          ```
+
+      - Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
+          ```shell
+          rm -rf build  # removing previous build
+          poetry install --extras all
+          ```
 
 #### Alternate installation with conda + poetry
 
@@ -108,11 +117,15 @@ as it can also be installed by conda via the conda-forge channel.
     conda install -c conda-forge poetry
     ```
 
-- Install all dependencies as defined in `poetry.lock`, build c++ libraries, and configure them.
+- Install poetry-dynamic-versioning in poetry root env
+    ```shell
+    poetry self add poetry-dynamic-versioning
+    ```
+
+- Install all dependencies as defined in `poetry.lock`, build and install the c++ library.
     ```shell
     rm -rf build  # removing previous build
     poetry install --extras all
-    poetry run python postbuild_dev.py
     ```
 
 #### Use of developer mode installation
@@ -131,7 +144,7 @@ Some pages are generated from code thanks to the Python script `docs/autodoc.py`
 
 #### Install the library in developer mode.
 
-See [above](#installing-from-source-developer-mode) to install scikit-decide with poetry.
+See [above](#installing-from-source-in-developer-mode) to install scikit-decide with poetry.
 
 #### Install the documentation dependencies
 
@@ -146,7 +159,7 @@ Make sure you are in the "scikit-decide" root directory and install documentatio
 yarn install
 ```
 
-#### Define environment variables for binder links
+#### Define environment variables for binder and colab links
 
 In order to define appropriate links for notebooks (github source + launching on binder), we need several environment variables:
 - AUTODOC_BINDER_ENV_GH_REPO_NAME: name of the github repository hosting the binder environment
@@ -214,17 +227,17 @@ Beware that doing so, you are actually modifying the files.
 
 You can also use it when committing:
 
-- Stage your changes: `git add your_files`
-- Run pre-commit on the staged files: `pre-commit run`
-- Check the changes made
-- Accept them by adding modified files: `git add -u`
-- Commit: `git commit`
+- stage your changes: `git add your_files`,
+- run pre-commit on the staged files: `pre-commit run`,
+- check the changes made,
+- accept them by adding modified files: `git add -u`,
+- commit: `git commit`.
 
 This can also be done automatically at each commit if you add pre-commit to git hooks with `pre-commit install`.
 Beware that when doing so,
-- the changes will be refused if pre-commit actually modifies the files
-- you can then accept the modifications with `git add -u`
-- you can still force a commit that violates pre-commit checks with `git commit -n` or `git commit --no-verify`
+- the changes will be refused if pre-commit actually modifies the files,
+- you can then accept the modifications with `git add -u`,
+- you can still force a commit that violates pre-commit checks with `git commit -n` or `git commit --no-verify`.
 
 If you prefer run pre-commit manually, you can remove the hooks with `pre-commit uninstall`.
 
@@ -269,9 +282,9 @@ We can summarize the process as follows:
 - Do the necessary checks (see [below](#prior-checks)).
 - Reorganize your commits (see [below](#reorganizing-commits)).
 - Submit your pull request (see [github documentation](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)).
-- See if all CI checks passed on your PR
-- Wait for a review
-- Take the comments and required changes into account
+- See if all CI checks passed on your PR.
+- Wait for a review.
+- Take the comments and required changes into account.
 
 Note that a PR needs at least one review by a core developer to be merged.
 
@@ -287,22 +300,22 @@ This [post](https://medium.com/google-developer-experts/how-to-pull-request-d75a
 ### Prior checks
 
 Before submitting your pull request, think to
-- [run the unit tests](#running-unit-tests)
-- [check the documentation locally](#building-the-docs-locally) if you modified it
-- check you respect the coding styles by [running linters](#coding-style-and-code-linting)
+- [run the unit tests](#running-unit-tests),
+- [check the documentation locally](#building-the-docs-locally) if you modified it,
+- check you respect the coding styles by [running linters](#coding-style-and-code-linting).
 
 If you do not, you will still be able to see the status of your PR as CI will do these checks for you.
 
 ### Reorganizing commits
 
 On your way to implement your contribution, you will probably have lots of commits,
-some modifying other ones from the same PR, or only modidying the code style.
+some modifying other ones from the same PR, or only modifying the code style.
 
 At the end of your work, consider reorganizing them by
-- squashing them into one or only a few logical commits
-- having a separate commit to reformat previous existing code if necessary
+- squashing them into one or only a few logical commits,
+- having a separate commit to reformat previous existing code if necessary,
 - rewritting commit messages so that it explains the changes made and why, the "how" part being explained by the code itself
-  (see this [post](https://chris.beams.io/posts/git-commit/) about what a commit message should and should not contain)
-- rebasing on upstream repository master branch if it diverged too much by the time you finished
+  (see this [post](https://chris.beams.io/posts/git-commit/) about what a commit message should and should not contain),
+- rebasing on upstream repository master branch if it diverged too much by the time you finished.
 
 You can use `git rebase -i` to do that, as explained in [git documentation](https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History).

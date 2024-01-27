@@ -4,22 +4,23 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import asdict
 from enum import EnumMeta
-from typing import Dict, Generic, Iterable, List, Sequence, Tuple, Union
+from typing import Any, Dict, Generic, Iterable, List, Sequence, Tuple, Union
 
-import gym
-import gym.spaces as gym_spaces
+import gymnasium as gym
+import gymnasium.spaces as gym_spaces
 import numpy as np
 
 from skdecide import EnumerableSpace, SamplableSpace, SerializableSpace, T
 
 
 class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
-    """This class wraps an OpenAI Gym space (gym.spaces) as a scikit-decide space.
+    """This class wraps a gymnasium space (gym.spaces) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, gym_space: gym.Space) -> None:
@@ -61,77 +62,245 @@ class GymSpace(Generic[T], SamplableSpace[T], SerializableSpace[T]):
 
 
 class BoxSpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym Box space (gym.spaces.Box) as a scikit-decide space.
+    """This class wraps a gymnasium Box space (gym.spaces.Box) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, low, high, shape=None, dtype=np.float32):
         super().__init__(gym_space=gym_spaces.Box(low, high, shape, dtype))
 
 
-class DiscreteSpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym Discrete space (gym.spaces.Discrete) as a scikit-decide space.
+class DiscreteSpace(GymSpace[T], EnumerableSpace[T]):
+    """This class wraps a gymnasium Discrete space (gym.spaces.Discrete) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, n):
+    def __init__(self, n, element_class=int):
         super().__init__(gym_space=gym_spaces.Discrete(n))
+        self._element_class = element_class
+
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
+
+        # Returns
+        The elements of this space.
+        """
+        return np.array(list(range(self._gym_space.n)), dtype=np.int64)
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is int
+            else [int(sample) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is int
+            else [self._element_class(sample) for sample in sample_n]
+        )
 
 
-class MultiDiscreteSpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
+class MultiDiscreteSpace(GymSpace[T], EnumerableSpace[T]):
+    """This class wraps a gymnasium MultiDiscrete space (gym.spaces.MultiDiscrete) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, nvec):
+    def __init__(self, nvec, element_class=np.ndarray):
         super().__init__(gym_space=gym_spaces.MultiDiscrete(nvec))
+        self._element_class = element_class
+
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
+
+        # Returns
+        The elements of this space.
+        """
+        return np.array(
+            list(itertools.product(*[list(range(n)) for n in self._gym_space.nvec])),
+            dtype=np.int64,
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [np.asarray(sample, dtype=np.int64) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [self._element_class(sample) for sample in sample_n]
+        )
 
 
-class MultiBinarySpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
+class MultiBinarySpace(GymSpace[T], EnumerableSpace[T]):
+    """This class wraps a gymnasium MultiBinary space (gym.spaces.MultiBinary) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, n):
+    def __init__(self, n, element_class=np.ndarray):
         super().__init__(gym_space=gym_spaces.MultiBinary(n))
+        self._element_class = element_class
+
+    def get_elements(self) -> Iterable[T]:
+        """Get the elements of this space.
+
+        # Returns
+        The elements of this space.
+        """
+        return np.array(
+            list(itertools.product(*[(1, 0) for _ in range(self._gym_space.n)])),
+            dtype=np.int8,
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [np.asarray(sample, dtype=np.bool_).astype(int) for sample in sample_n]
+        )
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return (
+            sample_n
+            if self._element_class is np.ndarray
+            else [self._element_class(sample) for sample in sample_n]
+        )
 
 
 class TupleSpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym Tuple space (gym.spaces.Tuple) as a scikit-decide space.
+    """This class wraps a gymnasium Tuple space (gym.spaces.Tuple) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, spaces):
-        super().__init__(gym_space=gym_spaces.Tuple(spaces))
+    def __init__(
+        self, spaces: Tuple[Union[GymSpace[T], gym.Space]], element_class=tuple
+    ):
+        super().__init__(
+            gym_space=gym_spaces.Tuple(
+                [sp if isinstance(sp, gym.Space) else sp.unwrapped() for sp in spaces]
+            )
+        )
+        self._spaces = spaces
+        self._element_class = element_class
+        assert element_class is tuple or all(
+            m in dir(element_class) for m in ["to_tuple", "from_tuple"]
+        ), "Tuple space's element class must be of type tuple or it must provide the to_tuple and from_tuple methods"
+        self._to_tuple = (
+            (lambda e: e) if element_class is tuple else (lambda e: e.to_tuple())
+        )
+        self._from_tuple = (
+            (lambda e: e)
+            if element_class is tuple
+            else (lambda e: self._element_class.from_tuple(e))
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [
+            tuple(
+                next(iter(self._spaces[i].to_unwrapped([e])))
+                if isinstance(self._spaces[i], GymSpace)
+                else e
+                for i, e in enumerate(self._to_tuple(sample))
+            )
+            for sample in sample_n
+        ]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            self._from_tuple(
+                tuple(
+                    next(iter(self._spaces[i].from_unwrapped([e])))
+                    if isinstance(self._spaces[i], GymSpace)
+                    else e
+                    for i, e in enumerate(sample)
+                )
+            )
+            for sample in sample_n
+        ]
 
 
 class DictSpace(GymSpace[T]):
-    """This class wraps an OpenAI Gym Dict space (gym.spaces.Dict) as a scikit-decide space.
+    """This class wraps a gymnasium Dict space (gym.spaces.Dict) as a scikit-decide space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
-    def __init__(self, spaces=None, **spaces_kwargs):
-        super().__init__(gym_space=gym_spaces.Dict(spaces, **spaces_kwargs))
+    def __init__(
+        self,
+        spaces: Dict[Any, Union[GymSpace[T], gym.Space]] = None,
+        element_class=dict,
+        **spaces_kwargs,
+    ):
+        super().__init__(
+            gym_space=gym_spaces.Dict(
+                {
+                    k: sp if isinstance(sp, gym.Space) else sp.unwrapped()
+                    for k, sp in spaces.items()
+                },
+                **spaces_kwargs,
+            )
+        )
+        self._spaces = spaces
+        self._element_class = element_class
+        assert element_class is dict or all(
+            m in dir(element_class) for m in ["to_dict", "from_dict"]
+        ), "Dict space's element class must be of type dict or it must provide the to_dict and from_dict methods"
+        self._to_dict = (
+            (lambda e: e) if element_class is dict else (lambda e: e.to_dict())
+        )
+        self._from_dict = (
+            (lambda e: e)
+            if element_class is dict
+            else (lambda e: self._element_class.from_dict(e))
+        )
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable:
+        return [
+            {
+                k: next(iter(self._spaces[k].to_unwrapped([e])))
+                if isinstance(self._spaces[k], GymSpace)
+                else e
+                for k, e in self._to_dict(sample).items()
+            }
+            for sample in sample_n
+        ]
+
+    def from_unwrapped(self, sample_n: Iterable) -> Iterable[T]:
+        return [
+            self._from_dict(
+                {
+                    k: next(iter(self._spaces[k].from_unwrapped([e])))
+                    if isinstance(self._spaces[k], GymSpace)
+                    else e
+                    for k, e in sample.items()
+                }
+            )
+            for sample in sample_n
+        ]
 
 
 class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
-    """This class creates an OpenAI Gym Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as a
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from an enumeration and wraps it as a
     scikit-decide enumerable space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, enum_class: EnumMeta) -> None:
@@ -176,11 +345,12 @@ class EnumSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
 
 
 class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
-    """This class creates an OpenAI Gym Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
-    scikit-decide enumerable space.
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a list of elements and wraps it as a
+    scikit-decide enumerable space. If ordering is not important contrary to the 'contains' test, it is advised to
+    use the 'SetSpace' class instead.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, elements: Iterable[T]) -> None:
@@ -223,11 +393,61 @@ class ListSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
         return [self._elements[sample] for sample in sample_n]
 
 
-class DataSpace(GymSpace[T]):
-    """This class creates an OpenAI Gym Dict space (gym.spaces.Dict) from a dataclass and wraps it as a scikit-decide space.
+class SetSpace(Generic[T], GymSpace[T], EnumerableSpace[T]):
+    """This class creates a gymnasium Discrete space (gym.spaces.Discrete) from a set of elements and wraps it as a
+    scikit-decide enumerable space.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
+    """
+
+    def __init__(self, elements: Iterable[T]) -> None:
+        """Initialize SetSpace.
+
+        # Parameters
+        elements: The set of elements for creating the Gym Discrete space (gym.spaces.Discrete) to wrap.
+        """
+        self._elements = set(elements)
+        self._to_indexes = {e: i for i, e in enumerate(self._elements)}
+        self._to_elements = [e for e in self._elements]
+        gym_space = gym_spaces.Discrete(len(self._elements))
+        super().__init__(gym_space)
+
+    def contains(self, x: T) -> bool:
+        return x in self._elements
+
+    def get_elements(self) -> Iterable[T]:
+        return self._elements
+
+    def sample(self) -> T:
+        return self._to_elements[super().sample()]
+
+    def to_jsonable(self, sample_n: Iterable[T]) -> Sequence:
+        return sample_n
+
+    def from_jsonable(self, sample_n: Sequence) -> Iterable[T]:
+        return sample_n
+
+    def unwrapped(self) -> gym_spaces.Discrete:
+        """Unwrap the Gym Discrete space (gym.spaces.Discrete) and return it.
+
+        # Returns
+        The original Gym Discrete space created from the list.
+        """
+        return super().unwrapped()
+
+    def to_unwrapped(self, sample_n: Iterable[T]) -> Iterable[int]:
+        return [self._to_indexes[sample] for sample in sample_n]
+
+    def from_unwrapped(self, sample_n: Iterable[int]) -> Iterable[T]:
+        return [self._to_elements[sample] for sample in sample_n]
+
+
+class DataSpace(GymSpace[T]):
+    """This class creates a gymnasium Dict space (gym.spaces.Dict) from a dataclass and wraps it as a scikit-decide space.
+
+    !!! warning
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(

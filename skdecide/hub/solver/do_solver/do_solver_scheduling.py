@@ -7,19 +7,14 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Callable, Dict, Union
 
-from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
-from skdecide.discrete_optimization.rcpsp.rcpsp_model import (
-    MultiModeRCPSPModel,
-    RCPSPModel,
-    RCPSPModelCalendar,
-    RCPSPSolution,
-    SingleModeRCPSPModel,
-)
-from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
+from discrete_optimization.rcpsp.rcpsp_model import RCPSPModel, RCPSPSolution
+from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill import (
     MS_RCPSPModel,
     MS_RCPSPSolution,
     MS_RCPSPSolution_Variant,
 )
+
+from skdecide.builders.domain.scheduling.scheduling_domains import SchedulingDomain
 from skdecide.hub.solver.do_solver.sk_to_do_binding import build_do_domain
 from skdecide.hub.solver.sgs_policies.sgs_policies import (
     BasePolicyMethod,
@@ -46,8 +41,8 @@ class SolvingMethod(Enum):
 
 
 def build_solver(solving_method: SolvingMethod, do_domain):
-    if isinstance(do_domain, (RCPSPModelCalendar, RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import (
+    if isinstance(do_domain, RCPSPModel):
+        from discrete_optimization.rcpsp.rcpsp_solvers import (
             look_for_solver,
             solvers_map,
         )
@@ -70,8 +65,8 @@ def build_solver(solving_method: SolvingMethod, do_domain):
         ]
         if len(smap) > 0:
             return smap[0]
-    if isinstance(do_domain, (MS_RCPSPModel, MS_RCPSPModel, MultiModeRCPSPModel)):
-        from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
+    if isinstance(do_domain, MS_RCPSPModel):
+        from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
             look_for_solver,
             solvers_map,
         )
@@ -117,11 +112,12 @@ def from_solution_to_policy(
         )
         schedule = solution.rcpsp_schedule
         modes_dictionnary = {}
+        # set modes for start and end (dummy) jobs
         modes_dictionnary[1] = 1
-        modes_dictionnary[solution.problem.n_jobs + 2] = 1
+        modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
         for i in range(len(solution.rcpsp_modes)):
             modes_dictionnary[i + 2] = solution.rcpsp_modes[i]
-    if isinstance(solution, MS_RCPSPSolution):
+    elif isinstance(solution, MS_RCPSPSolution):
         permutation_task = sorted(
             solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
         )
@@ -133,24 +129,17 @@ def from_solution_to_policy(
             ]  # warning here...
             for task in solution.employee_usage
         }
-        modes_dictionnary = solution.modes
-    if isinstance(solution, MS_RCPSPSolution_Variant):
-        resource_allocation_priority = solution.priority_worker_per_task
-        permutation_task = sorted(
-            solution.schedule, key=lambda x: (solution.schedule[x]["start_time"], x)
-        )
-        modes_dictionnary = {}
-        modes_dictionnary[1] = 1
-        modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
-        for i in range(len(solution.modes_vector)):
-            modes_dictionnary[i + 2] = solution.modes_vector[i]
-        employees = sorted(domain.get_resource_units_names())
-        resource_allocation = {
-            task: [
-                employees[i] for i in solution.employee_usage[task].keys()
-            ]  # warning here...
-            for task in solution.employee_usage
-        }
+        if isinstance(solution, MS_RCPSPSolution_Variant):
+            resource_allocation_priority = solution.priority_worker_per_task
+            modes_dictionnary = {}
+            # set modes for start and end (dummy) jobs
+            modes_dictionnary[1] = 1
+            modes_dictionnary[solution.problem.n_jobs_non_dummy + 2] = 1
+            for i in range(len(solution.modes_vector)):
+                modes_dictionnary[i + 2] = solution.modes_vector[i]
+        else:
+            modes_dictionnary = solution.modes
+
     return PolicyRCPSP(
         domain=domain,
         policy_method_params=policy_method_params,
@@ -180,16 +169,14 @@ class DOSolver(Solver, DeterministicPolicies):
     def get_available_methods(self, domain: SchedulingDomain):
         do_domain = build_do_domain(domain)
         if isinstance(do_domain, (MS_RCPSPModel)):
-            from skdecide.discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
+            from discrete_optimization.rcpsp_multiskill.rcpsp_multiskill_solvers import (
                 look_for_solver,
                 solvers_map,
             )
 
             available = look_for_solver(do_domain)
-        elif isinstance(
-            do_domain, (SingleModeRCPSPModel, RCPSPModel, MultiModeRCPSPModel)
-        ):
-            from skdecide.discrete_optimization.rcpsp.rcpsp_solvers import (
+        elif isinstance(do_domain, RCPSPModel):
+            from discrete_optimization.rcpsp.rcpsp_solvers import (
                 look_for_solver,
                 solvers_map,
             )
@@ -211,10 +198,8 @@ class DOSolver(Solver, DeterministicPolicies):
 
         self.solver = solver_class(self.do_domain, **self.dict_params)
 
-        try:
+        if hasattr(self.solver, "init_model") and callable(self.solver.init_model):
             self.solver.init_model(**self.dict_params)
-        except:
-            pass
 
         result_storage = self.solver.solve(**self.dict_params)
         best_solution: RCPSPSolution = result_storage.get_best_solution()

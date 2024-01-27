@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 
 from skdecide import Domain, Solver
@@ -201,7 +201,7 @@ def denorm(vals, types):
         return out
 
 
-class CGPWrapper(Solver, DeterministicPolicies, Restorable):
+class CGPWrapper(Solver, DeterministicPolicies):
     T_domain = D
 
     def __init__(
@@ -303,6 +303,7 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
             evaluator,
             self._folder_name,
             self._n_cpus,
+            verbose=self._verbose,
         )
         es.run(self._n_it)
 
@@ -325,12 +326,6 @@ class CGPWrapper(Solver, DeterministicPolicies, Restorable):
 
     def _is_policy_defined_for(self, observation: D.T_agent[D.T_observation]) -> bool:
         return True
-
-    def _save(self, path: str) -> None:
-        pass  # TODO
-
-    def _load(self, path: str) -> None:
-        pass  # TODO
 
     def _get_default_function_lib(self):
         return [

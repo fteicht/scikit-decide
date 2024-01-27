@@ -8,14 +8,15 @@ from __future__ import annotations
 import bisect
 import random
 import struct
-from collections import (  # TODO: replace with `from typing import NamedTuple`?
-    namedtuple,
-)
+from collections import OrderedDict
 from copy import deepcopy
+from itertools import product
+from math import pi, tan
 from typing import Any, Callable, List, Optional
 
-import gym
+import gymnasium as gym
 import numpy as np
+from gymnasium.wrappers.compatibility import EnvCompatibility, LegacyEnv
 
 from skdecide import Domain, ImplicitSpace, Space, TransitionOutcome, Value
 from skdecide.builders.domain import (
@@ -52,10 +53,10 @@ class D(
 
 # TODO: update with latest Gym Env spec (with seed)
 class GymDomain(D):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain.
+    """This class wraps a gymnasium environment (gym.env) as a scikit-decide domain.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, gym_env: gym.Env) -> None:
@@ -67,7 +68,7 @@ class GymDomain(D):
         self._gym_env = gym_env
 
     def _state_reset(self) -> D.T_state:
-        return self._gym_env.reset()
+        return self._gym_env.reset()[0]
 
     def _state_step(
         self, action: D.T_agent[D.T_concurrency[D.T_event]]
@@ -77,9 +78,11 @@ class GymDomain(D):
         D.T_agent[D.T_predicate],
         D.T_agent[D.T_info],
     ]:
-        obs, reward, done, info = self._gym_env.step(action)
+        obs, reward, terminated, truncated, info = self._gym_env.step(action)
+        if truncated:
+            info["TimeLimit.truncated"] = True
         return TransitionOutcome(
-            state=obs, value=Value(reward=reward), termination=done, info=info
+            state=obs, value=Value(reward=reward), termination=terminated, info=info
         )
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -89,10 +92,7 @@ class GymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            return self._gym_env.render(mode=kwargs["mode"])
-        else:
-            return self._gym_env.render()
+        return self._gym_env.render()
 
     def close(self):
         return self._gym_env.close()
@@ -146,11 +146,11 @@ class GymDomainStateProxy:
 
 
 class GymDomainHashable(GymDomain):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
+    """This class wraps a gymnasium environment (gym.env) as a scikit-decide domain
        using hashable states and actions.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, gym_env: gym.Env) -> None:
@@ -192,12 +192,12 @@ class D(
 
 
 class DeterministicInitializedGymDomain(D):
-    """This class wraps an OpenAI Gym environment (gym.env) as a scikit-decide domain
+    """This class wraps a gymnasium environment (gym.env) as a scikit-decide domain
        with a deterministic initial state (i.e. reset the domain to the initial
        state returned by the first reset)
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -235,7 +235,7 @@ class DeterministicInitializedGymDomain(D):
     def _state_reset(self) -> D.T_state:
         if self._initial_state is None:
             self._initial_state = GymDomainStateProxy(
-                state=self._gym_env.reset(), context=None
+                state=self._gym_env.reset()[0], context=None
             )
             if self._set_state is not None and self._get_state is not None:
                 self._initial_env_state = self._get_state(self._gym_env)
@@ -258,13 +258,15 @@ class DeterministicInitializedGymDomain(D):
         D.T_agent[D.T_predicate],
         D.T_agent[D.T_info],
     ]:
-        obs, reward, done, info = self._gym_env.step(action)
+        obs, reward, terminated, truncated, info = self._gym_env.step(action)
+        if truncated:
+            info["TimeLimit.truncated"] = True
         if self._set_state is not None and self._get_state is not None:
             state = GymDomainStateProxy(state=obs, context=self._initial_env_state)
         else:
             state = GymDomainStateProxy(state=obs, context=self._init_env)
         return TransitionOutcome(
-            state=state, value=Value(reward=reward), termination=done, info=info
+            state=state, value=Value(reward=reward), termination=terminated, info=info
         )
 
     def _get_action_space_(self) -> D.T_agent[Space[D.T_event]]:
@@ -274,10 +276,7 @@ class DeterministicInitializedGymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            render = self._gym_env.render(mode=kwargs["mode"])
-        else:
-            render = self._gym_env.render()
+        render = self._gym_env.render()
         if self._set_state is None or self._get_state is None:
             self._gym_env.close()  # avoid deepcopy errors
         return render
@@ -295,11 +294,11 @@ class DeterministicInitializedGymDomain(D):
 
 
 class GymWidthDomain:
-    """This class wraps an OpenAI Gym environment as a domain
+    """This class wraps a gymnasium environment as a domain
         usable by width-based solving algorithm (e.g. IW)
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(self, continuous_feature_fidelity: int = 1) -> None:
@@ -502,14 +501,14 @@ class GymWidthDomain:
 
     def nb_of_binary_features(self) -> int:
         """Return the size of the bit vector encoding an observation"""
-        return self._binary_features(
-            self._gym_env.observation_space,
-            self._gym_env.observation_space.sample(),
-            0,
-            lambda i: None,
+        return len(
+            self._binary_features(
+                self._gym_env.observation_space,
+                self._gym_env.observation_space.sample(),
+            )
         )
 
-    def binary_features(self, memory: D.T_memory[D.T_state]):
+    def binary_features(self, memory: D.T_memory[D.T_state]) -> List[bool]:
         """Transform state in a bit vector and call f on each true value of this vector
 
         # Parameters
@@ -520,7 +519,7 @@ class GymWidthDomain:
         memory = memory._state if isinstance(memory, GymDomainStateProxy) else memory
         return self._binary_features(self._gym_env.observation_space, memory)
 
-    def _binary_features(self, space: gym.spaces.Space, element: Any) -> int:
+    def _binary_features(self, space: gym.spaces.Space, element: Any) -> List[bool]:
         if isinstance(space, gym.spaces.box.Box):
             features = []
             # compute the size of the bit vector encoding the largest float
@@ -660,11 +659,11 @@ class GymWidthDomain:
 
 
 class GymDiscreteActionDomain(UnrestrictedActions):
-    """This class wraps an OpenAI Gym environment as a domain
+    """This class wraps a gymnasium environment as a domain
         usable by a solver that requires enumerable applicable action sets
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -700,108 +699,123 @@ class GymDiscreteActionDomain(UnrestrictedActions):
         self, action_space: gym.spaces.Space
     ) -> D.T_agent[Space[D.T_event]]:
         if isinstance(action_space, gym.spaces.box.Box):
-            nb_elements = 1
-            for dim in action_space.shape:
-                nb_elements *= dim
-            actions = []
-            for l, h in np.nditer([action_space.low, action_space.high]):
-                if l == -float("inf") or h == float("inf"):
-                    actions.append(
-                        [
-                            gym.spaces.box.Box(low=l, high=h).sample()
-                            for i in range(self._discretization_factor)
+            ticks = []
+
+            unbounded = ~action_space.bounded_below & ~action_space.bounded_above
+            upp_bounded = ~action_space.bounded_below & action_space.bounded_above
+            low_bounded = action_space.bounded_below & ~action_space.bounded_above
+            bounded = action_space.bounded_below & action_space.bounded_above
+
+            it = np.nditer(action_space.low, flags=["multi_index"])
+            for _ in it:
+                index = it.multi_index
+
+                if unbounded[index]:
+                    l = [
+                        tan(0.5 * pi * x)
+                        for x in np.linspace(-1, 1, self._discretization_factor + 2)[
+                            1:-1
                         ]
+                    ]
+                elif upp_bounded[index]:
+                    l = [
+                        action_space.high[index] + tan(0.5 * pi * x)
+                        for x in np.linspace(
+                            -1, 0, self._discretization_factor + 1, endpoint=True
+                        )[1:]
+                    ]
+                elif low_bounded[index]:
+                    l = [
+                        action_space.low[index] + tan(0.5 * pi * x)
+                        for x in np.linspace(
+                            0, 1, self._discretization_factor + 1, endpoint=True
+                        )[:-1]
+                    ]
+                elif bounded[index]:
+                    l = np.linspace(
+                        action_space.low[index],
+                        action_space.high[index],
+                        self._discretization_factor,
                     )
                 else:
-                    actions.append(
-                        [
-                            l + ((h - l) / (self._discretization_factor - 1)) * i
-                            for i in range(self._discretization_factor)
-                        ]
-                    )
-            alist = []
-            self._generate_box_action_combinations(
-                actions, action_space.shape, action_space.dtype, 0, [], alist
+                    raise ValueError("Invalid case")
+
+                ticks.append(l)
+
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
             )
-            return ListSpace(alist)
+
         elif isinstance(action_space, gym.spaces.discrete.Discrete):
-            return ListSpace([i for i in range(action_space.n)])
+            return ListSpace(
+                np.int64(i + action_space.start) for i in range(action_space.n)
+            )
+
         elif isinstance(action_space, gym.spaces.multi_discrete.MultiDiscrete):
-            generate = lambda d: (
-                [[e] + g for e in range(action_space.nvec[d]) for g in generate(d + 1)]
-                if d < len(action_space.nvec) - 1
-                else [[e] for e in range(action_space.nvec[d])]
+            ticks = []
+            it = np.nditer(action_space.nvec, flags=["multi_index"])
+            for _ in it:
+                index = it.multi_index
+                ticks.append(range(action_space.nvec[index]))
+
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
             )
-            return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.multi_binary.MultiBinary):
-            generate = lambda d: (
-                [[e] + g for e in [True, False] for g in generate(d + 1)]
-                if d < len(action_space.n) - 1
-                else [[e] for e in [True, False]]
+            ticks = [range(2)] * int(np.prod(action_space.shape))
+
+            return ListSpace(
+                np.reshape(np.array(x, dtype=action_space.dtype), action_space.shape)
+                for x in product(*ticks)
             )
-            return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.tuple.Tuple):
             generate = lambda d: (
-                [
-                    [e] + g
+                (
+                    (e,) + g
                     for e in self._discretize_action_space(
                         action_space.spaces[d]
                     ).get_elements()
                     for g in generate(d + 1)
-                ]
+                )
                 if d < len(action_space.spaces) - 1
-                else [
-                    [e]
+                else (
+                    (e,)
                     for e in self._discretize_action_space(
                         action_space.spaces[d]
                     ).get_elements()
-                ]
+                )
             )
             return ListSpace(generate(0))
+
         elif isinstance(action_space, gym.spaces.dict.Dict):
-            dkeys = action_space.spaces.keys()
+            dkeys = list(action_space.spaces.keys())
             generate = lambda d: (
-                [
-                    [e] + g
+                (
+                    (e,) + g
                     for e in self._discretize_action_space(
                         action_space.spaces[dkeys[d]]
                     ).get_elements()
                     for g in generate(d + 1)
-                ]
-                if d < len(dkeys) - 1
-                else [
-                    [e]
+                )
+                if d < len(action_space.spaces) - 1
+                else (
+                    (e,)
                     for e in self._discretize_action_space(
                         action_space.spaces[dkeys[d]]
                     ).get_elements()
-                ]
+                )
+            )
+            return ListSpace(
+                OrderedDict(zip(dkeys, dvalues)) for dvalues in generate(0)
             )
         else:
             raise RuntimeError(
                 "Unknown Gym space element of type " + str(type(action_space))
             )
-
-    def _generate_box_action_combinations(
-        self, actions, shape, dtype, index, alist, rlist
-    ):
-        if index < len(actions):
-            for a in actions[index]:
-                clist = list(alist)
-                clist.append(a)
-                self._generate_box_action_combinations(
-                    actions, shape, dtype, index + 1, clist, rlist
-                )
-        else:
-            ar = np.ndarray(shape=shape, dtype=dtype)
-            if len(shape) == 1:
-                ar[0] = alist[0]
-            else:
-                k = 0
-                for (i,) in np.nditer(ar, op_flags=["readwrite"]):
-                    print(str(i))
-                    i = alist[k]
-                    k += 1
-            rlist += [ar]
 
 
 class D(
@@ -819,11 +833,17 @@ class D(
     pass
 
 
+def check_equality_state(st1, st2):
+    return (isinstance(st1, np.ndarray) and np.array_equal(st1, st2)) or (
+        not isinstance(st1, np.ndarray) and st1 == st2
+    )
+
+
 class DeterministicGymDomain(D):
-    """This class wraps a deterministic OpenAI Gym environment (gym.env) as a scikit-decide domain.
+    """This class wraps a deterministic gymnasium environment (gym.env) as a scikit-decide domain.
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -847,7 +867,7 @@ class DeterministicGymDomain(D):
         self._init_env = None
 
     def _get_initial_state_(self) -> D.T_state:
-        initial_state = self._gym_env.reset()
+        initial_state = self._gym_env.reset()[0]
         return GymDomainStateProxy(
             state=initial_state,
             context=[
@@ -869,12 +889,14 @@ class DeterministicGymDomain(D):
         env = memory._context[0]
         if self._set_state is None or self._get_state is None:
             env = deepcopy(env)
-        elif memory._context[4] != self._get_state(env):
+        elif not check_equality_state(memory._context[4], self._get_state(env)):
             self._set_state(env, memory._context[4])
         self._gym_env = env  # Just in case the simulation environment would be different from the planner's environment...
-        obs, reward, done, info = env.step(action)
+        obs, reward, terminated, truncated, info = env.step(action)
+        if truncated:
+            info["TimeLimit.truncated"] = True
         outcome = TransitionOutcome(
-            state=obs, value=Value(reward=reward), termination=done, info=info
+            state=obs, value=Value(reward=reward), termination=terminated, info=info
         )
         # print('Transition:', str(memory._state), ' -> ', str(action), ' -> ', str(outcome.state))
         return GymDomainStateProxy(
@@ -912,12 +934,11 @@ class DeterministicGymDomain(D):
         return GymSpace(self._gym_env.observation_space)
 
     def _render_from(self, memory: D.T_memory[D.T_state], **kwargs: Any) -> Any:
-        if "mode" in kwargs:
-            render = self._gym_env.render(mode=kwargs["mode"])
-        else:
-            render = self._gym_env.render()
-        if self._set_state is None or self._get_state is None:
-            self._gym_env.close()  # avoid deepcopy errors
+        # gym_env.render() can modify the environment
+        # and generate deepcopy errors later in _get_next_state
+        # thus we use a copy of the env to render it instead.
+        gym_env_for_rendering = deepcopy(self._gym_env)
+        render = gym_env_for_rendering.render()
         return render
 
     def close(self):
@@ -960,11 +981,11 @@ class CostDeterministicGymDomain(DeterministicGymDomain, PositiveCosts):
 
 
 class GymPlanningDomain(CostDeterministicGymDomain, Goals):
-    """This class wraps a cost-based deterministic OpenAI Gym environment as a domain
+    """This class wraps a cost-based deterministic gymnasium environment as a domain
         usable by a classical planner
 
     !!! warning
-        Using this class requires OpenAI Gym to be installed.
+        Using this class requires gymnasium to be installed.
     """
 
     def __init__(
@@ -1054,14 +1075,14 @@ class GymPlanningDomain(CostDeterministicGymDomain, Goals):
         )
 
 
-class AsGymEnv(gym.Env):
-    """This class wraps a scikit-decide domain as an OpenAI Gym environment.
+class AsLegacyGymV21Env(LegacyEnv):
+    """This class wraps a scikit-decide domain as a legacy OpenAI Gym v0.21 environment.
 
     !!! warning
-        The scikit-decide domain to wrap should inherit #UnrestrictedActionDomain since OpenAI Gym environments usually assume
+        The scikit-decide domain to wrap should inherit #UnrestrictedActionDomain since gymnasium environments usually assume
         that all their actions are always applicable.
 
-    An OpenAI Gym environment encapsulates an environment with arbitrary behind-the-scenes dynamics. An environment can
+    An gymnasium environment encapsulates an environment with arbitrary behind-the-scenes dynamics. An environment can
     be partially or fully observed.
 
     The main API methods that users of this class need to know are:
@@ -1088,7 +1109,7 @@ class AsGymEnv(gym.Env):
         """Initialize AsGymEnv.
 
         # Parameters
-        domain: The scikit-decide domain to wrap as an OpenAI Gym environment.
+        domain: The scikit-decide domain to wrap as a gymnasium environment.
         unwrap_spaces: Boolean specifying whether the action & observation spaces should be unwrapped.
         """
         self._domain = domain
@@ -1128,7 +1149,7 @@ class AsGymEnv(gym.Env):
                 self._domain.get_observation_space().to_unwrapped([outcome.observation])
             )
         )
-        # Some solvers dealing with OpenAI Gym environments crash when info is None (e.g. baselines solver)
+        # Some solvers dealing with gymnasium environments crash when info is None (e.g. baselines solver)
         outcome_info = outcome.info if outcome.info is not None else {}
         return (
             outcome_observation,
@@ -1143,7 +1164,13 @@ class AsGymEnv(gym.Env):
         # Returns
         observation (object): The initial observation of the space.
         """
-        return self._domain.reset()
+        return next(
+            iter(
+                self._domain.get_observation_space().to_unwrapped(
+                    [self._domain.reset()]
+                )
+            )
+        )
 
     def render(self, mode="human"):
         """Render the environment.
@@ -1186,7 +1213,10 @@ class AsGymEnv(gym.Env):
 
         Environments will automatically close() themselves when garbage collected or when the program exits.
         """
-        return self._domain.close()
+        # check that the method "close" exists before calling it (for instance the maze domain does not have one).
+        close_meth = getattr(self._domain, "close", None)
+        if callable(close_meth):
+            return close_meth()
 
     def unwrapped(self):
         """Unwrap the scikit-decide domain and return it.
@@ -1195,3 +1225,16 @@ class AsGymEnv(gym.Env):
         The original scikit-decide domain.
         """
         return self._domain
+
+
+class AsGymnasiumEnv(EnvCompatibility):
+    """This class wraps a scikit-decide domain as a gymnasium environment."""
+
+    def __init__(
+        self,
+        domain: Domain,
+        unwrap_spaces: bool = True,
+        render_mode: Optional[str] = None,
+    ) -> None:
+        legacy_env = AsLegacyGymV21Env(domain=domain, unwrap_spaces=unwrap_spaces)
+        super().__init__(old_env=legacy_env, render_mode=render_mode)

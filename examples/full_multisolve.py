@@ -2,10 +2,32 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+"""Example mixing various domains with various solvers.
+
+NB: to be able to launch this example, you need to install scikit-decide with all optional dependencies
+    + atari and autorom to play pacman (see https://gymnasium.farama.org/environments/atari/).
+
+    ```
+    pip install scikit-decide[all]
+    pip install gymnasium[atari,accept-rom-license]
+    ```
+
+    In doing so (`pip install gymnasium[accept-rom-license]`), you agree to own a license to these Atari 2600 ROMs
+    and agree to not distribution these ROMS.
+
+    If you still does not have the ROMs after that, and getting the following error:
+
+    > gymnasium.error.Error: We're Unable to find the game "MsPacman". Note: Gymnasium no longer distributes ROMs.
+
+    it may be due to a (silent) ssl error that can be resolved by setting the environment variable CURL_CA_BUNDLE
+    to the proper certificate (https://stackoverflow.com/a/31060428).
+
+"""
+
 from math import sqrt
 from typing import Any, Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 from stable_baselines3 import PPO
 
@@ -98,11 +120,11 @@ if __name__ == "__main__":
                 "outcome_formatter": lambda o: f"{o.observation} - cost: {o.value.cost:.2f}",
             },
         },
-        # Cart Pole (OpenAI Gym)
+        # Cart Pole (Gymnasium)
         {
-            "name": "Cart Pole (OpenAI Gym)",
+            "name": "Cart Pole (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("CartPole-v1")},
+            "config": {"gym_env": gym.make("CartPole-v1", render_mode="human")},
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -110,11 +132,13 @@ if __name__ == "__main__":
                 "outcome_formatter": None,
             },
         },
-        # Mountain Car continuous (OpenAI Gym)
+        # Mountain Car continuous (Gymnasium)
         {
-            "name": "Mountain Car continuous (OpenAI Gym)",
+            "name": "Mountain Car continuous (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("MountainCarContinuous-v0")},
+            "config": {
+                "gym_env": gym.make("MountainCarContinuous-v0", render_mode="human")
+            },
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -122,11 +146,11 @@ if __name__ == "__main__":
                 "outcome_formatter": None,
             },
         },
-        # ATARI Pacman (OpenAI Gym)
+        # ATARI Pacman (Gymnasium)
         {
-            "name": "ATARI Pacman (OpenAI Gym)",
+            "name": "ATARI Pacman (Gymnasium)",
             "entry": "GymDomain",
-            "config": {"gym_env": gym.make("MsPacman-v4")},
+            "config": {"gym_env": gym.make("ALE/MsPacman-v5", render_mode="human")},
             "rollout": {
                 "num_episodes": 3,
                 "max_steps": 1000,
@@ -299,8 +323,8 @@ if __name__ == "__main__":
             # Match solvers compatible with selected domain
             compatible = [None] + match_solvers(domain, candidates=solver_candidates)
             if (
-                selected_domain["name"] == "Cart Pole (OpenAI Gym)"
-                or selected_domain["name"] == "Mountain Car continuous (OpenAI Gym)"
+                selected_domain["name"] == "Cart Pole (Gymnasium)"
+                or selected_domain["name"] == "Mountain Car continuous (Gymnasium)"
             ):
                 # Those gym domain actually have more capabilities than they pretend,
                 # so we will transform them later to GymDomainForWidthSolvers (which
@@ -354,9 +378,9 @@ if __name__ == "__main__":
                             )
                         ),
                     )
-                elif selected_domain["name"] == "Cart Pole (OpenAI Gym)":
+                elif selected_domain["name"] == "Cart Pole (Gymnasium)":
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=1))
-                elif selected_domain["name"] == "Mountain Car continuous (OpenAI Gym)":
+                elif selected_domain["name"] == "Mountain Car continuous (Gymnasium)":
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=150))
                 else:
                     setattr(domain_type, "heuristic", lambda self, s: Value(cost=0))
@@ -391,7 +415,7 @@ if __name__ == "__main__":
                             or selected_solver["entry"].__name__ == "UCT"
                         ):
                             actual_domain_type = GymDomainForWidthSolvers
-                            if selected_domain["name"] == "Cart Pole (OpenAI Gym)":
+                            if selected_domain["name"] == "Cart Pole (Gymnasium)":
                                 actual_domain_config["termination_is_goal"] = False
                             actual_domain = actual_domain_type(**actual_domain_config)
                         selected_solver["config"][

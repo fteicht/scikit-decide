@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
 
 import pytest
+from discrete_optimization.generic_tools.cp_tools import CPSolverName
 
 from skdecide import DiscreteDistribution, Distribution, rollout_episode
 from skdecide.builders.domain.scheduling.conditional_tasks import (
@@ -34,7 +35,6 @@ from skdecide.builders.domain.scheduling.scheduling_domains_modelling import (
     rebuild_tasks_modes_dict,
 )
 from skdecide.builders.domain.scheduling.task_duration import DeterministicTaskDuration
-from skdecide.discrete_optimization.generic_tools.cp_tools import CPSolverName
 from skdecide.hub.domain.rcpsp.rcpsp_sk import (
     MRCPSP,
     RCPSP,
@@ -609,18 +609,15 @@ def check_skills(domain, states: List[State]):
 @pytest.mark.parametrize(
     "domain",
     [
-        # (ToyRCPSPDomain()),
-        # (ToyMRCPSPDomain_WithCost()),
-        (ToyMS_RCPSPDomain())
+        (ToyRCPSPDomain()),
+        (ToyMRCPSPDomain_WithCost()),
     ],
 )
 @pytest.mark.parametrize(
     "do_solver",
     [
-        # (SolvingMethod.PILE),
-        # (SolvingMethod.CP),
-        # (SolvingMethod.LP), # Runs on Popo but not ORC
-        # (SolvingMethod.LNS_CP), # long to run ...
+        (SolvingMethod.PILE),
+        (SolvingMethod.LS),
         (SolvingMethod.GA),
     ],
 )
@@ -661,13 +658,7 @@ def test_do(domain, do_solver):
 )
 @pytest.mark.parametrize(
     "do_solver_multiskill",
-    [
-        # (SolvingMethod.CP),
-        # (SolvingMethod.LS),
-        # (SolvingMethod.LP),
-        # (SolvingMethod.LNS_CP)
-        (SolvingMethod.GA)
-    ],
+    [(SolvingMethod.LS), (SolvingMethod.GA)],
 )
 def test_do_mskill(domain_multiskill, do_solver_multiskill):
     domain_multiskill.set_inplace_environment(False)
