@@ -2,9 +2,10 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#include <catch2/catch_test_macros.hpp>
 #include <algorithm>
-#include <catch.hpp>
 #include <vector>
+
 #include "builders/domain/agent.hh"
 #include "builders/domain/value.hh"
 

@@ -4,6 +4,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 #include <set>
+
 #include "builders/domain/concurrency.hh"
 #include "builders/domain/agent.hh"
 #include "builders/domain/observability.hh"

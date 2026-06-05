@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <type_traits>
+
 #include "builders/domain/domain_type_importer.hh"
 #include "core.hh"
 

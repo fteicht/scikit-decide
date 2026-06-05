@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 #include <set>
+
 #include "builders/domain/goals.hh"
 
 TEST_CASE("GoalDomain", "[goal-domain]") {

@@ -9,6 +9,7 @@
 #include <optional>
 #include <type_traits>
 #include <unordered_map>
+
 #include "domain_type_importer.hh"
 #include "utils/associative_container_deducer.hh"
 

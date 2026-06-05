@@ -60,7 +60,7 @@ private:
   Domain domain;
 };
 
-TEST_CASE("Partially observable domain", "[partially-observable-domain") {
+TEST_CASE("Partially observable domain", "[partially-observable-domain]") {
   TestPartiallyObservableDomain tpod;
   REQUIRE(tpod->is_observation(5) == true);
   REQUIRE(tpod->is_observation(-1) == false);

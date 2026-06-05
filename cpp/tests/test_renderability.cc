@@ -2,11 +2,12 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+#include <catch2/catch_test_macros.hpp>
 #include <algorithm>
-#include <catch.hpp>
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "core.hh"
 #include "builders/domain/agent.hh"
 #include "builders/domain/concurrency.hh"
@@ -35,6 +36,7 @@ public:
   struct Domain : public Features::template RenderabilityDomain<
                       TestCompoundDomain>::Feature {
     std::string _rendered_string;
+
     virtual void render(const CompoundMemory &memory) {
       _rendered_string = "[";
       int cnt = 0;

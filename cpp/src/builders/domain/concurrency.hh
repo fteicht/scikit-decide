@@ -5,9 +5,10 @@
 #ifndef SKDECIDE_CONCURRENCY_HH
 #define SKDECIDE_CONCURRENCY_HH
 
-#include "builders/domain/domain_type_importer.hh"
 #include <list>
 #include <type_traits>
+
+#include "builders/domain/domain_type_importer.hh"
 
 namespace skdecide {
 

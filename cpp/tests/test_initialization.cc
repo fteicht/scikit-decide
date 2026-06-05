@@ -3,6 +3,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 #include <catch2/catch_test_macros.hpp>
+
 #include "builders/domain/initialization.hh"
 
 TEST_CASE("Initializable domain", "[initializable-domain]") {

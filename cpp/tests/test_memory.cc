@@ -4,6 +4,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 #include <numeric>
+
 #include "core.hh"
 #include "builders/domain/agent.hh"
 #include "builders/domain/memory.hh"

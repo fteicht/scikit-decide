@@ -4,6 +4,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+
 #include "core.hh"
 
 using Catch::Approx;
@@ -98,8 +99,8 @@ TEST_CASE("Single-Value distribution", "[single-value-distribution]") {
 }
 
 TEST_CASE("Transition value", "[transition-value]") {
-    skdecide::Value<skdecide::ValueType::COST> tv(8.0);
-    REQUIRE( tv.reward() + tv.cost() == Approx(0.0) );
+  skdecide::Value<skdecide::ValueType::COST> tv(8.0);
+  REQUIRE(tv.reward() + tv.cost() == Approx(0.0));
 }
 
 TEST_CASE("Memory", "[memory]") {

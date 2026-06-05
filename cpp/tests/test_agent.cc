@@ -2,7 +2,8 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-#include <catch.hpp>
+#include <catch2/catch_test_macros.hpp>
+
 #include "builders/domain/agent.hh"
 
 class TestCompoundDomain1 {
@@ -16,7 +17,8 @@ public:
     template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain1>::Feature {};
+  struct Domain
+      : public Features::template AgentDomain<TestCompoundDomain1>::Feature {};
 };
 
 class TestCompoundDomain2 {
@@ -29,7 +31,8 @@ public:
     template <typename D> using AgentDomain = skdecide::MultiAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain2>::Feature {};
+  struct Domain
+      : public Features::template AgentDomain<TestCompoundDomain2>::Feature {};
 };
 
 class TestCompoundDomain3 {
@@ -40,7 +43,8 @@ public:
     template <typename D> using AgentDomain = skdecide::SingleAgentDomain<D>;
   };
 
-  struct Domain : public Features::template AgentDomain<TestCompoundDomain3>::Feature {};
+  struct Domain
+      : public Features::template AgentDomain<TestCompoundDomain3>::Feature {};
 };
 
 TEST_CASE("Agent domain", "[agent-domain]") {
